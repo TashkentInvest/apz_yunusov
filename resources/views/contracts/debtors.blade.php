@@ -293,7 +293,7 @@
 <script>
 function exportDebtors() {
     const params = new URLSearchParams(window.location.search);
-    window.location.href = `{{ route('export.debtors') }}?${params.toString()}`;
+    window.location.href = `{{ route('api.export.debtors') }}?${params.toString()}`;
 }
 
 function sendNotifications() {

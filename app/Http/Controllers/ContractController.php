@@ -111,7 +111,7 @@ class ContractController extends Controller
     public function edit(Contract $contract)
     {
         $subjects = Subject::where('is_active', true)->get();
-        $objects = Object::where('is_active', true)->with(['subject', 'district'])->get();
+        $objects = Objectt::where('is_active', true)->with(['subject', 'district'])->get();
         $statuses = ContractStatus::where('is_active', true)->get();
         $baseAmounts = BaseCalculationAmount::where('is_current', true)->get();
 

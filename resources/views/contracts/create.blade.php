@@ -107,11 +107,14 @@
             <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
                 <div>
                     <label class="block text-sm font-medium text-gray-700 mb-1">Объект *</label>
-                    <select name="object_id" required
+                    <select name="object_id" required onchange="updateObjectVolume()"
                             class="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500">
                         <option value="">Выберите объект</option>
                         @foreach($objects as $object)
-                            <option value="{{ $object->id }}" {{ old('object_id') == $object->id ? 'selected' : '' }}>
+                            <option value="{{ $object->id }}"
+                                    data-volume="{{ $object->construction_volume }}"
+                                    data-subject="{{ $object->subject_id }}"
+                                    {{ old('object_id') == $object->id ? 'selected' : '' }}>
                                 {{ $object->address }} ({{ $object->district->name_ru ?? '' }}) - {{ number_format($object->construction_volume, 2) }} м³
                             </option>
                         @endforeach
@@ -274,8 +277,127 @@ function togglePaymentFields() {
 }
 
 function createNewObject() {
-    // В реальном приложении здесь можно открыть модал для создания объекта
-    alert('Функция создания нового объекта будет добавлена позже');
+    const subjectId = document.querySelector('select[name="subject_id"]').value;
+    if (!subjectId) {
+        alert('Сначала выберите заказчика');
+        return;
+    }
+
+    // Open object creation modal
+    openObjectModal(subjectId);
+}
+
+function updateObjectVolume() {
+    const objectSelect = document.querySelector('select[name="object_id"]');
+    const selectedOption = objectSelect.options[objectSelect.selectedIndex];
+
+    if (selectedOption && selectedOption.dataset.volume) {
+        const volumeInput = document.querySelector('input[name="contract_volume"]');
+        volumeInput.value = selectedOption.dataset.volume;
+        calculateTotal();
+    }
+}
+
+// Object creation modal functions
+function openObjectModal(subjectId) {
+    // Create modal HTML dynamically
+    const modalHTML = `
+        <div id="objectCreationModal" class="fixed inset-0 z-50 overflow-y-auto">
+            <div class="flex items-center justify-center min-h-screen px-4">
+                <div class="fixed inset-0 bg-gray-500 bg-opacity-75 transition-opacity"></div>
+                <div class="inline-block bg-white rounded-lg shadow-xl transform transition-all sm:max-w-2xl sm:w-full">
+                    <form id="quickObjectForm">
+                        <div class="px-6 py-4 border-b border-gray-200">
+                            <h3 class="text-lg font-semibold text-gray-900">Создать новый объект</h3>
+                        </div>
+                        <div class="px-6 py-4 space-y-4">
+                            <div>
+                                <label class="block text-sm font-medium text-gray-700 mb-1">Район *</label>
+                                <select name="district_id" required class="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500">
+                                    <option value="">Выберите район</option>
+                                    @foreach($districts as $district)
+                                        <option value="{{ $district->id }}">{{ $district->name_ru }}</option>
+                                    @endforeach
+                                </select>
+                            </div>
+                            <div>
+                                <label class="block text-sm font-medium text-gray-700 mb-1">Адрес *</label>
+                                <textarea name="address" rows="2" required class="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500" placeholder="г. Ташкент, ул. Примерная, дом 1"></textarea>
+                            </div>
+                            <div class="grid grid-cols-2 gap-4">
+                                <div>
+                                    <label class="block text-sm font-medium text-gray-700 mb-1">Объем строительства (м³) *</label>
+                                    <input type="number" name="construction_volume" step="0.01" required class="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500">
+                                </div>
+                                <div>
+                                    <label class="block text-sm font-medium text-gray-700 mb-1">Кадастровый номер</label>
+                                    <input type="text" name="cadastre_number" class="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500">
+                                </div>
+                            </div>
+                        </div>
+                        <div class="px-6 py-4 border-t border-gray-200 flex justify-end space-x-3">
+                            <button type="button" onclick="closeObjectModal()" class="px-4 py-2 bg-gray-100 text-gray-700 rounded-lg hover:bg-gray-200 transition-colors">Отмена</button>
+                            <button type="submit" class="px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors">Создать объект</button>
+                        </div>
+                    </form>
+                </div>
+            </div>
+        </div>
+    `;
+
+    document.body.insertAdjacentHTML('beforeend', modalHTML);
+
+    // Handle form submission
+    document.getElementById('quickObjectForm').addEventListener('submit', async function(e) {
+        e.preventDefault();
+
+        const formData = new FormData(this);
+        formData.append('subject_id', subjectId);
+
+        const submitButton = this.querySelector('button[type="submit"]');
+        toggleLoading(submitButton, true);
+
+        try {
+            const response = await fetch('{{ route("objects.store") }}', {
+                method: 'POST',
+                headers: {
+                    'X-CSRF-TOKEN': document.querySelector('meta[name="csrf-token"]').content,
+                    'X-Requested-With': 'XMLHttpRequest'
+                },
+                body: formData
+            });
+
+            const result = await response.json();
+
+            if (result.success) {
+                // Add new object to select
+                const objectSelect = document.querySelector('select[name="object_id"]');
+                const newOption = new Option(result.object.text, result.object.id, true, true);
+                objectSelect.add(newOption);
+                objectSelect.value = result.object.id;
+
+                // Update contract volume
+                updateObjectVolume();
+
+                closeObjectModal();
+                showSuccessMessage(result.message);
+            } else {
+                throw new Error(result.message || 'Ошибка при создании объекта');
+            }
+        } catch (error) {
+            console.error('Error:', error);
+            handleAjaxError({ responseJSON: { message: error.message } });
+        } finally {
+            toggleLoading(submitButton, false);
+        }
+    });
+}
+
+function closeObjectModal() {
+    const modal = document.getElementById('objectCreationModal');
+    if (modal) {
+        modal.remove();
+    }
 }
 
 function formatNumber(num) {

@@ -22,6 +22,36 @@ class Subject extends Model
         'issued_date' => 'date'
     ];
 
+    public function permitType()
+    {
+        return $this->belongsTo(PermitType::class);
+    }
+
+    public function issuingAuthority()
+    {
+        return $this->belongsTo(IssuingAuthority::class);
+    }
+
+    public function constructionType()
+    {
+        return $this->belongsTo(ConstructionType::class);
+    }
+
+    public function objectType()
+    {
+        return $this->belongsTo(ObjectType::class);
+    }
+
+    public function territorialZone()
+    {
+        return $this->belongsTo(TerritorialZone::class);
+    }
+
+    public function orgForm()
+    {
+        return $this->belongsTo(OrgForm::class);
+    }
+
     public function contracts()
     {
         return $this->hasMany(Contract::class);
@@ -29,7 +59,7 @@ class Subject extends Model
 
     public function objects()
     {
-        return $this->hasMany(Object::class);
+        return $this->hasMany(Objectt::class);
     }
 
     public function getDisplayNameAttribute()

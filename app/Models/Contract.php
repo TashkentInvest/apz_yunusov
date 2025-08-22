@@ -29,7 +29,7 @@ class Contract extends Model
 
     public function object()
     {
-        return $this->belongsTo(Object::class);
+        return $this->belongsTo(Objectt::class);
     }
 
     public function subject()
@@ -83,4 +83,3 @@ class Contract extends Model
         return round(($this->total_paid / $this->total_amount) * 100, 2);
     }
 }
-

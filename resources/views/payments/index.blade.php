@@ -409,7 +409,7 @@ function deletePayment(paymentId) {
 
 function exportPayments() {
     const params = new URLSearchParams(window.location.search);
-    window.location.href = `{{ route('export.payments') }}?${params.toString()}`;
+    window.location.href = `{{ route('api.export.payments') }}?${params.toString()}`;
 }
 
 document.getElementById('addPaymentForm').addEventListener('submit', async function(e) {

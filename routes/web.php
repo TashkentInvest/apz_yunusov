@@ -51,6 +51,17 @@ Route::prefix('payments')->name('payments.')->group(function () {
     Route::put('/schedule/{contract}', [PaymentController::class, 'updateSchedule'])->name('schedule.update');
 });
 
+// Objects Management
+Route::prefix('objects')->name('objects.')->group(function () {
+    Route::get('/', [App\Http\Controllers\ObjectController::class, 'index'])->name('index');
+    Route::get('/create', [App\Http\Controllers\ObjectController::class, 'create'])->name('create');
+    Route::post('/', [App\Http\Controllers\ObjectController::class, 'store'])->name('store');
+    Route::get('/{object}', [App\Http\Controllers\ObjectController::class, 'show'])->name('show');
+    Route::get('/{object}/edit', [App\Http\Controllers\ObjectController::class, 'edit'])->name('edit');
+    Route::put('/{object}', [App\Http\Controllers\ObjectController::class, 'update'])->name('update');
+    Route::delete('/{object}', [App\Http\Controllers\ObjectController::class, 'destroy'])->name('destroy');
+});
+
 // Subjects (Customers) Management
 Route::prefix('subjects')->name('subjects.')->group(function () {
     Route::get('/', [SubjectController::class, 'index'])->name('index');
@@ -94,8 +105,7 @@ Route::prefix('api')->name('api.')->group(function () {
                 ];
             });
 
-        return response()->json($subjects);
-    })->name('subjects.search');
+    Route::get('/objects/search', [App\Http\Controllers\ObjectController::class, 'search'])->name('objects.search');
 
     Route::get('/statistics/monthly', function() {
         $monthlyStats = \App\Models\ActualPayment::selectRaw('
@@ -208,6 +218,8 @@ Route::prefix('export')->name('export.')->group(function () {
 
         return response()->stream($callback, 200, $headers);
     })->name('contracts');
+
+
 
     Route::get('/payments', function(\Illuminate\Http\Request $request) {
         // Export payments to Excel
@@ -335,4 +347,5 @@ Route::get('/health', function() {
 // Fallback route for 404
 Route::fallback(function () {
     return response()->view('errors.404', [], 404);
+});
 });
