@@ -5,7 +5,7 @@ namespace App\Http\Controllers;
 use Illuminate\Http\Request;
 use App\Models\Contract;
 use App\Models\Subject;
-use App\Models\Object;
+use App\Models\Objectt;
 use App\Models\ContractStatus;
 use App\Models\BaseCalculationAmount;
 use App\Models\District;
@@ -47,7 +47,7 @@ class ContractController extends Controller
     public function create()
     {
         $subjects = Subject::where('is_active', true)->get();
-        $objects = Object::where('is_active', true)->with(['subject', 'district'])->get();
+        $objects = Objectt::where('is_active', true)->with(['subject', 'district'])->get();
         $statuses = ContractStatus::where('is_active', true)->get();
         $baseAmounts = BaseCalculationAmount::where('is_current', true)->get();
         $districts = District::where('is_active', true)->get();

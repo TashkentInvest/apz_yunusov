@@ -9,6 +9,8 @@ class Objectt extends Model
 {
     use HasFactory;
 
+protected $table='objects';
+
     protected $fillable = [
         'subject_id', 'application_number', 'application_date', 'permit_document_name',
         'permit_type_id', 'issuing_authority_id', 'permit_date', 'permit_number',
