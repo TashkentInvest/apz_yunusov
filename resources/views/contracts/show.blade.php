@@ -175,9 +175,12 @@
                                 {{ $schedule->quarter }} кв. {{ $schedule->year }}
                             </td>
                             <td class="px-6 py-4 text-sm text-gray-900">
+                                @dump($schedule->quarter_amount)
+
                                 {{ number_format($schedule->quarter_amount) }} сум
                             </td>
                             <td class="px-6 py-4 text-sm text-gray-900">
+                                @dump($schedule->paid_amount)
                                 {{ number_format($schedule->paid_amount) }} сум
                             </td>
                             <td class="px-6 py-4 text-sm {{ $schedule->remaining_amount > 0 ? 'text-red-600' : 'text-green-600' }}">

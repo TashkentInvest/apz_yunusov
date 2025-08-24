@@ -24,7 +24,7 @@ class ApzDataSeeder extends Seeder
     
     public function run()
     {
-        $filePath = public_path('apz_data.xlsx');
+        $filePath = public_path('apz_data —test.xlsx');
         
         if (!file_exists($filePath)) {
             $this->command->error('APZ data file not found: ' . $filePath);
@@ -64,12 +64,6 @@ class ApzDataSeeder extends Seeder
                 array_shift($data);
                 Log::info('Header row removed');
             }
-            
-            // Remove summary row (ЖАМИ row)
-            if (count($data) > 0 && stripos($data[0][4] ?? '', 'ЖАМИ') !== false) {
-                array_shift($data);
-                Log::info('Summary row removed');
-            }
 
             // Get required reference data
             $districts = $this->getDistricts();
@@ -91,7 +85,7 @@ class ApzDataSeeder extends Seeder
                 }
 
                 try {
-                    $this->processApzRow($row, $districts, $statuses, $baseAmount, $index + 3); // +3 because we removed 2 rows
+                    $this->processApzRow($row, $districts, $statuses, $baseAmount, $index + 2); // +2 because we removed header
                     $processedCount++;
                     
                     if ($processedCount % 10 == 0) {
@@ -99,7 +93,7 @@ class ApzDataSeeder extends Seeder
                     }
                 } catch (\Exception $e) {
                     $errorCount++;
-                    $errorMessage = "Error processing row " . ($index + 3) . ": " . $e->getMessage();
+                    $errorMessage = "Error processing row " . ($index + 2) . ": " . $e->getMessage();
                     $this->command->warn($errorMessage);
                     Log::error($errorMessage, [
                         'row_data' => $row,
@@ -134,29 +128,59 @@ class ApzDataSeeder extends Seeder
     private function processApzRow($row, $districts, $statuses, $baseAmount, $rowNumber)
     {
         // Log the row being processed for debugging
-        Log::debug("Processing row {$rowNumber}", ['row_data' => array_slice($row, 0, 10)]);
+        Log::debug("Processing row {$rowNumber}", ['row_data' => array_slice($row, 0, 15)]);
         
-        // CORRECT COLUMN MAPPING based on your actual Excel structure:
-        $councilConclusion = $this->cleanString($row[0] ?? ''); // Column A
-        $rowId = $this->cleanString($row[3] ?? ''); // Column D - Row number
-        $inn = $this->cleanString($row[4] ?? ''); // Column E - ИНН
-        $pinfl = $this->cleanString($row[5] ?? ''); // Column F - ПИНФЛ  
-        $companyName = $this->cleanString($row[6] ?? ''); // Column G - Корхона номи
-        $contractNumber = $this->cleanString($row[7] ?? ''); // Column H - шарт. №
-        $contractStatus = $this->cleanString($row[8] ?? ''); // Column I - Контракт ҳолати
-        $contractDate = $this->parseExcelDate($row[9] ?? ''); // Column J - шартнома санаси
-        $completionDate = $this->parseExcelDate($row[10] ?? ''); // Column K - Якунлаш сана
-        $paymentTerms = $this->cleanString($row[11] ?? ''); // Column L - Тўлов шарти
-        $paymentPeriod = (int)($row[12] ?? 0); // Column M - Тўлов муддати
-        $advancePercent = $this->parsePercent($row[13] ?? ''); // Column N - Аванс
-        $districtName = $this->cleanString($row[14] ?? ''); // Column O - Туман
-        $area = $this->parseAmount($row[15] ?? 0); // Column P - М3 (площадь)
-        $contractAmount = $this->parseAmount($row[16] ?? 0); // Column Q - Шартнома қиймати
-        $scheduledPayment = $this->parseAmount($row[17] ?? 0); // Column R - Бўнак тўлов
-        $monthlyPayment = $this->parseAmount($row[18] ?? 0); // Column S - Ойлик тўлов
-        $totalPayment = $this->parseAmount($row[19] ?? 0); // Column T - Жами тўлов
-        $remaining = $this->parseAmount($row[20] ?? 0); // Column U - Қолдиқ
-        $actualPayment = $this->parseAmount($row[21] ?? 0); // Column V - ФАКТ
+        // CORRECTED COLUMN MAPPING based on your actual data structure:
+        // Column 0: Council conclusion status 1 (Умуман тўловни амалга оширмаганлар)
+        // Column 1: Council conclusion status 2 (Қарздорлар) 
+        // Column 2: Row number (№)
+        // Column 3: INN (ИНН)
+        // Column 4: PINFL (ПИНФЛ)
+        // Column 5: Company name (Корхона номи)
+        // Column 6: Contract number (шарт. №)
+        // Column 7: Contract status (Контракт ҳолати)
+        // Column 8: Contract date (шартнома санаси)
+        // Column 9: Completion date (Якунлаш сана)
+        // Column 10: Payment terms (Тўлов шарти)
+        // Column 11: Payment period (Тўлов муддати)
+        // Column 12: Advance (Аванс)
+        // Column 13: District (Туман)
+        // Column 14: Area M3 (М3)
+        // Column 15: Contract amount (Шартнома қиймати)
+        // Column 16: Scheduled payment (Бўнак тўлов)
+        // Column 17: Monthly payment (Ойлик тўлов)
+        // Column 18: Total payment (Жами тўлов)
+        // Column 19: Remaining (Қолдиқ)
+        // Column 20: Actual payment (ФАКТ)
+        // Column 21: ЖАМИ ФАКТ ТУШУМ
+        // Column 22: ЖАМИ ПЛАН ТУШУМ
+        // Column 23: Реальная просрочка
+        // Column 24: кенгаш хулосаси
+        // Column 25: Хулоса санаси
+        // Column 26: АПЗ раками
+        // Column 27: АПЗ санаси
+        
+        $councilConclusion1 = $this->cleanString($row[0] ?? ''); // Column A
+        $councilConclusion2 = $this->cleanString($row[1] ?? ''); // Column B
+        $rowId = $this->cleanString($row[2] ?? ''); // Column C - Row number
+        $inn = $this->cleanString($row[3] ?? ''); // Column D - ИНН
+        $pinfl = $this->cleanString($row[4] ?? ''); // Column E - ПИНФЛ  
+        $companyName = $this->cleanString($row[5] ?? ''); // Column F - Корхона номи
+        $contractNumber = $this->cleanString($row[6] ?? ''); // Column G - шарт. №
+        $contractStatus = $this->cleanString($row[7] ?? ''); // Column H - Контракт ҳолати
+        $contractDate = $this->parseExcelDate($row[8] ?? ''); // Column I - шартнома санаси
+        $completionDate = $this->parseExcelDate($row[9] ?? ''); // Column J - Якунлаш сана
+        $paymentTerms = $this->cleanString($row[10] ?? ''); // Column K - Тўлов шарти
+        $paymentPeriod = (int)($row[11] ?? 0); // Column L - Тўлов муддати
+        $advancePercent = $this->parsePercent($row[12] ?? ''); // Column M - Аванс
+        $districtName = $this->cleanString($row[13] ?? ''); // Column N - Туман
+        $area = $this->parseAmount($row[14] ?? 0); // Column O - М3 (площадь)
+        $contractAmount = $this->parseAmount($row[15] ?? 0); // Column P - Шартнома қиймати
+        $scheduledPayment = $this->parseAmount($row[16] ?? 0); // Column Q - Бўнак тўлов
+        $monthlyPayment = $this->parseAmount($row[17] ?? 0); // Column R - Ойлик тўлов
+        $totalPayment = $this->parseAmount($row[18] ?? 0); // Column S - Жами тўлов
+        $remaining = $this->parseAmount($row[19] ?? 0); // Column T - Қолдиқ
+        $actualPayment = $this->parseAmount($row[20] ?? 0); // Column U - ФАКТ
         
         // Log parsed values
         Log::debug("Row {$rowNumber} parsed values", [
@@ -233,8 +257,8 @@ class ApzDataSeeder extends Seeder
             }
 
             // 6. Create Council Conclusion (if exists)
-            if ($councilConclusion) {
-                $this->createCouncilConclusion($object, $councilConclusion, $rowNumber);
+            if ($councilConclusion1 || $councilConclusion2) {
+                $this->createCouncilConclusion($object, $councilConclusion1, $councilConclusion2, $rowNumber);
             }
 
         } catch (\Exception $e) {
@@ -258,7 +282,12 @@ class ApzDataSeeder extends Seeder
         $pinfl = trim($pinfl);
         $companyName = trim($companyName);
         
-        // Clean INN - remove suffixes like "-1", "-2", "(1)", etc. and limit to 9 characters
+        // Handle scientific notation in PINFL (like 3,23127E+13)
+        if (stripos($pinfl, 'E+') !== false || stripos($pinfl, 'E-') !== false) {
+            $pinfl = number_format((float)$pinfl, 0, '', '');
+        }
+        
+        // Clean INN - remove suffixes and limit to 9 characters
         if (!empty($inn)) {
             $inn = preg_replace('/[-\(\)]\d+$/', '', $inn); // Remove -1, -2, (1), etc.
             $inn = preg_replace('/[^\d]/', '', $inn); // Keep only digits
@@ -268,7 +297,7 @@ class ApzDataSeeder extends Seeder
         // Clean PINFL - limit to 14 characters
         if (!empty($pinfl)) {
             $pinfl = preg_replace('/[-\(\)]\d+$/', '', $pinfl); // Remove suffixes
-            $pinfl = preg_replace('/[^\w]/', '', $pinfl); // Keep only alphanumeric
+            $pinfl = preg_replace('/[^\d]/', '', $pinfl); // Keep only digits
             $pinfl = substr($pinfl, 0, 14); // Limit to 14 characters max
         }
         
@@ -281,7 +310,9 @@ class ApzDataSeeder extends Seeder
                         stripos($companyName, 'ТОО') !== false ||
                         stripos($companyName, 'LLC') !== false ||
                         stripos($companyName, 'АЖ') !== false ||
-                        stripos($companyName, 'мчж') !== false;
+                        stripos($companyName, 'мчж') !== false ||
+                        stripos($companyName, 'СП') !== false ||
+                        stripos($companyName, 'ТИФ') !== false;
         
         $searchField = $isLegalEntity ? 'inn' : 'pinfl';
         $searchValue = $isLegalEntity ? $inn : $pinfl;
@@ -377,6 +408,7 @@ class ApzDataSeeder extends Seeder
             'Шайхонтохур' => 'Шайхонтохур',
             'Сергели' => 'Сергели',
             'Яшнобод' => 'Юнусобод',
+            'Юнусобод' => 'Юнусобод',
             'Миробод' => 'Мирабад',
             'Янгихаёт' => 'Олмазор',
             'Учтепа' => 'Учтепа',
@@ -386,6 +418,14 @@ class ApzDataSeeder extends Seeder
         
         $mappedDistrictName = $districtMapping[$districtName] ?? 'Олмазор';
         $district = $districts->where('name_ru', $mappedDistrictName)->first();
+        
+        if (!$district) {
+            // Try to match by similar name
+            $district = $districts->filter(function($d) use ($districtName) {
+                return stripos($d->name_ru, $districtName) !== false || 
+                       stripos($districtName, $d->name_ru) !== false;
+            })->first();
+        }
         
         if (!$district) {
             $district = $districts->first(); // Use first available district
@@ -479,12 +519,17 @@ class ApzDataSeeder extends Seeder
             $contractNumber = 'APT-IMPORT-' . $subject->id . '-' . time() . '-' . $rowNumber;
         }
 
+        // Handle date parsing issues
+        if (!$contractDate) {
+            $contractDate = now();
+        }
+
         try {
             $contract = Contract::create([
                 'contract_number' => $contractNumber,
                 'object_id' => $object->id,
                 'subject_id' => $subject->id,
-                'contract_date' => $contractDate ?: now(),
+                'contract_date' => $contractDate,
                 'completion_date' => $completionDate,
                 'status_id' => $statusId,
                 'base_amount_id' => $baseAmount->id,
@@ -583,14 +628,18 @@ class ApzDataSeeder extends Seeder
         }
     }
 
-    private function createCouncilConclusion($object, $conclusion, $rowNumber = null)
+    private function createCouncilConclusion($object, $conclusion1, $conclusion2, $rowNumber = null)
     {
-        Log::debug("Row {$rowNumber} - Creating council conclusion", ['conclusion' => $conclusion]);
+        Log::debug("Row {$rowNumber} - Creating council conclusion", ['conclusion1' => $conclusion1, 'conclusion2' => $conclusion2]);
         
         $status = 'pending';
-        if (stripos($conclusion, 'да') !== false || stripos($conclusion, 'yes') !== false) {
+        
+        // Check both conclusion fields
+        $conclusionText = trim($conclusion1 . ' ' . $conclusion2);
+        
+        if (stripos($conclusionText, 'да') !== false || stripos($conclusionText, 'yes') !== false) {
             $status = 'approved';
-        } elseif (stripos($conclusion, 'нет') !== false || stripos($conclusion, 'no') !== false) {
+        } elseif (stripos($conclusionText, 'нет') !== false || stripos($conclusionText, 'no') !== false) {
             $status = 'rejected';
         }
 
@@ -608,7 +657,7 @@ class ApzDataSeeder extends Seeder
         }
     }
 
-    // Helper methods remain the same...
+    // Helper methods...
     private function readXlsx($filePath)
     {
         $zip = new ZipArchive;
@@ -696,6 +745,7 @@ class ApzDataSeeder extends Seeder
                 }
             }
             
+            // Fill in gaps with empty strings up to the maximum column
             for ($i = 0; $i <= $maxCol; $i++) {
                 $rowData[] = isset($cells[$i]) ? $cells[$i] : '';
             }
@@ -709,13 +759,18 @@ class ApzDataSeeder extends Seeder
     private function columnIndexFromString($cellRef)
     {
         preg_match('/^([A-Z]+)/', $cellRef, $matches);
-        $column = $matches[1];
+        if (!isset($matches[1])) {
+            return 0;
+        }
         
+        $column = $matches[1];
         $index = 0;
         $length = strlen($column);
+        
         for ($i = 0; $i < $length; $i++) {
             $index = $index * 26 + (ord($column[$i]) - ord('A') + 1);
         }
+        
         return $index - 1;
     }
 
@@ -748,7 +803,13 @@ class ApzDataSeeder extends Seeder
 
     private function isSummaryRow($row)
     {
-        return stripos($row[4] ?? '', 'ЖАМИ') !== false;
+        // Check if any cell in the row contains summary keywords
+        foreach ($row as $cell) {
+            if (stripos($cell, 'ЖАМИ') !== false) {
+                return true;
+            }
+        }
+        return false;
     }
 
     private function getDistricts()
@@ -801,14 +862,19 @@ class ApzDataSeeder extends Seeder
 
     private function parseExcelDate($value)
     {
-        if (empty($value) || $value === '-') return null;
+        if (empty($value) || $value === '-' || $value === '00.01.1900') return null;
         
         try {
-            // Handle Excel numeric dates (like 45485)
+            // Handle Excel numeric dates (like 45485 = July 12, 2024)
             if (is_numeric($value) && $value > 1) {
                 // Excel epoch starts from 1900-01-01 (but has a leap year bug, so we subtract 2)
                 $excelEpoch = Carbon::create(1900, 1, 1);
                 return $excelEpoch->addDays((int)$value - 2);
+            }
+            
+            // Handle dd.mm.yyyy format
+            if (preg_match('/^(\d{1,2})\.(\d{1,2})\.(\d{4})$/', $value, $matches)) {
+                return Carbon::createFromFormat('d.m.Y', $value);
             }
             
             // Try common date formats
@@ -833,11 +899,16 @@ class ApzDataSeeder extends Seeder
         if (empty($value) || $value === '-' || stripos($value, '#REF') !== false) return 0;
         
         // Handle scientific notation (like 2.57165E+12)
-        if (stripos($value, 'E') !== false) {
+        if (stripos($value, 'E+') !== false || stripos($value, 'E-') !== false) {
             return (float)$value;
         }
         
-        $cleaned = preg_replace('/[^\d.-]/', '', str_replace(',', '.', $value));
+        // Replace comma with dot for decimal separator
+        $cleaned = str_replace(',', '.', $value);
+        
+        // Remove all non-numeric characters except dots and minus signs
+        $cleaned = preg_replace('/[^\d.-]/', '', $cleaned);
+        
         return (float)$cleaned;
     }
 
@@ -845,12 +916,16 @@ class ApzDataSeeder extends Seeder
     {
         if (empty($value) || $value === '-') return 0;
         
-        // Handle decimal percentages like 0.1999
-        if (is_numeric($value) && $value < 1) {
+        // Handle decimal percentages like 0.1999 (which is 19.99%)
+        if (is_numeric($value) && $value <= 1) {
             return $value * 100; // Convert 0.1999 to 19.99%
         }
         
-        $cleaned = preg_replace('/[^\d.-]/', '', str_replace('%', '', $value));
+        // Remove % sign and convert to float
+        $cleaned = str_replace('%', '', $value);
+        $cleaned = str_replace(',', '.', $cleaned);
+        $cleaned = preg_replace('/[^\d.-]/', '', $cleaned);
+        
         return (float)$cleaned;
     }
 }
