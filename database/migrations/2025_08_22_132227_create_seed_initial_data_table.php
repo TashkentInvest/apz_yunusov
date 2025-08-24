@@ -22,7 +22,7 @@ return new class extends Migration
             ['name_uz' => 'Мирзо Улуғбек', 'name_ru' => 'Мирзо-Улугбекский', 'code' => 'MUB'],
             ['name_uz' => 'Мирабад', 'name_ru' => 'Мирабадский', 'code' => 'MIR'],
             ['name_uz' => 'Сергели', 'name_ru' => 'Сергелийский', 'code' => 'SER'],
-            ['name_uz' => 'Олмалиқ', 'name_ru' => 'Алмалыкский', 'code' => 'ALQ'],
+            ['name_uz' => 'Янгихаёт', 'name_ru' => 'Янгихаётский', 'code' => 'YAN'],
             ['name_uz' => 'Учтепа', 'name_ru' => 'Учтепинский', 'code' => 'UCH'],
             ['name_uz' => 'Юнусобод', 'name_ru' => 'Юнусабадский', 'code' => 'YUN'],
             ['name_uz' => 'Яккасарой', 'name_ru' => 'Яккасарайский', 'code' => 'YAK'],
@@ -30,6 +30,7 @@ return new class extends Migration
             ['name_uz' => 'Шайхонтохур', 'name_ru' => 'Шайхантахурский', 'code' => 'SHA'],
             ['name_uz' => 'Яшнобод', 'name_ru' => 'Яшнабадский', 'code' => 'YAS'],
         ]);
+
 
         // Шартнома статуслари
         DB::table('contract_statuses')->insert([

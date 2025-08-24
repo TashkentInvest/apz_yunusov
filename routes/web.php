@@ -25,7 +25,9 @@ Route::get('/', function () {
 
 // Dashboard
 Route::get('/dashboard', [DashboardController::class, 'index'])->name('dashboard');
-
+Route::get('/dashboard/chart-data', [DashboardController::class, 'getChartDataAjax'])->name('dashboard.chart-data');
+Route::get('/dashboard/export', [DashboardController::class, 'export'])->name('dashboard.export');
+Route::get('/dashboard/district/{district}', [DashboardController::class, 'districtDetails'])->name('dashboard.district');
 // Contracts Management
 Route::prefix('contracts')->name('contracts.')->group(function () {
     Route::get('/', [ContractController::class, 'index'])->name('index');

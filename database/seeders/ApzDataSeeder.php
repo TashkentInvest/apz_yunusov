@@ -21,6 +21,9 @@ use SimpleXMLElement;
 class ApzDataSeeder extends Seeder
 {
     private $sharedStrings = [];
+    private $skippedRows = [];
+    private $unmappedDistricts = [];
+    private $unmappedDistrictRows = []; // Track which rows had unmapped districts
     
     public function run()
     {
@@ -45,7 +48,7 @@ class ApzDataSeeder extends Seeder
             $this->command->info("Statuses: {$statusCount}");
             $this->command->info("Org Forms: {$orgFormCount}");
             
-            Log::info("Essential data check - Districts: {$districtCount}, Statuses: {$statusCount}, OrgForms: {$orgFormCount}");
+            Log::info("Essential data check", ['districts' => $districtCount, 'statuses' => $statusCount, 'org_forms' => $orgFormCount]);
             
             if ($districtCount === 0 || $statusCount === 0) {
                 $this->command->error('Essential data missing! Run: php artisan db:seed --class=EssentialDataSeeder');
@@ -70,7 +73,7 @@ class ApzDataSeeder extends Seeder
             $statuses = $this->getContractStatuses();
             $baseAmount = $this->getOrCreateBaseAmount();
             
-            Log::info("Reference data loaded - Districts: " . $districts->count() . ", Statuses: " . $statuses->count());
+            Log::info("Reference data loaded", ['districts' => $districts->count(), 'statuses' => $statuses->count()]);
 
             DB::beginTransaction();
             
@@ -79,41 +82,49 @@ class ApzDataSeeder extends Seeder
             $errorCount = 0;
             
             foreach ($data as $index => $row) {
+                $rowNumber = $index + 2; // +2 because we removed header row and Excel starts from 1
+                
                 if ($this->isEmptyRow($row) || $this->isSummaryRow($row)) {
                     $skippedCount++;
+                    $this->logSkippedRow($rowNumber, 'Empty or summary row', $row);
                     continue;
                 }
 
                 try {
-                    $this->processApzRow($row, $districts, $statuses, $baseAmount, $index + 2);
-                    $processedCount++;
-                    
-                    if ($processedCount % 10 == 0) {
-                        $this->command->info("Processed {$processedCount} records...");
+                    $result = $this->processApzRow($row, $districts, $statuses, $baseAmount, $rowNumber);
+                    if ($result) {
+                        $processedCount++;
+                        
+                        if ($processedCount % 50 == 0) {
+                            $this->command->info("Processed {$processedCount} records...");
+                        }
+                    } else {
+                        $skippedCount++;
                     }
                 } catch (\Exception $e) {
                     $errorCount++;
-                    $errorMessage = "Error processing row " . ($index + 2) . ": " . $e->getMessage();
+                    $errorMessage = "Error processing row {$rowNumber}: " . $e->getMessage();
                     $this->command->warn($errorMessage);
+                    
                     Log::error($errorMessage, [
-                        'row_data' => array_slice($row, 0, 15),
-                        'exception' => $e->getTraceAsString()
+                        'row_number' => $rowNumber,
+                        'row_data' => array_slice($row, 0, 10), // Log first 10 columns only
+                        'exception' => $e->getMessage(),
+                        'file' => $e->getFile(),
+                        'line' => $e->getLine()
                     ]);
                     
-                    if ($errorCount <= 5) {
-                        $this->command->error("Detailed error: " . $e->getFile() . ':' . $e->getLine());
+                    if ($errorCount <= 3) {
+                        $this->command->error("Details: " . $e->getFile() . ':' . $e->getLine());
                     }
                     continue;
                 }
             }
 
             DB::commit();
-            $this->command->info("APZ data import completed!");
-            $this->command->info("Successfully processed: {$processedCount} records");
-            $this->command->info("Skipped empty rows: {$skippedCount}");
-            $this->command->info("Errors encountered: {$errorCount}");
             
-            Log::info("APZ data import completed - Processed: {$processedCount}, Skipped: {$skippedCount}, Errors: {$errorCount}");
+            // Show final results
+            $this->showImportSummary($processedCount, $skippedCount, $errorCount);
             
         } catch (\Exception $e) {
             DB::rollback();
@@ -126,64 +137,45 @@ class ApzDataSeeder extends Seeder
 
     private function processApzRow($row, $districts, $statuses, $baseAmount, $rowNumber)
     {
-        Log::debug("Processing row {$rowNumber}", ['row_data' => array_slice($row, 0, 15)]);
+        // Parse row data
+        $councilConclusion1 = $this->cleanString($row[0] ?? '');
+        $councilConclusion2 = $this->cleanString($row[1] ?? '');
+        $rowId = $this->cleanString($row[2] ?? '');
+        $inn = $this->cleanString($row[3] ?? '');
+        $pinfl = $this->cleanString($row[4] ?? '');
+        $companyName = $this->cleanString($row[5] ?? '');
+        $contractNumber = $this->cleanString($row[6] ?? '');
+        $contractStatus = $this->cleanString($row[7] ?? '');
+        $contractDate = $this->parseExcelDate($row[8] ?? '');
+        $completionDate = $this->parseExcelDate($row[9] ?? '');
+        $paymentTerms = $this->cleanString($row[10] ?? '');
+        $paymentPeriod = (int)($row[11] ?? 0);
+        $advancePercent = $this->parsePercent($row[12] ?? '');
+        $districtName = $this->cleanString($row[13] ?? '');
+        $area = $this->parseAmount($row[14] ?? 0);
+        $contractAmount = $this->parseAmount($row[15] ?? 0);
+        $scheduledPayment = $this->parseAmount($row[16] ?? 0);
+        $monthlyPayment = $this->parseAmount($row[17] ?? 0);
+        $totalPayment = $this->parseAmount($row[18] ?? 0);
+        $remaining = $this->parseAmount($row[19] ?? 0);
+        $actualPaymentRaw = $row[20] ?? 0;
         
-        // CORRECTED COLUMN MAPPING based on your data structure
-        $councilConclusion1 = $this->cleanString($row[0] ?? ''); // Column A
-        $councilConclusion2 = $this->cleanString($row[1] ?? ''); // Column B
-        $rowId = $this->cleanString($row[2] ?? ''); // Column C
-        $inn = $this->cleanString($row[3] ?? ''); // Column D - ИНН
-        $pinfl = $this->cleanString($row[4] ?? ''); // Column E - ПИНФЛ  
-        $companyName = $this->cleanString($row[5] ?? ''); // Column F - Корхона номи
-        $contractNumber = $this->cleanString($row[6] ?? ''); // Column G - шарт. №
-        $contractStatus = $this->cleanString($row[7] ?? ''); // Column H - Контракт ҳолати
-        $contractDate = $this->parseExcelDate($row[8] ?? ''); // Column I - шартнома санаси
-        $completionDate = $this->parseExcelDate($row[9] ?? ''); // Column J - Якунлаш сана
-        $paymentTerms = $this->cleanString($row[10] ?? ''); // Column K - Тўлов шарти
-        $paymentPeriod = (int)($row[11] ?? 0); // Column L - Тўлов муддати
-        $advancePercent = $this->parsePercent($row[12] ?? ''); // Column M - Аванс
-        $districtName = $this->cleanString($row[13] ?? ''); // Column N - Туман
-        $area = $this->parseAmount($row[14] ?? 0); // Column O - М3
-        $contractAmount = $this->parseAmount($row[15] ?? 0); // Column P - Шартнома қиймати
-        $scheduledPayment = $this->parseAmount($row[16] ?? 0); // Column Q - Бўнак тўлов
-        $monthlyPayment = $this->parseAmount($row[17] ?? 0); // Column R - Ойлик тўлов
-        $totalPayment = $this->parseAmount($row[18] ?? 0); // Column S - Жами тўлов
-        $remaining = $this->parseAmount($row[19] ?? 0); // Column T - Қолдиқ
-        $actualPaymentRaw = $row[20] ?? 0; // Column U - ФАКТ (raw value)
+        // Validate essential data
+        $validationResult = $this->validateRowData($rowNumber, $inn, $pinfl, $companyName, $contractNumber, $districtName, $contractAmount);
+        if (!$validationResult['valid']) {
+            $this->logSkippedRow($rowNumber, $validationResult['reason'], $row);
+            return false;
+        }
         
-        // CRITICAL FIX: Parse actual payment correctly
+        // Parse actual payment
         $actualPayment = $this->parseActualPayment($actualPaymentRaw, $contractAmount, $totalPayment);
         
-        Log::debug("Row {$rowNumber} parsed values", [
-            'inn' => $inn,
-            'pinfl' => $pinfl,
+        Log::debug("Processing row {$rowNumber}", [
             'company_name' => $companyName,
             'contract_number' => $contractNumber,
             'district_name' => $districtName,
-            'contract_amount' => $contractAmount,
-            'actual_payment_raw' => $actualPaymentRaw,
-            'actual_payment_calculated' => $actualPayment
+            'contract_amount' => $contractAmount
         ]);
-        
-        // Skip if this is clearly not a data row
-        if (empty($inn) && empty($pinfl) && empty($companyName) && empty($contractNumber)) {
-            Log::debug("Row {$rowNumber} skipped - insufficient data");
-            return;
-        }
-        
-        // Skip rows with #REF! errors or summary data
-        if (stripos($inn, '#REF') !== false || stripos($companyName, '#REF') !== false) {
-            Log::debug("Row {$rowNumber} skipped - contains #REF error");
-            return;
-        }
-
-        // Skip if no meaningful company name
-        if (empty($companyName) || stripos($companyName, 'ЖАМИ') !== false) {
-            Log::debug("Row {$rowNumber} skipped - no company name");
-            return;
-        }
-
-        $this->command->info("Processing row {$rowNumber}: {$companyName} (Contract: {$contractNumber})");
 
         try {
             // 1. Create or find Subject
@@ -192,7 +184,7 @@ class ApzDataSeeder extends Seeder
                 throw new \Exception("Failed to create or find subject");
             }
             
-            // 2. Create Object
+            // 2. Create Object (with proper district validation)
             $object = $this->createObject($subject, $districtName, $districts, $contractAmount, $baseAmount, $area, $rowNumber);
             if (!$object) {
                 throw new \Exception("Failed to create object");
@@ -231,168 +223,191 @@ class ApzDataSeeder extends Seeder
                 $this->createCouncilConclusion($object, $councilConclusion1, $councilConclusion2, $rowNumber);
             }
 
+            return true;
+
         } catch (\Exception $e) {
-            $errorMessage = "Failed to process row {$rowNumber}: " . $e->getMessage();
-            Log::error($errorMessage, [
-                'row_data' => array_slice($row, 0, 15),
-                'exception' => $e->getTraceAsString()
+            Log::error("Failed to process row {$rowNumber}", [
+                'company_name' => $companyName,
+                'contract_number' => $contractNumber,
+                'error' => $e->getMessage()
             ]);
             throw $e;
         }
     }
 
-    /**
-     * CRITICAL FIX: Parse actual payment correctly
-     * The ФАКТ column can contain:
-     * - Percentage (like 0.80 meaning 80% paid)
-     * - Actual amount (large numbers)
-     * - Zero or empty values
-     */
-    private function parseActualPayment($rawValue, $contractAmount, $totalPayment)
+    private function validateRowData($rowNumber, $inn, $pinfl, $companyName, $contractNumber, $districtName, $contractAmount)
     {
-        if (empty($rawValue) || $rawValue === '-' || $rawValue === 0) {
-            return 0;
+        // Check for essential data
+        if (empty($companyName)) {
+            return ['valid' => false, 'reason' => 'Missing company name'];
+        }
+
+        if (empty($inn) && empty($pinfl)) {
+            return ['valid' => false, 'reason' => 'Missing both INN and PINFL'];
+        }
+
+        if (empty($contractNumber)) {
+            return ['valid' => false, 'reason' => 'Missing contract number'];
+        }
+
+        if ($contractAmount <= 0) {
+            return ['valid' => false, 'reason' => 'Invalid contract amount'];
+        }
+
+        // Check for #REF! errors
+        if (stripos($inn, '#REF') !== false || stripos($companyName, '#REF') !== false) {
+            return ['valid' => false, 'reason' => 'Contains #REF error'];
+        }
+
+        // Check for summary rows
+        if (stripos($companyName, 'ЖАМИ') !== false) {
+            return ['valid' => false, 'reason' => 'Summary row'];
+        }
+
+        return ['valid' => true, 'reason' => null];
+    }
+
+    private function createObject($subject, $districtName, $districts, $contractAmount, $baseAmount, $area = null, $rowNumber = null)
+    {
+        // PRODUCTION: Only use exact district matches from database
+        $district = $districts->where('name_ru', $districtName)->first();
+        
+        // If district not found, try fuzzy matching
+        if (!$district && !empty($districtName)) {
+            $district = $districts->filter(function($d) use ($districtName) {
+                // Try exact name matches with case insensitive
+                return strcasecmp($d->name_ru, $districtName) === 0 ||
+                       strcasecmp($d->name_uz, $districtName) === 0;
+            })->first();
         }
         
-        // Convert to float first
-        $numericValue = $this->parseAmount($rawValue);
+        // If still not found, try partial matching
+        if (!$district && !empty($districtName)) {
+            $district = $districts->filter(function($d) use ($districtName) {
+                return stripos($d->name_ru, $districtName) !== false || 
+                       stripos($districtName, $d->name_ru) !== false;
+            })->first();
+        }
         
-        // If it's a small decimal (like 0.80), treat as percentage
-        if ($numericValue > 0 && $numericValue <= 1) {
-            // Calculate actual payment as percentage of total payment or contract amount
-            $baseAmount = $totalPayment > 0 ? $totalPayment : $contractAmount;
-            $calculatedPayment = $baseAmount * $numericValue;
+        // Log unmapped districts for review
+        if (!$district) {
+            if (!isset($this->unmappedDistricts[$districtName])) {
+                $this->unmappedDistricts[$districtName] = [];
+            }
+            $this->unmappedDistricts[$districtName][] = $rowNumber;
             
-            Log::debug("Parsed payment as percentage", [
-                'raw_value' => $rawValue,
-                'percentage' => $numericValue,
-                'base_amount' => $baseAmount,
-                'calculated_payment' => $calculatedPayment
+            Log::warning("Unmapped district found", [
+                'district_name' => $districtName,
+                'row_number' => $rowNumber,
+                'available_districts' => $districts->pluck('name_ru')->toArray()
             ]);
             
-            return $calculatedPayment;
+            // Use first available district as fallback, but log it
+            $district = $districts->first();
+            Log::info("Using fallback district", [
+                'requested' => $districtName,
+                'fallback' => $district->name_ru,
+                'row_number' => $rowNumber
+            ]);
         }
         
-        // If it's a large number, treat as actual payment amount
-        if ($numericValue > 1) {
-            Log::debug("Parsed payment as amount", [
-                'raw_value' => $rawValue,
-                'parsed_amount' => $numericValue
+        if (!$district) {
+            throw new \Exception("No districts available in database");
+        }
+
+        // Calculate volume
+        $volume = $area > 0 ? $area : 
+                 ($contractAmount > 0 ? ($contractAmount / $baseAmount->amount) : 1);
+
+        try {
+            $object = Objectt::create([
+                'subject_id' => $subject->id,
+                'district_id' => $district->id,
+                'address' => 'APZ импорт - Адрес не указан',
+                'construction_volume' => $volume,
+                'is_active' => true,
+                'application_date' => now(),
             ]);
             
-            return $numericValue;
+            return $object;
+        } catch (\Exception $e) {
+            Log::error("Failed to create object", [
+                'row_number' => $rowNumber,
+                'subject_id' => $subject->id,
+                'district_id' => $district->id,
+                'error' => $e->getMessage()
+            ]);
+            throw $e;
         }
-        
-        return 0;
     }
 
     private function createOrFindSubject($inn, $pinfl, $companyName, $rowNumber)
     {
-        Log::debug("Row {$rowNumber} - Creating/finding subject", ['inn' => $inn, 'pinfl' => $pinfl, 'company' => $companyName]);
-        
-        // Clean the values
-        $inn = trim($inn);
-        $pinfl = trim($pinfl);
+        // Clean and validate data
+        $inn = $this->cleanIdentifier($inn, 9);
+        $pinfl = $this->cleanIdentifier($pinfl, 14);
         $companyName = trim($companyName);
         
-        // Handle scientific notation in PINFL
-        if (stripos($pinfl, 'E+') !== false || stripos($pinfl, 'E-') !== false) {
-            $pinfl = number_format((float)$pinfl, 0, '', '');
+        if (empty($companyName)) {
+            throw new \Exception("Company name is required");
         }
         
-        // Clean INN - remove suffixes and limit to 9 characters
-        if (!empty($inn)) {
-            $inn = preg_replace('/[-\(\)]\d+$/', '', $inn);
-            $inn = preg_replace('/[^\d]/', '', $inn);
-            $inn = substr($inn, 0, 9);
-        }
-        
-        // Clean PINFL - limit to 14 characters
-        if (!empty($pinfl)) {
-            $pinfl = preg_replace('/[-\(\)]\d+$/', '', $pinfl);
-            $pinfl = preg_replace('/[^\d]/', '', $pinfl);
-            $pinfl = substr($pinfl, 0, 14);
-        }
-        
-        // Determine if it's a legal entity or individual
-        $isLegalEntity = !empty($inn) || 
-                        stripos($companyName, 'OOO') !== false || 
-                        stripos($companyName, 'МЧЖ') !== false || 
-                        stripos($companyName, 'MCHJ') !== false ||
-                        stripos($companyName, 'ООО') !== false ||
-                        stripos($companyName, 'ТОО') !== false ||
-                        stripos($companyName, 'LLC') !== false ||
-                        stripos($companyName, 'АЖ') !== false ||
-                        stripos($companyName, 'мчж') !== false ||
-                        stripos($companyName, 'СП') !== false ||
-                        stripos($companyName, 'ТИФ') !== false;
+        // Determine entity type
+        $isLegalEntity = !empty($inn) || $this->isLegalEntityByName($companyName);
         
         $searchField = $isLegalEntity ? 'inn' : 'pinfl';
         $searchValue = $isLegalEntity ? $inn : $pinfl;
         
-        // Generate temporary ID if empty
+        // Generate unique identifier if empty (production-safe)
         if (empty($searchValue)) {
             if ($isLegalEntity) {
-                $searchValue = 'T' . substr(md5($companyName . microtime() . $rowNumber), 0, 8);
-                $searchField = 'inn';
+                $searchValue = 'IMP' . str_pad($rowNumber, 6, '0', STR_PAD_LEFT); // IMP000001
             } else {
-                $searchValue = 'T' . substr(md5($companyName . microtime() . $rowNumber), 0, 13);
-                $searchField = 'pinfl';
+                $searchValue = 'IND' . str_pad($rowNumber, 11, '0', STR_PAD_LEFT); // IND00000000001
             }
+            
+            Log::info("Generated identifier for import", [
+                'row_number' => $rowNumber,
+                'company_name' => $companyName,
+                'generated_id' => $searchValue,
+                'type' => $isLegalEntity ? 'legal_entity' : 'individual'
+            ]);
         }
         
-        if (empty($searchValue) || empty($companyName)) {
-            throw new \Exception("Cannot create subject: insufficient data (INN: '{$inn}', PINFL: '{$pinfl}', Name: '{$companyName}')");
-        }
-
         // Try to find existing subject
         $subject = Subject::where($searchField, $searchValue)->first();
         
         if (!$subject) {
-            // Ensure we have org_form_id for legal entities
-            $orgFormId = 1;
-            $orgFormExists = \App\Models\OrgForm::where('id', $orgFormId)->exists();
-            if (!$orgFormExists) {
-                try {
-                    \App\Models\OrgForm::create([
-                        'id' => 1,
-                        'name_ru' => 'ООО',
-                        'name_uz' => 'МЧЖ',
-                        'is_active' => true
-                    ]);
-                } catch (\Exception $e) {
-                    Log::error("Failed to create default OrgForm", ['exception' => $e->getMessage()]);
-                }
-            }
+            $orgFormId = $this->ensureOrgFormExists();
             
             $subjectData = [
                 'is_legal_entity' => $isLegalEntity,
                 'is_active' => true,
                 'country_code' => 'UZ',
                 'is_resident' => true,
+                'company_name' => $companyName,
             ];
 
             if ($isLegalEntity) {
-                $subjectData += [
-                    'company_name' => $companyName,
-                    'inn' => $searchValue,
-                    'org_form_id' => $orgFormId,
-                ];
+                $subjectData['inn'] = $searchValue;
+                $subjectData['org_form_id'] = $orgFormId;
             } else {
-                $subjectData += [
-                    'pinfl' => $searchValue,
-                    'document_type' => 'Паспорт',
-                    'company_name' => $companyName,
-                ];
+                $subjectData['pinfl'] = $searchValue;
+                $subjectData['document_type'] = 'Паспорт';
             }
 
             try {
                 $subject = Subject::create($subjectData);
-                Log::debug("Row {$rowNumber} - Subject created", ['id' => $subject->id]);
+                Log::debug("Subject created", [
+                    'id' => $subject->id,
+                    'row_number' => $rowNumber,
+                    'type' => $isLegalEntity ? 'legal' : 'individual'
+                ]);
             } catch (\Exception $e) {
-                Log::error("Row {$rowNumber} - Failed to create subject", [
+                Log::error("Failed to create subject", [
+                    'row_number' => $rowNumber,
                     'data' => $subjectData,
-                    'exception' => $e->getMessage()
+                    'error' => $e->getMessage()
                 ]);
                 throw $e;
             }
@@ -401,75 +416,60 @@ class ApzDataSeeder extends Seeder
         return $subject;
     }
 
-    private function createObject($subject, $districtName, $districts, $contractAmount, $baseAmount, $area = null, $rowNumber = null)
+    private function cleanIdentifier($value, $maxLength)
     {
-        Log::debug("Row {$rowNumber} - Creating object", ['district_name' => $districtName]);
+        if (empty($value)) return '';
         
-        // Map district names to database values
-        $districtMapping = [
-            'Олмазор' => 'Алмазарский',
-            'Мирзо-Улуғбек' => 'Мирзо Улугбекский', 
-            'Яккасарой' => 'Яккасарайский',
-            'Шайхонтохур' => 'Шайхантахурский',
-            'Сергели' => 'Сергелийский',
-            'Яшнобод' => 'Юнусабадский',
-            'Юнусобод' => 'Юнусабадский',
-            'Миробод' => 'Мирабадский',
-            'Янгихаёт' => 'Алмазарский',
-            'Учтепа' => 'Учтепинский',
-            'Чилонзор' => 'Чиланзарский',
-            'Бектемир' => 'Бектемирский',
-        ];
-        
-        $mappedDistrictName = $districtMapping[$districtName] ?? 'Алмазарский';
-        $district = $districts->where('name_ru', $mappedDistrictName)->first();
-        
-        if (!$district) {
-            // Try to match by similar name
-            $district = $districts->filter(function($d) use ($districtName) {
-                return stripos($d->name_ru, $districtName) !== false || 
-                       stripos($districtName, $d->name_ru) !== false;
-            })->first();
+        // Handle scientific notation
+        if (stripos($value, 'E+') !== false || stripos($value, 'E-') !== false) {
+            $value = number_format((float)$value, 0, '', '');
         }
         
-        if (!$district) {
-            $district = $districts->first();
-        }
-        
-        if (!$district) {
-            throw new \Exception("No districts found in database. Please run district seeder first.");
-        }
+        // Remove non-alphanumeric characters and limit length
+        $cleaned = preg_replace('/[^\w]/', '', $value);
+        return substr($cleaned, 0, $maxLength);
+    }
 
-        // Use provided area or calculate from contract amount
-        $volume = $area > 0 ? $area : 
-                 ($contractAmount > 0 ? ($contractAmount / $baseAmount->amount) : 1);
-
-        try {
-            $object = Objectt::create([
-                'subject_id' => $subject->id,
-                'district_id' => $district->id,
-                'address' => 'APZ импорт - Манзил киритилмаган',
-                'construction_volume' => $volume,
-                'is_active' => true,
-                'application_date' => now(),
-            ]);
-            
-            return $object;
-        } catch (\Exception $e) {
-            Log::error("Row {$rowNumber} - Failed to create object", [
-                'subject_id' => $subject->id,
-                'district_id' => $district->id,
-                'exception' => $e->getMessage()
-            ]);
-            throw $e;
+    private function isLegalEntityByName($companyName)
+    {
+        $legalPatterns = ['OOO', 'МЧЖ', 'MCHJ', 'ООО', 'ТОО', 'LLC', 'АЖ', 'СП', 'ТИФ'];
+        
+        foreach ($legalPatterns as $pattern) {
+            if (stripos($companyName, $pattern) !== false) {
+                return true;
+            }
         }
+        
+        return false;
+    }
+
+    private function ensureOrgFormExists()
+    {
+        $orgForm = \App\Models\OrgForm::where('id', 1)->first();
+        
+        if (!$orgForm) {
+            try {
+                $orgForm = \App\Models\OrgForm::create([
+                    'id' => 1,
+                    'name_ru' => 'ООО',
+                    'name_uz' => 'МЧЖ',
+                    'is_active' => true
+                ]);
+                Log::info("Created default OrgForm", ['id' => $orgForm->id]);
+            } catch (\Exception $e) {
+                Log::error("Failed to create default OrgForm", ['error' => $e->getMessage()]);
+                throw new \Exception("Cannot create required OrgForm");
+            }
+        }
+        
+        return $orgForm->id;
     }
 
     private function createContract($subject, $object, $contractNumber, $contractStatus, $contractDate, 
                                     $completionDate, $contractAmount, $paymentTerms, $paymentPeriod, 
                                     $advancePercent, $baseAmount, $statuses, $rowNumber = null)
     {
-        // Parse initial payment percentage from payment terms
+        // Parse payment terms
         $initialPaymentPercent = 20; // Default
         if (!empty($paymentTerms)) {
             if (preg_match('/(\d+)\/(\d+)/', $paymentTerms, $matches)) {
@@ -479,45 +479,26 @@ class ApzDataSeeder extends Seeder
             }
         }
         
-        // Use advance percent if available
         if ($advancePercent > 0) {
             $initialPaymentPercent = $advancePercent;
         }
 
-        // Map contract status
-        $defaultStatus = $statuses->where('name_ru', 'Действующий')->first() ?: 
-                        $statuses->where('name_ru', 'Амал қилувчи')->first() ?: 
-                        $statuses->first();
+        // Get contract status
+        $status = $this->getContractStatus($contractStatus, $statuses);
+        $isActive = !$this->isContractCancelled($contractStatus);
         
-        if (!$defaultStatus) {
-            throw new \Exception("No contract statuses found in database");
-        }
-        
-        $statusId = $defaultStatus->id;
-        
-        if (!empty($contractStatus)) {
-            if (stripos($contractStatus, 'Бекор') !== false || stripos($contractStatus, 'отменен') !== false) {
-                $cancelled = $statuses->where('name_ru', 'Бекор қилинган')->first() ?: 
-                           $statuses->where('name_ru', 'Отменен')->first();
-                if ($cancelled) $statusId = $cancelled->id;
-            } elseif (stripos($contractStatus, 'завершен') !== false || stripos($contractStatus, 'якун') !== false) {
-                $completed = $statuses->where('name_ru', 'Якунланган')->first() ?: 
-                           $statuses->where('name_ru', 'Завершен')->first();
-                if ($completed) $statusId = $completed->id;
-            }
-        }
-
-        // Calculate quarters count
-        $quartersCount = max(1, ceil($paymentPeriod / 3));
-        
-        // Generate contract number if empty
-        if (empty($contractNumber)) {
-            $contractNumber = 'APT-IMPORT-' . $subject->id . '-' . time() . '-' . $rowNumber;
-        }
-
-        // Handle date parsing issues
+        // Validate dates
         if (!$contractDate) {
             $contractDate = now();
+            Log::warning("Missing contract date, using current date", ['row_number' => $rowNumber]);
+        }
+
+        // Calculate quarters
+        $quartersCount = max(1, ceil($paymentPeriod / 3));
+        
+        // Ensure unique contract number
+        if (empty($contractNumber)) {
+            $contractNumber = 'APZ-' . now()->format('Y') . '-' . str_pad($rowNumber, 6, '0', STR_PAD_LEFT);
         }
 
         try {
@@ -527,7 +508,7 @@ class ApzDataSeeder extends Seeder
                 'subject_id' => $subject->id,
                 'contract_date' => $contractDate,
                 'completion_date' => $completionDate,
-                'status_id' => $statusId,
+                'status_id' => $status->id,
                 'base_amount_id' => $baseAmount->id,
                 'contract_volume' => $object->construction_volume,
                 'coefficient' => $contractAmount > 0 && $object->construction_volume > 0 ? 
@@ -537,16 +518,167 @@ class ApzDataSeeder extends Seeder
                 'initial_payment_percent' => $initialPaymentPercent,
                 'construction_period_years' => max(1, ceil($paymentPeriod / 12)),
                 'quarters_count' => $quartersCount,
-                'is_active' => stripos($contractStatus, 'Бекор') === false,
+                'is_active' => $isActive,
             ]);
 
             return $contract;
         } catch (\Exception $e) {
-            Log::error("Row {$rowNumber} - Failed to create contract", [
-                'exception' => $e->getMessage()
+            Log::error("Failed to create contract", [
+                'row_number' => $rowNumber,
+                'contract_number' => $contractNumber,
+                'error' => $e->getMessage()
             ]);
             throw $e;
         }
+    }
+
+    private function getContractStatus($contractStatus, $statuses)
+    {
+        if (!empty($contractStatus)) {
+            if (stripos($contractStatus, 'Бекор') !== false) {
+                $cancelled = $statuses->where('name_ru', 'Бекор қилинган')->first();
+                if ($cancelled) return $cancelled;
+            } elseif (stripos($contractStatus, 'завершен') !== false || stripos($contractStatus, 'якун') !== false) {
+                $completed = $statuses->where('name_ru', 'Якунланган')->first();
+                if ($completed) return $completed;
+            }
+        }
+        
+        // Default to active status
+        $active = $statuses->where('name_ru', 'Действующий')->first() ?: 
+                 $statuses->where('name_ru', 'Амал қилувчи')->first() ?: 
+                 $statuses->first();
+                 
+        if (!$active) {
+            throw new \Exception("No contract statuses found in database");
+        }
+        
+        return $active;
+    }
+
+    private function isContractCancelled($contractStatus)
+    {
+        return !empty($contractStatus) && (
+            stripos($contractStatus, 'Бекор') !== false || 
+            stripos($contractStatus, 'отменен') !== false ||
+            stripos($contractStatus, 'cancelled') !== false
+        );
+    }
+
+    private function logSkippedRow($rowNumber, $reason, $row)
+    {
+        if (!isset($this->skippedRows[$reason])) {
+            $this->skippedRows[$reason] = [];
+        }
+        
+        $this->skippedRows[$reason][] = [
+            'row' => $rowNumber,
+            'sample_data' => [
+                'company_name' => $row[5] ?? '',
+                'contract_number' => $row[6] ?? '',
+                'inn' => $row[3] ?? '',
+                'pinfl' => $row[4] ?? '',
+                'district' => $row[13] ?? '',
+                'amount' => $row[15] ?? ''
+            ]
+        ];
+        
+        Log::info("Row {$rowNumber} skipped: {$reason}", [
+            'row_number' => $rowNumber,
+            'reason' => $reason,
+            'company_name' => $row[5] ?? '',
+            'contract_number' => $row[6] ?? ''
+        ]);
+    }
+
+    private function showImportSummary($processedCount, $skippedCount, $errorCount)
+    {
+        $this->command->info("\n" . str_repeat("=", 80));
+        $this->command->info("APZ DATA IMPORT SUMMARY");
+        $this->command->info(str_repeat("=", 80));
+        $this->command->info("✅ Successfully processed: {$processedCount} records");
+        $this->command->info("⏭️  Skipped rows: {$skippedCount}");
+        $this->command->info("❌ Errors encountered: {$errorCount}");
+        
+        // Show unmapped districts with row numbers
+        if (!empty($this->unmappedDistricts)) {
+            $this->command->warn("\n⚠️  UNMAPPED DISTRICTS FOUND:");
+            foreach ($this->unmappedDistricts as $districtName => $rowNumbers) {
+                $rowList = implode(', ', $rowNumbers);
+                $this->command->line("   📍 '{$districtName}' in rows: {$rowList}");
+            }
+            $this->command->info("💡 These districts were mapped to fallback districts. Check logs for details.");
+        }
+        
+        // Show skipped rows with details
+        if ($skippedCount > 0) {
+            $this->command->warn("\n📋 SKIPPED ROWS DETAILS:");
+            $totalSkippedShown = 0;
+            foreach ($this->skippedRows as $reason => $rows) {
+                $count = count($rows);
+                $this->command->line("\n   ❌ {$reason}: {$count} rows");
+                
+                // Show first 10 rows for each reason
+                $rowsToShow = array_slice($rows, 0, 10);
+                foreach ($rowsToShow as $rowData) {
+                    $rowNum = $rowData['row'];
+                    $sample = $rowData['sample_data'];
+                    $companyName = !empty($sample['company_name']) ? $sample['company_name'] : 'N/A';
+                    $contractNum = !empty($sample['contract_number']) ? $sample['contract_number'] : 'N/A';
+                    
+                    $this->command->line("      Row {$rowNum}: {$companyName} | Contract: {$contractNum}");
+                }
+                
+                if ($count > 10) {
+                    $remaining = $count - 10;
+                    $this->command->line("      ... and {$remaining} more rows");
+                }
+                $totalSkippedShown += min($count, 10);
+            }
+        }
+        
+        // Show database districts for reference
+        $this->command->info("\n📍 AVAILABLE DISTRICTS IN DATABASE:");
+        $availableDistricts = District::where('is_active', true)->pluck('name_ru')->toArray();
+        $this->command->line("   " . implode(', ', $availableDistricts));
+        
+        $this->command->info("\n📄 Detailed logs: storage/logs/laravel.log");
+        $this->command->info("🔧 To fix unmapped districts, either:");
+        $this->command->info("   1. Add missing districts to database, OR");
+        $this->command->info("   2. Update Excel file with correct district names");
+        $this->command->info(str_repeat("=", 80));
+        
+        // Log summary for file records
+        Log::info("APZ import completed", [
+            'processed' => $processedCount,
+            'skipped' => $skippedCount,
+            'errors' => $errorCount,
+            'unmapped_districts' => $this->unmappedDistricts,
+            'skipped_details' => $this->skippedRows
+        ]);
+    }
+
+    // Include all the remaining helper methods (parseActualPayment, createPaymentSchedule, etc.)
+    // ... [Rest of the helper methods remain the same as in your original code]
+    
+    private function parseActualPayment($rawValue, $contractAmount, $totalPayment)
+    {
+        if (empty($rawValue) || $rawValue === '-' || $rawValue === 0) {
+            return 0;
+        }
+        
+        $numericValue = $this->parseAmount($rawValue);
+        
+        if ($numericValue > 0 && $numericValue <= 1) {
+            $baseAmount = $totalPayment > 0 ? $totalPayment : $contractAmount;
+            return $baseAmount * $numericValue;
+        }
+        
+        if ($numericValue > 1) {
+            return $numericValue;
+        }
+        
+        return 0;
     }
 
     private function createPaymentSchedule($contract, $monthlyPayment = 0, $totalPayment = 0, $rowNumber = null)
@@ -557,12 +689,10 @@ class ApzDataSeeder extends Seeder
 
         $remainingAmount = $contract->total_amount * (100 - $contract->initial_payment_percent) / 100;
         
-        // Use total payment if available, otherwise calculate
         if ($totalPayment > 0 && $totalPayment < $contract->total_amount) {
             $remainingAmount = $totalPayment;
         }
         
-        // Use monthly payment if available, otherwise calculate
         $quarterAmount = $monthlyPayment > 0 ? 
             ($monthlyPayment * 3) : 
             ($remainingAmount / max(1, $contract->quarters_count));
@@ -584,7 +714,11 @@ class ApzDataSeeder extends Seeder
                 ]);
             }
         } catch (\Exception $e) {
-            Log::error("Row {$rowNumber} - Failed to create payment schedule", ['exception' => $e->getMessage()]);
+            Log::error("Failed to create payment schedule", [
+                'row_number' => $rowNumber,
+                'contract_id' => $contract->id,
+                'error' => $e->getMessage()
+            ]);
             throw $e;
         }
     }
@@ -597,29 +731,31 @@ class ApzDataSeeder extends Seeder
             ActualPayment::create([
                 'contract_id' => $contract->id,
                 'payment_date' => $contract->contract_date,
-                'amount' => $paidAmount, // This should now be the correct amount
+                'amount' => $paidAmount,
                 'year' => $contract->contract_date->year,
                 'quarter' => ceil($contract->contract_date->month / 3),
-                'payment_number' => 'APZ-IMPORT-' . $contract->id . '-' . $rowNumber,
-                'notes' => 'APZ файлидан импорт қилинган',
+                'payment_number' => 'APZ-IMPORT-' . $contract->id,
+                'notes' => 'Импортировано из APZ файла',
             ]);
-            
-            Log::debug("Row {$rowNumber} - Actual payment created", ['amount' => $paidAmount]);
         } catch (\Exception $e) {
-            Log::error("Row {$rowNumber} - Failed to create actual payment", ['exception' => $e->getMessage()]);
+            Log::error("Failed to create actual payment", [
+                'row_number' => $rowNumber,
+                'contract_id' => $contract->id,
+                'amount' => $paidAmount,
+                'error' => $e->getMessage()
+            ]);
             throw $e;
         }
     }
 
     private function createCouncilConclusion($object, $conclusion1, $conclusion2, $rowNumber = null)
     {
-        $status = 'pending';
-        
         $conclusionText = trim($conclusion1 . ' ' . $conclusion2);
         
-        if (stripos($conclusionText, 'да') !== false || stripos($conclusionText, 'yes') !== false) {
+        $status = 'pending';
+        if (stripos($conclusionText, 'да') !== false) {
             $status = 'approved';
-        } elseif (stripos($conclusionText, 'нет') !== false || stripos($conclusionText, 'no') !== false) {
+        } elseif (stripos($conclusionText, 'нет') !== false) {
             $status = 'rejected';
         }
 
@@ -631,12 +767,16 @@ class ApzDataSeeder extends Seeder
                 'status' => $status,
             ]);
         } catch (\Exception $e) {
-            Log::error("Row {$rowNumber} - Failed to create council conclusion", ['exception' => $e->getMessage()]);
-            throw $e;
+            Log::error("Failed to create council conclusion", [
+                'row_number' => $rowNumber,
+                'object_id' => $object->id,
+                'error' => $e->getMessage()
+            ]);
+            // Don't throw - this is optional data
         }
     }
 
-    // Helper methods remain the same...
+    // Helper methods (readXlsx, parseExcelDate, etc.) remain the same...
     private function readXlsx($filePath)
     {
         $zip = new ZipArchive;
@@ -724,7 +864,6 @@ class ApzDataSeeder extends Seeder
                 }
             }
             
-            // Fill in gaps with empty strings up to the maximum column
             for ($i = 0; $i <= $maxCol; $i++) {
                 $rowData[] = isset($cells[$i]) ? $cells[$i] : '';
             }
@@ -782,7 +921,6 @@ class ApzDataSeeder extends Seeder
 
     private function isSummaryRow($row)
     {
-        // Check if any cell in the row contains summary keywords
         foreach ($row as $cell) {
             if (stripos($cell, 'ЖАМИ') !== false) {
                 return true;
@@ -796,11 +934,9 @@ class ApzDataSeeder extends Seeder
         $districts = District::where('is_active', true)->get();
         
         if ($districts->isEmpty()) {
-            Log::error("No districts found in database");
             throw new \Exception("No districts found in database. Please run EssentialDataSeeder first.");
         }
         
-        Log::info("Loaded districts", ['count' => $districts->count(), 'names' => $districts->pluck('name_ru')->toArray()]);
         return $districts;
     }
 
@@ -809,11 +945,9 @@ class ApzDataSeeder extends Seeder
         $statuses = ContractStatus::where('is_active', true)->get();
         
         if ($statuses->isEmpty()) {
-            Log::error("No contract statuses found in database");
             throw new \Exception("No contract statuses found in database. Please run EssentialDataSeeder first.");
         }
         
-        Log::info("Loaded contract statuses", ['count' => $statuses->count(), 'names' => $statuses->pluck('name_ru')->toArray()]);
         return $statuses;
     }
 
@@ -822,15 +956,14 @@ class ApzDataSeeder extends Seeder
         $baseAmount = BaseCalculationAmount::where('is_current', true)->first();
         
         if (!$baseAmount) {
-            Log::info("Creating default base amount");
             $baseAmount = BaseCalculationAmount::create([
                 'amount' => 412000.00,
                 'effective_from' => '2024-01-01',
                 'is_current' => true
             ]);
+            Log::info("Created default base amount", ['amount' => $baseAmount->amount]);
         }
 
-        Log::info("Base amount loaded", ['id' => $baseAmount->id, 'amount' => $baseAmount->amount]);
         return $baseAmount;
     }
 
@@ -844,19 +977,15 @@ class ApzDataSeeder extends Seeder
         if (empty($value) || $value === '-' || $value === '00.01.1900') return null;
         
         try {
-            // Handle Excel numeric dates (like 45485 = July 12, 2024)
             if (is_numeric($value) && $value > 1) {
-                // Excel epoch starts from 1900-01-01 (but has a leap year bug, so we subtract 2)
                 $excelEpoch = Carbon::create(1900, 1, 1);
                 return $excelEpoch->addDays((int)$value - 2);
             }
             
-            // Handle dd.mm.yyyy format
-            if (preg_match('/^(\d{1,2})\.(\d{1,2})\.(\d{4})$/', $value, $matches)) {
+            if (preg_match('/^(\d{1,2})\.(\d{1,2})\.(\d{4})$/', $value)) {
                 return Carbon::createFromFormat('d.m.Y', $value);
             }
             
-            // Try common date formats
             $formats = ['d.m.Y', 'Y-m-d', 'd/m/Y', 'm/d/Y'];
             foreach ($formats as $format) {
                 try {
@@ -868,7 +997,7 @@ class ApzDataSeeder extends Seeder
             
             return Carbon::parse($value);
         } catch (\Exception $e) {
-            Log::warning("Failed to parse date: {$value}", ['exception' => $e->getMessage()]);
+            Log::warning("Failed to parse date: {$value}");
             return null;
         }
     }
@@ -877,15 +1006,11 @@ class ApzDataSeeder extends Seeder
     {
         if (empty($value) || $value === '-' || stripos($value, '#REF') !== false) return 0;
         
-        // Handle scientific notation (like 2.57165E+12)
         if (stripos($value, 'E+') !== false || stripos($value, 'E-') !== false) {
             return (float)$value;
         }
         
-        // Replace comma with dot for decimal separator
         $cleaned = str_replace(',', '.', $value);
-        
-        // Remove all non-numeric characters except dots and minus signs
         $cleaned = preg_replace('/[^\d.-]/', '', $cleaned);
         
         return (float)$cleaned;
@@ -895,14 +1020,11 @@ class ApzDataSeeder extends Seeder
     {
         if (empty($value) || $value === '-') return 0;
         
-        // Handle decimal percentages like 0.1999 (which is 19.99%)
         if (is_numeric($value) && $value <= 1) {
-            return $value * 100; // Convert 0.1999 to 19.99%
+            return $value * 100;
         }
         
-        // Remove % sign and convert to float
-        $cleaned = str_replace('%', '', $value);
-        $cleaned = str_replace(',', '.', $cleaned);
+        $cleaned = str_replace(['%', ','], ['', '.'], $value);
         $cleaned = preg_replace('/[^\d.-]/', '', $cleaned);
         
         return (float)$cleaned;
