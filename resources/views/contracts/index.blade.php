@@ -92,7 +92,14 @@
                 <div>
                     <p class="text-sm font-medium text-gray-600">Общая сумма</p>
                     <p class="text-2xl font-bold text-gray-900 mt-1">
-                        {{ number_format($contracts->sum('total_amount') / 1000000000, 1) }}Б
+                        @php
+                            $totalAmount = 0;
+                            foreach($contracts->items() as $contract) {
+                                $totalAmount += $contract->total_amount;
+                            }
+                        @endphp
+                        {{ number_format($totalAmount , 0) }}
+                        <!-- {{ number_format($totalAmount / 1000000000, 1) }}Б -->
                     </p>
                 </div>
                 <div class="w-10 h-10 bg-green-50 rounded-lg flex items-center justify-center">
@@ -106,7 +113,15 @@
                 <div>
                     <p class="text-sm font-medium text-gray-600">Активные</p>
                     <p class="text-2xl font-bold text-gray-900 mt-1">
-                        {{ $contracts->where('status.code', 'ACTIVE')->count() }}
+                        @php
+                            $activeCount = 0;
+                            foreach($contracts->items() as $contract) {
+                                if($contract->status && $contract->status->code === 'ACTIVE') {
+                                    $activeCount++;
+                                }
+                            }
+                        @endphp
+                        {{ $activeCount }}
                     </p>
                 </div>
                 <div class="w-10 h-10 bg-green-50 rounded-lg flex items-center justify-center">
@@ -140,25 +155,78 @@
                 <tbody class="divide-y divide-gray-200">
                     @forelse($contracts as $index => $contract)
                         <tr class="hover:bg-gray-50 transition-colors">
+                            <!-- Row Number -->
+                            <td class="px-6 py-4 text-sm text-gray-900">
+                                {{ ($contracts->currentPage() - 1) * $contracts->perPage() + $loop->iteration }}
+                            </td>
+                            
+                            <!-- Contract Number -->
                             <td class="px-6 py-4">
                                 <div class="text-sm font-medium text-gray-900">
-                                    {{ number_format($contract->total_paid) }} сум
+                                    <a href="{{ route('contracts.show', $contract) }}" 
+                                       class="text-blue-600 hover:text-blue-800">
+                                        {{ $contract->contract_number }}
+                                    </a>
+                                </div>
+                                <div class="text-sm text-gray-500">
+                                    ID: {{ $contract->id }}
+                                </div>
+                            </td>
+                            
+                            <!-- Subject/Customer -->
+                            <td class="px-6 py-4">
+                                <div class="text-sm font-medium text-gray-900">
+                                    {{ $contract->subject->display_name ?? $contract->subject->company_name }}
+                                </div>
+                                <div class="text-sm text-gray-500">
+                                    {{ $contract->subject->is_legal_entity ? 'ИНН: ' . $contract->subject->inn : 'ПИНФЛ: ' . $contract->subject->pinfl }}
+                                </div>
+                            </td>
+                            
+                            <!-- District -->
+                            <td class="px-6 py-4 text-sm text-gray-900">
+                                {{ $contract->object->district->name_ru ?? 'Не указан' }}
+                            </td>
+                            
+                            <!-- Contract Amount -->
+                            <td class="px-6 py-4">
+                                <div class="text-sm font-medium text-gray-900">
+                                    {{ number_format($contract->total_amount, 0, '.', ' ') }} сум
+                                    <!-- {{ number_format($contract->total_amount, 0, '.', ' ') }} сум -->
+                                </div>
+                                <div class="text-sm text-gray-500">
+                                    {{ number_format($contract->total_amount / 1000000, 1) }} млн
+                                </div>
+                            </td>
+                            
+                            <!-- Payment Progress -->
+                            <td class="px-6 py-4">
+                                <div class="text-sm font-medium text-gray-900">
+                                    {{ number_format($contract->total_paid, 0, '.', ' ') }} сум
                                 </div>
                                 <div class="w-full bg-gray-200 rounded-full h-2 mt-1">
                                     <div class="bg-blue-600 h-2 rounded-full"
-                                         style="width: {{ $contract->payment_percent }}%"></div>
+                                         style="width: {{ min(100, $contract->payment_percent) }}%"></div>
                                 </div>
-                                <div class="text-xs text-gray-500 mt-1">{{ $contract->payment_percent }}%</div>
+                                <div class="text-xs text-gray-500 mt-1">
+                                    {{ number_format($contract->payment_percent, 1) }}%
+                                </div>
                             </td>
+                            
+                            <!-- Status -->
                             <td class="px-6 py-4">
                                 <span class="inline-flex px-2 py-1 text-xs font-semibold rounded-full"
-                                      style="background-color: {{ $contract->status->color }}20; color: {{ $contract->status->color }}">
-                                    {{ $contract->status->name_ru }}
+                                      style="background-color: {{ $contract->status->color ?? '#6b7280' }}20; color: {{ $contract->status->color ?? '#6b7280' }}">
+                                    {{ $contract->status->name_ru ?? 'Не указан' }}
                                 </span>
                             </td>
-                            <td class="px-6 py-4 text-sm text-gray-500">
-                                {{ $contract->contract_date->format('d.m.Y') }}
+                            
+                            <!-- Contract Date -->
+                            <td class="px-6 py-4 text-sm text-gray-900">
+                                {{ $contract->contract_date ? $contract->contract_date->format('d.m.Y') : 'Не указана' }}
                             </td>
+                            
+                            <!-- Actions -->
                             <td class="px-6 py-4 text-right">
                                 <div class="flex items-center justify-end space-x-2">
                                     <a href="{{ route('contracts.show', $contract) }}"
@@ -231,7 +299,7 @@
                         Показано {{ $contracts->firstItem() }}-{{ $contracts->lastItem() }} из {{ $contracts->total() }} результатов
                     </div>
                     <div class="flex space-x-1">
-                        {{ $contracts->links() }}
+                        {{ $contracts->appends(request()->query())->links() }}
                     </div>
                 </div>
             </div>

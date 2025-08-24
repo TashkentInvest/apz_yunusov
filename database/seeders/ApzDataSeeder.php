@@ -85,7 +85,7 @@ class ApzDataSeeder extends Seeder
                 }
 
                 try {
-                    $this->processApzRow($row, $districts, $statuses, $baseAmount, $index + 2); // +2 because we removed header
+                    $this->processApzRow($row, $districts, $statuses, $baseAmount, $index + 2);
                     $processedCount++;
                     
                     if ($processedCount % 10 == 0) {
@@ -96,15 +96,14 @@ class ApzDataSeeder extends Seeder
                     $errorMessage = "Error processing row " . ($index + 2) . ": " . $e->getMessage();
                     $this->command->warn($errorMessage);
                     Log::error($errorMessage, [
-                        'row_data' => $row,
+                        'row_data' => array_slice($row, 0, 15),
                         'exception' => $e->getTraceAsString()
                     ]);
                     
-                    // Show first few errors in detail
                     if ($errorCount <= 5) {
                         $this->command->error("Detailed error: " . $e->getFile() . ':' . $e->getLine());
                     }
-                    continue; // Continue with next row
+                    continue;
                 }
             }
 
@@ -127,42 +126,12 @@ class ApzDataSeeder extends Seeder
 
     private function processApzRow($row, $districts, $statuses, $baseAmount, $rowNumber)
     {
-        // Log the row being processed for debugging
         Log::debug("Processing row {$rowNumber}", ['row_data' => array_slice($row, 0, 15)]);
         
-        // CORRECTED COLUMN MAPPING based on your actual data structure:
-        // Column 0: Council conclusion status 1 (Умуман тўловни амалга оширмаганлар)
-        // Column 1: Council conclusion status 2 (Қарздорлар) 
-        // Column 2: Row number (№)
-        // Column 3: INN (ИНН)
-        // Column 4: PINFL (ПИНФЛ)
-        // Column 5: Company name (Корхона номи)
-        // Column 6: Contract number (шарт. №)
-        // Column 7: Contract status (Контракт ҳолати)
-        // Column 8: Contract date (шартнома санаси)
-        // Column 9: Completion date (Якунлаш сана)
-        // Column 10: Payment terms (Тўлов шарти)
-        // Column 11: Payment period (Тўлов муддати)
-        // Column 12: Advance (Аванс)
-        // Column 13: District (Туман)
-        // Column 14: Area M3 (М3)
-        // Column 15: Contract amount (Шартнома қиймати)
-        // Column 16: Scheduled payment (Бўнак тўлов)
-        // Column 17: Monthly payment (Ойлик тўлов)
-        // Column 18: Total payment (Жами тўлов)
-        // Column 19: Remaining (Қолдиқ)
-        // Column 20: Actual payment (ФАКТ)
-        // Column 21: ЖАМИ ФАКТ ТУШУМ
-        // Column 22: ЖАМИ ПЛАН ТУШУМ
-        // Column 23: Реальная просрочка
-        // Column 24: кенгаш хулосаси
-        // Column 25: Хулоса санаси
-        // Column 26: АПЗ раками
-        // Column 27: АПЗ санаси
-        
+        // CORRECTED COLUMN MAPPING based on your data structure
         $councilConclusion1 = $this->cleanString($row[0] ?? ''); // Column A
         $councilConclusion2 = $this->cleanString($row[1] ?? ''); // Column B
-        $rowId = $this->cleanString($row[2] ?? ''); // Column C - Row number
+        $rowId = $this->cleanString($row[2] ?? ''); // Column C
         $inn = $this->cleanString($row[3] ?? ''); // Column D - ИНН
         $pinfl = $this->cleanString($row[4] ?? ''); // Column E - ПИНФЛ  
         $companyName = $this->cleanString($row[5] ?? ''); // Column F - Корхона номи
@@ -174,22 +143,26 @@ class ApzDataSeeder extends Seeder
         $paymentPeriod = (int)($row[11] ?? 0); // Column L - Тўлов муддати
         $advancePercent = $this->parsePercent($row[12] ?? ''); // Column M - Аванс
         $districtName = $this->cleanString($row[13] ?? ''); // Column N - Туман
-        $area = $this->parseAmount($row[14] ?? 0); // Column O - М3 (площадь)
+        $area = $this->parseAmount($row[14] ?? 0); // Column O - М3
         $contractAmount = $this->parseAmount($row[15] ?? 0); // Column P - Шартнома қиймати
         $scheduledPayment = $this->parseAmount($row[16] ?? 0); // Column Q - Бўнак тўлов
         $monthlyPayment = $this->parseAmount($row[17] ?? 0); // Column R - Ойлик тўлов
         $totalPayment = $this->parseAmount($row[18] ?? 0); // Column S - Жами тўлов
         $remaining = $this->parseAmount($row[19] ?? 0); // Column T - Қолдиқ
-        $actualPayment = $this->parseAmount($row[20] ?? 0); // Column U - ФАКТ
+        $actualPaymentRaw = $row[20] ?? 0; // Column U - ФАКТ (raw value)
         
-        // Log parsed values
+        // CRITICAL FIX: Parse actual payment correctly
+        $actualPayment = $this->parseActualPayment($actualPaymentRaw, $contractAmount, $totalPayment);
+        
         Log::debug("Row {$rowNumber} parsed values", [
             'inn' => $inn,
             'pinfl' => $pinfl,
             'company_name' => $companyName,
             'contract_number' => $contractNumber,
             'district_name' => $districtName,
-            'contract_amount' => $contractAmount
+            'contract_amount' => $contractAmount,
+            'actual_payment_raw' => $actualPaymentRaw,
+            'actual_payment_calculated' => $actualPayment
         ]);
         
         // Skip if this is clearly not a data row
@@ -218,14 +191,12 @@ class ApzDataSeeder extends Seeder
             if (!$subject) {
                 throw new \Exception("Failed to create or find subject");
             }
-            Log::debug("Row {$rowNumber} - Subject created/found with ID: " . $subject->id);
             
             // 2. Create Object
             $object = $this->createObject($subject, $districtName, $districts, $contractAmount, $baseAmount, $area, $rowNumber);
             if (!$object) {
                 throw new \Exception("Failed to create object");
             }
-            Log::debug("Row {$rowNumber} - Object created with ID: " . $object->id);
             
             // 3. Create Contract
             $contract = $this->createContract(
@@ -246,7 +217,6 @@ class ApzDataSeeder extends Seeder
             if (!$contract) {
                 throw new \Exception("Failed to create contract");
             }
-            Log::debug("Row {$rowNumber} - Contract created with ID: " . $contract->id);
 
             // 4. Create Payment Schedule
             $this->createPaymentSchedule($contract, $monthlyPayment, $totalPayment, $rowNumber);
@@ -262,15 +232,58 @@ class ApzDataSeeder extends Seeder
             }
 
         } catch (\Exception $e) {
-            // Log the error but don't stop the entire process
             $errorMessage = "Failed to process row {$rowNumber}: " . $e->getMessage();
-            $this->command->error($errorMessage);
             Log::error($errorMessage, [
-                'row_data' => $row,
+                'row_data' => array_slice($row, 0, 15),
                 'exception' => $e->getTraceAsString()
             ]);
-            throw $e; // Re-throw to be caught by the caller
+            throw $e;
         }
+    }
+
+    /**
+     * CRITICAL FIX: Parse actual payment correctly
+     * The ФАКТ column can contain:
+     * - Percentage (like 0.80 meaning 80% paid)
+     * - Actual amount (large numbers)
+     * - Zero or empty values
+     */
+    private function parseActualPayment($rawValue, $contractAmount, $totalPayment)
+    {
+        if (empty($rawValue) || $rawValue === '-' || $rawValue === 0) {
+            return 0;
+        }
+        
+        // Convert to float first
+        $numericValue = $this->parseAmount($rawValue);
+        
+        // If it's a small decimal (like 0.80), treat as percentage
+        if ($numericValue > 0 && $numericValue <= 1) {
+            // Calculate actual payment as percentage of total payment or contract amount
+            $baseAmount = $totalPayment > 0 ? $totalPayment : $contractAmount;
+            $calculatedPayment = $baseAmount * $numericValue;
+            
+            Log::debug("Parsed payment as percentage", [
+                'raw_value' => $rawValue,
+                'percentage' => $numericValue,
+                'base_amount' => $baseAmount,
+                'calculated_payment' => $calculatedPayment
+            ]);
+            
+            return $calculatedPayment;
+        }
+        
+        // If it's a large number, treat as actual payment amount
+        if ($numericValue > 1) {
+            Log::debug("Parsed payment as amount", [
+                'raw_value' => $rawValue,
+                'parsed_amount' => $numericValue
+            ]);
+            
+            return $numericValue;
+        }
+        
+        return 0;
     }
 
     private function createOrFindSubject($inn, $pinfl, $companyName, $rowNumber)
@@ -282,23 +295,23 @@ class ApzDataSeeder extends Seeder
         $pinfl = trim($pinfl);
         $companyName = trim($companyName);
         
-        // Handle scientific notation in PINFL (like 3,23127E+13)
+        // Handle scientific notation in PINFL
         if (stripos($pinfl, 'E+') !== false || stripos($pinfl, 'E-') !== false) {
             $pinfl = number_format((float)$pinfl, 0, '', '');
         }
         
         // Clean INN - remove suffixes and limit to 9 characters
         if (!empty($inn)) {
-            $inn = preg_replace('/[-\(\)]\d+$/', '', $inn); // Remove -1, -2, (1), etc.
-            $inn = preg_replace('/[^\d]/', '', $inn); // Keep only digits
-            $inn = substr($inn, 0, 9); // Limit to 9 characters max
+            $inn = preg_replace('/[-\(\)]\d+$/', '', $inn);
+            $inn = preg_replace('/[^\d]/', '', $inn);
+            $inn = substr($inn, 0, 9);
         }
         
         // Clean PINFL - limit to 14 characters
         if (!empty($pinfl)) {
-            $pinfl = preg_replace('/[-\(\)]\d+$/', '', $pinfl); // Remove suffixes
-            $pinfl = preg_replace('/[^\d]/', '', $pinfl); // Keep only digits
-            $pinfl = substr($pinfl, 0, 14); // Limit to 14 characters max
+            $pinfl = preg_replace('/[-\(\)]\d+$/', '', $pinfl);
+            $pinfl = preg_replace('/[^\d]/', '', $pinfl);
+            $pinfl = substr($pinfl, 0, 14);
         }
         
         // Determine if it's a legal entity or individual
@@ -320,19 +333,15 @@ class ApzDataSeeder extends Seeder
         // Generate temporary ID if empty
         if (empty($searchValue)) {
             if ($isLegalEntity) {
-                $searchValue = 'T' . substr(md5($companyName . microtime() . $rowNumber), 0, 8); // 9 chars total
+                $searchValue = 'T' . substr(md5($companyName . microtime() . $rowNumber), 0, 8);
                 $searchField = 'inn';
             } else {
-                $searchValue = 'T' . substr(md5($companyName . microtime() . $rowNumber), 0, 13); // 14 chars total
+                $searchValue = 'T' . substr(md5($companyName . microtime() . $rowNumber), 0, 13);
                 $searchField = 'pinfl';
             }
         }
         
-        // Skip if we still have empty values or company name is empty
         if (empty($searchValue) || empty($companyName)) {
-            Log::error("Row {$rowNumber} - Cannot create subject: insufficient data", [
-                'inn' => $inn, 'pinfl' => $pinfl, 'company_name' => $companyName
-            ]);
             throw new \Exception("Cannot create subject: insufficient data (INN: '{$inn}', PINFL: '{$pinfl}', Name: '{$companyName}')");
         }
 
@@ -341,11 +350,9 @@ class ApzDataSeeder extends Seeder
         
         if (!$subject) {
             // Ensure we have org_form_id for legal entities
-            $orgFormId = 1; // Default
+            $orgFormId = 1;
             $orgFormExists = \App\Models\OrgForm::where('id', $orgFormId)->exists();
             if (!$orgFormExists) {
-                Log::warning("Row {$rowNumber} - OrgForm with ID {$orgFormId} not found, creating default");
-                // Create default org form if it doesn't exist
                 try {
                     \App\Models\OrgForm::create([
                         'id' => 1,
@@ -381,7 +388,7 @@ class ApzDataSeeder extends Seeder
 
             try {
                 $subject = Subject::create($subjectData);
-                Log::debug("Row {$rowNumber} - Subject created", ['id' => $subject->id, 'data' => $subjectData]);
+                Log::debug("Row {$rowNumber} - Subject created", ['id' => $subject->id]);
             } catch (\Exception $e) {
                 Log::error("Row {$rowNumber} - Failed to create subject", [
                     'data' => $subjectData,
@@ -389,8 +396,6 @@ class ApzDataSeeder extends Seeder
                 ]);
                 throw $e;
             }
-        } else {
-            Log::debug("Row {$rowNumber} - Subject found", ['id' => $subject->id]);
         }
 
         return $subject;
@@ -402,21 +407,21 @@ class ApzDataSeeder extends Seeder
         
         // Map district names to database values
         $districtMapping = [
-            'Олмазор' => 'Олмазор',
-            'Мирзо-Улуғбек' => 'Мирзо Улуғбек', 
-            'Яккасарой' => 'Яккасарой',
-            'Шайхонтохур' => 'Шайхонтохур',
-            'Сергели' => 'Сергели',
-            'Яшнобод' => 'Юнусобод',
-            'Юнусобод' => 'Юнусобод',
-            'Миробод' => 'Мирабад',
-            'Янгихаёт' => 'Олмазор',
-            'Учтепа' => 'Учтепа',
-            'Чилонзор' => 'Чилонзор',
-            'Бектемир' => 'Бектемир',
+            'Олмазор' => 'Алмазарский',
+            'Мирзо-Улуғбек' => 'Мирзо Улугбекский', 
+            'Яккасарой' => 'Яккасарайский',
+            'Шайхонтохур' => 'Шайхантахурский',
+            'Сергели' => 'Сергелийский',
+            'Яшнобод' => 'Юнусабадский',
+            'Юнусобод' => 'Юнусабадский',
+            'Миробод' => 'Мирабадский',
+            'Янгихаёт' => 'Алмазарский',
+            'Учтепа' => 'Учтепинский',
+            'Чилонзор' => 'Чиланзарский',
+            'Бектемир' => 'Бектемирский',
         ];
         
-        $mappedDistrictName = $districtMapping[$districtName] ?? 'Олмазор';
+        $mappedDistrictName = $districtMapping[$districtName] ?? 'Алмазарский';
         $district = $districts->where('name_ru', $mappedDistrictName)->first();
         
         if (!$district) {
@@ -428,15 +433,12 @@ class ApzDataSeeder extends Seeder
         }
         
         if (!$district) {
-            $district = $districts->first(); // Use first available district
+            $district = $districts->first();
         }
         
         if (!$district) {
-            Log::error("Row {$rowNumber} - No districts found in database");
             throw new \Exception("No districts found in database. Please run district seeder first.");
         }
-
-        Log::debug("Row {$rowNumber} - District selected", ['id' => $district->id, 'name' => $district->name_ru]);
 
         // Use provided area or calculate from contract amount
         $volume = $area > 0 ? $area : 
@@ -452,7 +454,6 @@ class ApzDataSeeder extends Seeder
                 'application_date' => now(),
             ]);
             
-            Log::debug("Row {$rowNumber} - Object created", ['id' => $object->id, 'volume' => $volume]);
             return $object;
         } catch (\Exception $e) {
             Log::error("Row {$rowNumber} - Failed to create object", [
@@ -468,11 +469,6 @@ class ApzDataSeeder extends Seeder
                                     $completionDate, $contractAmount, $paymentTerms, $paymentPeriod, 
                                     $advancePercent, $baseAmount, $statuses, $rowNumber = null)
     {
-        Log::debug("Row {$rowNumber} - Creating contract", [
-            'contract_number' => $contractNumber,
-            'status' => $contractStatus
-        ]);
-        
         // Parse initial payment percentage from payment terms
         $initialPaymentPercent = 20; // Default
         if (!empty($paymentTerms)) {
@@ -488,14 +484,12 @@ class ApzDataSeeder extends Seeder
             $initialPaymentPercent = $advancePercent;
         }
 
-        // Map contract status - ensure we have a valid status
-        $defaultStatus = $statuses->where('name_ru', 'Амал қилувчи')->first();
-        if (!$defaultStatus) {
-            $defaultStatus = $statuses->first();
-        }
+        // Map contract status
+        $defaultStatus = $statuses->where('name_ru', 'Действующий')->first() ?: 
+                        $statuses->where('name_ru', 'Амал қилувчи')->first() ?: 
+                        $statuses->first();
         
         if (!$defaultStatus) {
-            Log::error("Row {$rowNumber} - No contract statuses found");
             throw new \Exception("No contract statuses found in database");
         }
         
@@ -503,10 +497,12 @@ class ApzDataSeeder extends Seeder
         
         if (!empty($contractStatus)) {
             if (stripos($contractStatus, 'Бекор') !== false || stripos($contractStatus, 'отменен') !== false) {
-                $cancelled = $statuses->where('name_ru', 'Бекор қилинган')->first();
+                $cancelled = $statuses->where('name_ru', 'Бекор қилинган')->first() ?: 
+                           $statuses->where('name_ru', 'Отменен')->first();
                 if ($cancelled) $statusId = $cancelled->id;
             } elseif (stripos($contractStatus, 'завершен') !== false || stripos($contractStatus, 'якун') !== false) {
-                $completed = $statuses->where('name_ru', 'Якунланган')->first();
+                $completed = $statuses->where('name_ru', 'Якунланган')->first() ?: 
+                           $statuses->where('name_ru', 'Завершен')->first();
                 if ($completed) $statusId = $completed->id;
             }
         }
@@ -544,17 +540,9 @@ class ApzDataSeeder extends Seeder
                 'is_active' => stripos($contractStatus, 'Бекор') === false,
             ]);
 
-            Log::debug("Row {$rowNumber} - Contract created", ['id' => $contract->id]);
             return $contract;
         } catch (\Exception $e) {
             Log::error("Row {$rowNumber} - Failed to create contract", [
-                'contract_data' => [
-                    'contract_number' => $contractNumber,
-                    'object_id' => $object->id,
-                    'subject_id' => $subject->id,
-                    'status_id' => $statusId,
-                    'base_amount_id' => $baseAmount->id,
-                ],
                 'exception' => $e->getMessage()
             ]);
             throw $e;
@@ -564,11 +552,8 @@ class ApzDataSeeder extends Seeder
     private function createPaymentSchedule($contract, $monthlyPayment = 0, $totalPayment = 0, $rowNumber = null)
     {
         if ($contract->payment_type === 'full') {
-            Log::debug("Row {$rowNumber} - Skipping payment schedule for full payment contract");
             return;
         }
-
-        Log::debug("Row {$rowNumber} - Creating payment schedule");
 
         $remainingAmount = $contract->total_amount * (100 - $contract->initial_payment_percent) / 100;
         
@@ -598,7 +583,6 @@ class ApzDataSeeder extends Seeder
                     'is_active' => true,
                 ]);
             }
-            Log::debug("Row {$rowNumber} - Payment schedule created with {$contract->quarters_count} quarters");
         } catch (\Exception $e) {
             Log::error("Row {$rowNumber} - Failed to create payment schedule", ['exception' => $e->getMessage()]);
             throw $e;
@@ -609,19 +593,18 @@ class ApzDataSeeder extends Seeder
     {
         if ($paidAmount <= 0) return;
 
-        Log::debug("Row {$rowNumber} - Creating actual payment", ['amount' => $paidAmount]);
-
         try {
             ActualPayment::create([
                 'contract_id' => $contract->id,
                 'payment_date' => $contract->contract_date,
-                'amount' => $paidAmount,
+                'amount' => $paidAmount, // This should now be the correct amount
                 'year' => $contract->contract_date->year,
                 'quarter' => ceil($contract->contract_date->month / 3),
                 'payment_number' => 'APZ-IMPORT-' . $contract->id . '-' . $rowNumber,
                 'notes' => 'APZ файлидан импорт қилинган',
             ]);
-            Log::debug("Row {$rowNumber} - Actual payment created");
+            
+            Log::debug("Row {$rowNumber} - Actual payment created", ['amount' => $paidAmount]);
         } catch (\Exception $e) {
             Log::error("Row {$rowNumber} - Failed to create actual payment", ['exception' => $e->getMessage()]);
             throw $e;
@@ -630,11 +613,8 @@ class ApzDataSeeder extends Seeder
 
     private function createCouncilConclusion($object, $conclusion1, $conclusion2, $rowNumber = null)
     {
-        Log::debug("Row {$rowNumber} - Creating council conclusion", ['conclusion1' => $conclusion1, 'conclusion2' => $conclusion2]);
-        
         $status = 'pending';
         
-        // Check both conclusion fields
         $conclusionText = trim($conclusion1 . ' ' . $conclusion2);
         
         if (stripos($conclusionText, 'да') !== false || stripos($conclusionText, 'yes') !== false) {
@@ -650,14 +630,13 @@ class ApzDataSeeder extends Seeder
                 'conclusion_date' => now(),
                 'status' => $status,
             ]);
-            Log::debug("Row {$rowNumber} - Council conclusion created", ['status' => $status]);
         } catch (\Exception $e) {
             Log::error("Row {$rowNumber} - Failed to create council conclusion", ['exception' => $e->getMessage()]);
             throw $e;
         }
     }
 
-    // Helper methods...
+    // Helper methods remain the same...
     private function readXlsx($filePath)
     {
         $zip = new ZipArchive;

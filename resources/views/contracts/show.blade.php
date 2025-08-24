@@ -144,69 +144,132 @@
         </div>
     </div>
 
-    <!-- Payment Schedule -->
-    <div class="bg-white rounded-xl shadow-sm border border-gray-200">
-        <div class="px-6 py-4 border-b border-gray-200">
-            <div class="flex items-center justify-between">
-                <h3 class="text-lg font-semibold text-gray-900">График платежей</h3>
-                <button onclick="addPayment()"
-                        class="px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors">
-                    <i data-feather="plus" class="w-4 h-4 mr-2 inline"></i>
-                    Добавить платеж
-                </button>
-            </div>
+    <!-- Payment Schedule Section -->
+<div class="bg-white rounded-xl shadow-sm border border-gray-200">
+    <div class="px-6 py-4 border-b border-gray-200">
+        <div class="flex items-center justify-between">
+            <h3 class="text-lg font-semibold text-gray-900">График платежей</h3>
+            <button onclick="addPayment()"
+                    class="px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors">
+                <i data-feather="plus" class="w-4 h-4 mr-2 inline"></i>
+                Добавить платеж
+            </button>
         </div>
+    </div>
 
-        <div class="overflow-x-auto">
-            <table class="w-full">
-                <thead class="bg-gray-50 border-b border-gray-200">
-                    <tr>
-                        <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">Период</th>
-                        <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">Сумма по плану</th>
-                        <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">Фактически</th>
-                        <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">Остаток</th>
-                        <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">Статус</th>
-                    </tr>
-                </thead>
-                <tbody class="divide-y divide-gray-200">
-                    @foreach($contract->paymentSchedules as $schedule)
-                        <tr class="hover:bg-gray-50 transition-colors">
-                            <td class="px-6 py-4 text-sm font-medium text-gray-900">
-                                {{ $schedule->quarter }} кв. {{ $schedule->year }}
-                            </td>
-                            <td class="px-6 py-4 text-sm text-gray-900">
-                                @dump($schedule->quarter_amount)
-
-                                {{ number_format($schedule->quarter_amount) }} сум
-                            </td>
-                            <td class="px-6 py-4 text-sm text-gray-900">
-                                @dump($schedule->paid_amount)
-                                {{ number_format($schedule->paid_amount) }} сум
-                            </td>
-                            <td class="px-6 py-4 text-sm {{ $schedule->remaining_amount > 0 ? 'text-red-600' : 'text-green-600' }}">
-                                {{ number_format($schedule->remaining_amount) }} сум
-                            </td>
-                            <td class="px-6 py-4">
-                                @if($schedule->remaining_amount <= 0)
+    <div class="overflow-x-auto">
+        <table class="w-full">
+            <thead class="bg-gray-50 border-b border-gray-200">
+                <tr>
+                    <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">Период</th>
+                    <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">Сумма по плану</th>
+                    <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">Фактически</th>
+                    <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">Остаток</th>
+                    <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">Прогресс</th>
+                    <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">Статус</th>
+                </tr>
+            </thead>
+            <tbody class="divide-y divide-gray-200">
+                @forelse($contract->paymentSchedules as $schedule)
+                    <tr class="hover:bg-gray-50 transition-colors">
+                        <td class="px-6 py-4 text-sm font-medium text-gray-900">
+                            {{ $schedule->quarter_display }}
+                        </td>
+                        <td class="px-6 py-4 text-sm text-gray-900">
+                            {{ number_format($schedule->quarter_amount, 0, '.', ' ') }} сум
+                        </td>
+                        <td class="px-6 py-4 text-sm text-gray-900">
+                            {{ number_format($schedule->paid_amount, 0, '.', ' ') }} сум
+                        </td>
+                        <td class="px-6 py-4 text-sm {{ $schedule->remaining_amount > 0 ? 'text-red-600' : 'text-green-600' }}">
+                            {{ number_format($schedule->remaining_amount, 0, '.', ' ') }} сум
+                        </td>
+                        <td class="px-6 py-4">
+                            <div class="w-full bg-gray-200 rounded-full h-2">
+                                <div class="bg-blue-600 h-2 rounded-full transition-all" 
+                                     style="width: {{ min(100, $schedule->payment_percent) }}%"></div>
+                            </div>
+                            <div class="text-xs text-gray-500 mt-1">
+                                {{ number_format($schedule->payment_percent, 1) }}%
+                            </div>
+                        </td>
+                        <td class="px-6 py-4">
+                            @switch($schedule->status)
+                                @case('paid')
                                     <span class="inline-flex px-2 py-1 text-xs font-semibold rounded-full bg-green-100 text-green-800">
                                         Оплачено
                                     </span>
-                                @elseif($schedule->is_overdue)
+                                    @break
+                                @case('overdue')
                                     <span class="inline-flex px-2 py-1 text-xs font-semibold rounded-full bg-red-100 text-red-800">
                                         Просрочено
+                                        @if($schedule->overdue_days > 0)
+                                            ({{ $schedule->overdue_days }} дн.)
+                                        @endif
                                     </span>
-                                @else
+                                    @break
+                                @default
                                     <span class="inline-flex px-2 py-1 text-xs font-semibold rounded-full bg-yellow-100 text-yellow-800">
                                         В процессе
                                     </span>
-                                @endif
-                            </td>
-                        </tr>
-                    @endforeach
-                </tbody>
-            </table>
-        </div>
+                            @endswitch
+                        </td>
+                    </tr>
+                @empty
+                    <tr>
+                        <td colspan="6" class="px-6 py-8 text-center text-gray-500">
+                            <i data-feather="calendar" class="w-12 h-12 mx-auto mb-4 text-gray-300"></i>
+                            <p>График платежей не найден</p>
+                        </td>
+                    </tr>
+                @endforelse
+            </tbody>
+        </table>
     </div>
+
+    @if($contract->paymentSchedules->count() > 0)
+        <!-- Summary Row -->
+        <div class="px-6 py-4 bg-gray-50 border-t border-gray-200">
+            <div class="grid grid-cols-1 md:grid-cols-4 gap-4">
+                <div>
+                    <p class="text-xs font-medium text-gray-600">Всего по плану</p>
+                    <p class="text-sm font-semibold text-gray-900">
+                        {{ number_format($contract->paymentSchedules->sum('quarter_amount'), 0, '.', ' ') }} сум
+                    </p>
+                </div>
+                <div>
+                    <p class="text-xs font-medium text-gray-600">Всего оплачено</p>
+                    <p class="text-sm font-semibold text-green-600">
+                        {{ number_format($contract->paymentSchedules->sum('paid_amount'), 0, '.', ' ') }} сум
+                    </p>
+                </div>
+                <div>
+                    <p class="text-xs font-medium text-gray-600">Остаток</p>
+                    <p class="text-sm font-semibold text-red-600">
+                        {{ number_format($contract->paymentSchedules->sum('remaining_amount'), 0, '.', ' ') }} сум
+                    </p>
+                </div>
+                <div>
+                    <p class="text-xs font-medium text-gray-600">Общий прогресс</p>
+                    <div class="flex items-center space-x-2">
+                        <div class="flex-1 bg-gray-200 rounded-full h-2">
+                            @php
+                                $totalPlanned = $contract->paymentSchedules->sum('quarter_amount');
+                                $totalPaid = $contract->paymentSchedules->sum('paid_amount');
+                                $overallProgress = $totalPlanned > 0 ? ($totalPaid / $totalPlanned) * 100 : 0;
+                            @endphp
+                            <div class="bg-blue-600 h-2 rounded-full transition-all" 
+                                 style="width: {{ min(100, $overallProgress) }}%"></div>
+                        </div>
+                        <span class="text-xs font-medium text-gray-700">
+                            {{ number_format($overallProgress, 1) }}%
+                        </span>
+                    </div>
+                </div>
+            </div>
+        </div>
+    @endif
+</div>
 
     <!-- Recent Payments -->
     <div class="bg-white rounded-xl shadow-sm border border-gray-200">

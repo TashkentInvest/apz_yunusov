@@ -95,7 +95,8 @@
         <div class="bg-white rounded-xl shadow-sm border border-gray-200 p-6">
             <h3 class="text-lg font-semibold text-gray-900 mb-6">По районам</h3>
             <div class="space-y-4">
-                @foreach($districtStats->take(8) as $district)
+                @foreach($districtStats as $district)
+                @dump($district)
                 <div class="flex items-center justify-between">
                     <div class="flex-1 min-w-0">
                         <p class="text-sm font-medium text-gray-900 truncate">{{ $district->district_name }}</p>
