@@ -16,13 +16,13 @@ class DashboardController extends Controller
    public function index(Request $request)
     {
         $period = $request->get('period', 'month'); // month, quarter, year
-        
+
         // If it's an AJAX request, return only chart data
         if ($request->get('ajax')) {
             $chartData = $this->getChartData($period);
             return response()->json($chartData);
         }
-        
+
         $stats = [
             'total_contracts' => Contract::where('is_active', true)->count(),
             'active_contracts' => Contract::whereHas('status', function($q) {
@@ -35,9 +35,10 @@ class DashboardController extends Controller
 
         $stats['total_debt'] = $stats['total_amount'] - $stats['total_paid'];
 
+
         // Get chart data based on period
         $chartData = $this->buildChartData($period);
-        
+
         // Get all districts statistics
         $districtStats = $this->getDistrictStats();
 
@@ -55,10 +56,10 @@ class DashboardController extends Controller
             ->get();
 
         return view('dashboard', compact(
-            'stats', 
-            'chartData', 
-            'districtStats', 
-            'recentContracts', 
+            'stats',
+            'chartData',
+            'districtStats',
+            'recentContracts',
             'recentPayments',
             'period'
         ));
@@ -68,7 +69,7 @@ class DashboardController extends Controller
     {
         $period = $request->get('period', 'month');
         $chartData = $this->buildChartData($period);
-        
+
         return response()->json($chartData);
     }
 
@@ -76,7 +77,7 @@ class DashboardController extends Controller
     {
         $now = Carbon::now();
         $data = [];
-        
+
         switch ($period) {
             case 'month':
                 // Last 12 months
@@ -84,18 +85,18 @@ class DashboardController extends Controller
                     $date = $now->copy()->subMonths($i);
                     $year = $date->year;
                     $month = $date->month;
-                    
+
                     // Actual payments
                     $actualAmount = ActualPayment::whereYear('payment_date', $year)
                         ->whereMonth('payment_date', $month)
                         ->sum('amount');
-                    
+
                     // Planned payments (from payment schedules)
                     $quarter = ceil($month / 3);
                     $plannedAmount = PaymentSchedule::where('year', $year)
                         ->where('quarter', $quarter)
                         ->sum('quarter_amount') / 3; // Divide by 3 to get monthly average
-                    
+
                     $data[] = [
                         'label' => $date->format('M Y'),
                         'actual' => $actualAmount,
@@ -103,24 +104,24 @@ class DashboardController extends Controller
                     ];
                 }
                 break;
-                
+
             case 'quarter':
                 // Last 8 quarters
                 for ($i = 7; $i >= 0; $i--) {
                     $date = $now->copy()->subQuarters($i);
                     $year = $date->year;
                     $quarter = $date->quarter;
-                    
+
                     // Actual payments
                     $actualAmount = ActualPayment::where('year', $year)
                         ->where('quarter', $quarter)
                         ->sum('amount');
-                    
+
                     // Planned payments
                     $plannedAmount = PaymentSchedule::where('year', $year)
                         ->where('quarter', $quarter)
                         ->sum('quarter_amount');
-                    
+
                     $data[] = [
                         'label' => "Q{$quarter} {$year}",
                         'actual' => $actualAmount,
@@ -128,18 +129,18 @@ class DashboardController extends Controller
                     ];
                 }
                 break;
-                
+
             case 'year':
                 // Last 5 years
                 for ($i = 4; $i >= 0; $i--) {
                     $year = $now->copy()->subYears($i)->year;
-                    
+
                     // Actual payments
                     $actualAmount = ActualPayment::where('year', $year)->sum('amount');
-                    
+
                     // Planned payments
                     $plannedAmount = PaymentSchedule::where('year', $year)->sum('quarter_amount');
-                    
+
                     $data[] = [
                         'label' => (string)$year,
                         'actual' => $actualAmount,
@@ -148,7 +149,7 @@ class DashboardController extends Controller
                 }
                 break;
         }
-        
+
         return $data;
     }
 
@@ -158,9 +159,9 @@ class DashboardController extends Controller
         $allDistricts = District::where('is_active', true)
             ->orderBy('name_ru')
             ->get();
-        
+
         $districtStats = collect();
-        
+
         // Map Excel district names to database district names
         $districtMapping = [
             'Олмазор' => ['Алмазарский'],
@@ -176,7 +177,7 @@ class DashboardController extends Controller
             'Учтепа' => ['Учтепинский'],
             'Бектемир' => ['Бектемирский'],
         ];
-        
+
         foreach ($allDistricts as $district) {
             // Get contracts for this district
             $contracts = Contract::whereHas('object', function($q) use ($district) {
@@ -184,13 +185,13 @@ class DashboardController extends Controller
             })
             ->where('is_active', true)
             ->get();
-            
+
             $contractIds = $contracts->pluck('id');
-            
+
             // Calculate totals
             $totalAmount = $contracts->sum('total_amount');
             $paidAmount = ActualPayment::whereIn('contract_id', $contractIds)->sum('amount');
-            
+
             $districtStats->push((object)[
                 'district_id' => $district->id,
                 'district_name' => $district->name_ru,
@@ -200,7 +201,7 @@ class DashboardController extends Controller
                 'payment_percentage' => $totalAmount > 0 ? ($paidAmount / $totalAmount) * 100 : 0,
             ]);
         }
-        
+
         // Sort by contracts count descending, then by total amount
         return $districtStats->sortByDesc('contracts_count')->values();
     }
@@ -225,7 +226,7 @@ class DashboardController extends Controller
     {
         $period = $request->get('period', 'month');
         $chartData = $this->getChartData($period);
-        
+
         return response()->json($chartData);
     }
 
@@ -237,10 +238,10 @@ class DashboardController extends Controller
 
         return response()->streamDownload(function () use ($contracts) {
             $handle = fopen('php://output', 'w');
-            
+
             // Add BOM for proper UTF-8 encoding in Excel
             fwrite($handle, "\xEF\xBB\xBF");
-            
+
             // Headers
             fputcsv($handle, [
                 'ID',

@@ -80,15 +80,15 @@
                 <div class="flex items-center justify-between mb-6">
                     <h3 class="text-lg font-semibold text-gray-900">Динамика платежей</h3>
                     <div class="flex space-x-2">
-                        <button onclick="changePeriod('month')" 
+                        <button onclick="changePeriod('month')"
                                 class="px-3 py-1 text-sm rounded-lg period-btn {{ $period === 'month' ? 'bg-blue-100 text-blue-700' : 'text-gray-500 hover:bg-gray-100' }}">
                             Месяц
                         </button>
-                        <button onclick="changePeriod('quarter')" 
+                        <button onclick="changePeriod('quarter')"
                                 class="px-3 py-1 text-sm rounded-lg period-btn {{ $period === 'quarter' ? 'bg-blue-100 text-blue-700' : 'text-gray-500 hover:bg-gray-100' }}">
                             Квартал
                         </button>
-                        <button onclick="changePeriod('year')" 
+                        <button onclick="changePeriod('year')"
                                 class="px-3 py-1 text-sm rounded-lg period-btn {{ $period === 'year' ? 'bg-blue-100 text-blue-700' : 'text-gray-500 hover:bg-gray-100' }}">
                             Год
                         </button>
@@ -254,7 +254,7 @@
                 <!-- Content will be loaded here -->
             </div>
             <div class="px-6 py-4 border-t border-gray-200 flex justify-end">
-                <button onclick="closeDistrictModal()" 
+                <button onclick="closeDistrictModal()"
                         class="px-4 py-2 bg-gray-100 text-gray-700 rounded-lg hover:bg-gray-200 transition-colors">
                     Закрыть
                 </button>
@@ -272,9 +272,9 @@ let monthlyChart;
 // Initialize chart
 function initChart() {
     const ctx = document.getElementById('monthlyChart').getContext('2d');
-    
+
     const chartData = @json($chartData);
-    
+
     monthlyChart = new Chart(ctx, {
         type: 'line',
         data: {
@@ -309,7 +309,7 @@ function initChart() {
                 tooltip: {
                     callbacks: {
                         label: function(context) {
-                            return context.dataset.label + ': ' + 
+                            return context.dataset.label + ': ' +
                                    new Intl.NumberFormat('ru-RU').format(context.parsed.y) + ' млн сум';
                         }
                     }
@@ -344,20 +344,20 @@ async function changePeriod(period) {
         btn.classList.remove('bg-blue-100', 'text-blue-700');
         btn.classList.add('text-gray-500', 'hover:bg-gray-100');
     });
-    
+
     event.target.classList.remove('text-gray-500', 'hover:bg-gray-100');
     event.target.classList.add('bg-blue-100', 'text-blue-700');
 
     try {
         const response = await fetch(`{{ route('dashboard.chart-data') }}?period=${period}`);
         const data = await response.json();
-        
+
         // Update chart
         monthlyChart.data.labels = data.map(item => item.label);
         monthlyChart.data.datasets[0].data = data.map(item => item.actual / 1000000);
         monthlyChart.data.datasets[1].data = data.map(item => item.planned / 1000000);
         monthlyChart.update();
-        
+
     } catch (error) {
         console.error('Error updating chart:', error);
         alert('Ошибка обновления графика');
@@ -373,7 +373,7 @@ function showDistrictDetails(districtId, districtName) {
         </div>
     `;
     document.getElementById('districtModal').classList.remove('hidden');
-    
+
     // Load district details
     fetch(`/dashboard/district/${districtId}`)
         .then(response => response.json())
@@ -398,7 +398,7 @@ function showDistrictDetails(districtId, districtName) {
                             <p class="text-2xl font-bold text-red-900">${data.stats.progress.toFixed(1)}%</p>
                         </div>
                     </div>
-                    
+
                     <div>
                         <h4 class="font-medium text-gray-900 mb-3">Последние договоры:</h4>
                         <div class="space-y-2 max-h-48 overflow-y-auto">
