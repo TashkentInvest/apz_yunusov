@@ -13,7 +13,7 @@ use Carbon\Carbon;
 
 class DashboardController extends Controller
 {
-   public function index(Request $request)
+    public function index(Request $request)
     {
         $period = $request->get('period', 'month'); // month, quarter, year
 
@@ -23,18 +23,37 @@ class DashboardController extends Controller
             return response()->json($chartData);
         }
 
+        // Calculate stats excluding cancelled and suspended contracts
+        $totalContracts = Contract::where('is_active', true)->count();
+
+        $activeContracts = Contract::whereHas('status', function($q) {
+            $q->whereNotIn('code', ['CANCELLED', 'SUSPENDED']);
+        })->where('is_active', true)->count();
+
+        $totalAmount = Contract::where('is_active', true)
+            ->whereHas('status', function($q) {
+                $q->whereNotIn('code', ['CANCELLED', 'SUSPENDED']);
+            })
+            ->sum('total_amount');
+
+        // Get actual payments sum only from active contracts (not cancelled/suspended)
+        $totalPaid = ActualPayment::whereHas('contract', function($q) {
+            $q->where('is_active', true)
+              ->whereHas('status', function($sq) {
+                  $sq->whereNotIn('code', ['CANCELLED', 'SUSPENDED']);
+              });
+        })->sum('amount');
+
+        $debtorsCount = $this->getDebtorsCount();
+
         $stats = [
-            'total_contracts' => Contract::where('is_active', true)->count(),
-            'active_contracts' => Contract::whereHas('status', function($q) {
-                $q->where('code', 'ACTIVE');
-            })->count(),
-            'total_amount' => Contract::where('is_active', true)->sum('total_amount'),
-            'total_paid' => ActualPayment::sum('amount'),
-            'debtors_count' => $this->getDebtorsCount()
+            'total_contracts' => $totalContracts,
+            'active_contracts' => $activeContracts,
+            'total_amount' => $totalAmount,
+            'total_paid' => $totalPaid,
+            'debtors_count' => $debtorsCount,
+            'total_debt' => $totalAmount - $totalPaid
         ];
-
-        $stats['total_debt'] = $stats['total_amount'] - $stats['total_paid'];
-
 
         // Get chart data based on period
         $chartData = $this->buildChartData($period);
@@ -42,15 +61,24 @@ class DashboardController extends Controller
         // Get all districts statistics
         $districtStats = $this->getDistrictStats();
 
-        // Get recent contracts
+        // Get recent contracts (exclude cancelled/suspended)
         $recentContracts = Contract::with(['subject', 'status'])
+            ->whereHas('status', function($q) {
+                $q->whereNotIn('code', ['CANCELLED', 'SUSPENDED']);
+            })
             ->where('is_active', true)
             ->orderBy('created_at', 'desc')
             ->limit(5)
             ->get();
 
-        // Get recent payments
+        // Get recent payments from active contracts only
         $recentPayments = ActualPayment::with(['contract.subject'])
+            ->whereHas('contract', function($q) {
+                $q->where('is_active', true)
+                  ->whereHas('status', function($sq) {
+                      $sq->whereNotIn('code', ['CANCELLED', 'SUSPENDED']);
+                  });
+            })
             ->orderBy('payment_date', 'desc')
             ->limit(5)
             ->get();
@@ -86,21 +114,34 @@ class DashboardController extends Controller
                     $year = $date->year;
                     $month = $date->month;
 
-                    // Actual payments
+                    // Actual payments from active contracts only
                     $actualAmount = ActualPayment::whereYear('payment_date', $year)
                         ->whereMonth('payment_date', $month)
+                        ->whereHas('contract', function($q) {
+                            $q->where('is_active', true)
+                              ->whereHas('status', function($sq) {
+                                  $sq->whereNotIn('code', ['CANCELLED', 'SUSPENDED']);
+                              });
+                        })
                         ->sum('amount');
 
-                    // Planned payments (from payment schedules)
+                    // Planned payments (from active payment schedules)
                     $quarter = ceil($month / 3);
                     $plannedAmount = PaymentSchedule::where('year', $year)
                         ->where('quarter', $quarter)
+                        ->where('is_active', true)
+                        ->whereHas('contract', function($q) {
+                            $q->where('is_active', true)
+                              ->whereHas('status', function($sq) {
+                                  $sq->whereNotIn('code', ['CANCELLED', 'SUSPENDED']);
+                              });
+                        })
                         ->sum('quarter_amount') / 3; // Divide by 3 to get monthly average
 
                     $data[] = [
                         'label' => $date->format('M Y'),
-                        'actual' => $actualAmount,
-                        'planned' => $plannedAmount,
+                        'actual' => (float) $actualAmount,
+                        'planned' => (float) $plannedAmount,
                     ];
                 }
                 break;
@@ -112,20 +153,35 @@ class DashboardController extends Controller
                     $year = $date->year;
                     $quarter = $date->quarter;
 
-                    // Actual payments
-                    $actualAmount = ActualPayment::where('year', $year)
-                        ->where('quarter', $quarter)
-                        ->sum('amount');
+                    // Actual payments from active contracts
+                    $actualAmount = ActualPayment::whereBetween('payment_date', [
+                        Carbon::create($year, ($quarter - 1) * 3 + 1, 1)->startOfDay(),
+                        Carbon::create($year, $quarter * 3, 1)->endOfMonth()
+                    ])
+                    ->whereHas('contract', function($q) {
+                        $q->where('is_active', true)
+                          ->whereHas('status', function($sq) {
+                              $sq->whereNotIn('code', ['CANCELLED', 'SUSPENDED']);
+                          });
+                    })
+                    ->sum('amount');
 
-                    // Planned payments
+                    // Planned payments from active schedules
                     $plannedAmount = PaymentSchedule::where('year', $year)
                         ->where('quarter', $quarter)
+                        ->where('is_active', true)
+                        ->whereHas('contract', function($q) {
+                            $q->where('is_active', true)
+                              ->whereHas('status', function($sq) {
+                                  $sq->whereNotIn('code', ['CANCELLED', 'SUSPENDED']);
+                              });
+                        })
                         ->sum('quarter_amount');
 
                     $data[] = [
                         'label' => "Q{$quarter} {$year}",
-                        'actual' => $actualAmount,
-                        'planned' => $plannedAmount,
+                        'actual' => (float) $actualAmount,
+                        'planned' => (float) $plannedAmount,
                     ];
                 }
                 break;
@@ -135,16 +191,31 @@ class DashboardController extends Controller
                 for ($i = 4; $i >= 0; $i--) {
                     $year = $now->copy()->subYears($i)->year;
 
-                    // Actual payments
-                    $actualAmount = ActualPayment::where('year', $year)->sum('amount');
+                    // Actual payments from active contracts
+                    $actualAmount = ActualPayment::whereYear('payment_date', $year)
+                        ->whereHas('contract', function($q) {
+                            $q->where('is_active', true)
+                              ->whereHas('status', function($sq) {
+                                  $sq->whereNotIn('code', ['CANCELLED', 'SUSPENDED']);
+                              });
+                        })
+                        ->sum('amount');
 
-                    // Planned payments
-                    $plannedAmount = PaymentSchedule::where('year', $year)->sum('quarter_amount');
+                    // Planned payments from active schedules
+                    $plannedAmount = PaymentSchedule::where('year', $year)
+                        ->where('is_active', true)
+                        ->whereHas('contract', function($q) {
+                            $q->where('is_active', true)
+                              ->whereHas('status', function($sq) {
+                                  $sq->whereNotIn('code', ['CANCELLED', 'SUSPENDED']);
+                              });
+                        })
+                        ->sum('quarter_amount');
 
                     $data[] = [
                         'label' => (string)$year,
-                        'actual' => $actualAmount,
-                        'planned' => $plannedAmount,
+                        'actual' => (float) $actualAmount,
+                        'planned' => (float) $plannedAmount,
                     ];
                 }
                 break;
@@ -162,26 +233,13 @@ class DashboardController extends Controller
 
         $districtStats = collect();
 
-        // Map Excel district names to database district names
-        $districtMapping = [
-            'Олмазор' => ['Алмазарский'],
-            'Мирзо-Улуғбек' => ['Мирзо-Улугбекский', 'Мирзо Улугбекский'],
-            'Яккасарой' => ['Яккасарайский'],
-            'Шайхонтохур' => ['Шайхантахурский'],
-            'Сергели' => ['Сергелийский'],
-            'Яшнобод' => ['Яшнабадский', 'Юнусабадский'],
-            'Миробод' => ['Мирабадский'],
-            'Янгихаёт' => ['Алмазарский'], // Falls under Almazarsky
-            'Юнусобод' => ['Юнусабадский'],
-            'Чилонзор' => ['Чиланзарский'],
-            'Учтепа' => ['Учтепинский'],
-            'Бектемир' => ['Бектемирский'],
-        ];
-
         foreach ($allDistricts as $district) {
-            // Get contracts for this district
+            // Get active contracts for this district (exclude cancelled/suspended)
             $contracts = Contract::whereHas('object', function($q) use ($district) {
                 $q->where('district_id', $district->id);
+            })
+            ->whereHas('status', function($q) {
+                $q->whereNotIn('code', ['CANCELLED', 'SUSPENDED']);
             })
             ->where('is_active', true)
             ->get();
@@ -196,8 +254,8 @@ class DashboardController extends Controller
                 'district_id' => $district->id,
                 'district_name' => $district->name_ru,
                 'contracts_count' => $contracts->count(),
-                'total_amount' => $totalAmount,
-                'paid_amount' => $paidAmount,
+                'total_amount' => (float) $totalAmount,
+                'paid_amount' => (float) $paidAmount,
                 'payment_percentage' => $totalAmount > 0 ? ($paidAmount / $totalAmount) * 100 : 0,
             ]);
         }
@@ -208,16 +266,21 @@ class DashboardController extends Controller
 
     private function getDebtorsCount()
     {
-        $contractsWithDebt = Contract::whereHas('paymentSchedules', function($q) {
-            $q->where('is_active', true);
-        })
-        ->where('is_active', true)
-        ->get()
-        ->filter(function($contract) {
-            $totalScheduled = $contract->paymentSchedules->sum('quarter_amount');
-            $totalPaid = $contract->actualPayments->sum('amount');
-            return $totalScheduled > $totalPaid;
-        });
+        // Get contracts that have scheduled payments but haven't paid enough (exclude cancelled/suspended)
+        $contractsWithDebt = Contract::with(['paymentSchedules', 'actualPayments'])
+            ->whereHas('paymentSchedules', function($q) {
+                $q->where('is_active', true);
+            })
+            ->whereHas('status', function($q) {
+                $q->whereNotIn('code', ['CANCELLED', 'SUSPENDED']);
+            })
+            ->where('is_active', true)
+            ->get()
+            ->filter(function($contract) {
+                $totalScheduled = $contract->paymentSchedules->where('is_active', true)->sum('quarter_amount');
+                $totalPaid = $contract->actualPayments->sum('amount');
+                return $totalScheduled > $totalPaid;
+            });
 
         return $contractsWithDebt->count();
     }
@@ -225,14 +288,18 @@ class DashboardController extends Controller
     public function getChartDataAjax(Request $request)
     {
         $period = $request->get('period', 'month');
-        $chartData = $this->getChartData($period);
+        $chartData = $this->buildChartData($period);
 
         return response()->json($chartData);
     }
 
     public function export()
     {
-        $contracts = Contract::with(['subject', 'object.district', 'status'])
+        // Export only active contracts (exclude cancelled/suspended)
+        $contracts = Contract::with(['subject', 'object.district', 'status', 'actualPayments'])
+            ->whereHas('status', function($q) {
+                $q->whereNotIn('code', ['CANCELLED', 'SUSPENDED']);
+            })
             ->where('is_active', true)
             ->get();
 
@@ -288,17 +355,23 @@ class DashboardController extends Controller
 
     public function districtDetails(District $district)
     {
+        // Get active contracts for this district (exclude cancelled/suspended)
         $contracts = Contract::whereHas('object', function($q) use ($district) {
             $q->where('district_id', $district->id);
         })
-        ->with(['subject', 'status'])
+        ->whereHas('status', function($q) {
+            $q->whereNotIn('code', ['CANCELLED', 'SUSPENDED']);
+        })
+        ->with(['subject', 'status', 'actualPayments'])
         ->where('is_active', true)
         ->get();
 
+        $contractIds = $contracts->pluck('id');
+
         $stats = [
             'total_contracts' => $contracts->count(),
-            'total_amount' => $contracts->sum('total_amount'),
-            'total_paid' => ActualPayment::whereIn('contract_id', $contracts->pluck('id'))->sum('amount'),
+            'total_amount' => (float) $contracts->sum('total_amount'),
+            'total_paid' => (float) ActualPayment::whereIn('contract_id', $contractIds)->sum('amount'),
         ];
 
         $stats['remaining'] = $stats['total_amount'] - $stats['total_paid'];
