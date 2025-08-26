@@ -218,50 +218,39 @@
         </div>
 
         <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
-            @foreach($kengashHulosa->files as $file)
-                <div class="border border-gray-200 rounded-lg p-4 hover:shadow-md transition-shadow">
-                    <div class="flex items-start justify-between mb-2">
-                        <div class="flex items-center space-x-2">
-                            <i data-feather="file" class="w-5 h-5 {{ $file->icon_class }}"></i>
-                            <span class="text-xs font-medium {{ $file->icon_class }}">{{ $file->extension }}</span>
-                        </div>
-                        <div class="flex items-center space-x-2">
-                            <a href="{{ route('kengash-hulosa.file.download', $file) }}"
-                               class="text-blue-600 hover:text-blue-800" title="Юклаб олиш">
-                                <i data-feather="download" class="w-4 h-4"></i>
-                            </a>
-                            <form method="POST" action="{{ route('kengash-hulosa.file.delete', $file) }}"
-                                  onsubmit="return confirm('Ушбу файлни ўчиришни хохлайсизми?')"
-                                  class="inline">
-                                @csrf
-                                @method('DELETE')
-                                <button type="submit" class="text-red-600 hover:text-red-800" title="Ўчириш">
-                                    <i data-feather="trash-2" class="w-4 h-4"></i>
-                                </button>
-                            </form>
-                        </div>
-                    </div>
+         @foreach($kengashHulosa->files as $file)
+    <a href="{{ asset('storage/' . $file->file_path) }}"
+       target="_blank"
+       class="block border border-gray-200 rounded-lg p-4 hover:shadow-md transition-shadow">
 
-                    <h4 class="text-sm font-medium text-gray-900 truncate" title="{{ $file->original_name }}">
-                        {{ $file->original_name }}
-                    </h4>
+        <div class="flex items-start justify-between mb-2">
+            <div class="flex items-center space-x-2">
+                <i data-feather="file" class="w-5 h-5 {{ $file->icon_class }}"></i>
+                <span class="text-xs font-medium {{ $file->icon_class }}">{{ $file->extension }}</span>
+            </div>
+        </div>
 
-                    <div class="mt-2 space-y-1">
-                        <p class="text-xs text-gray-500">Ҳажми: {{ $file->formatted_file_size }}</p>
-                        @if($file->file_date)
-                            <p class="text-xs text-gray-500">Санаси: {{ $file->file_date->format('d.m.Y') }}</p>
-                        @endif
-                        @if($file->comment)
-                            <p class="text-xs text-gray-600 italic">{{ $file->comment }}</p>
-                        @endif
-                        <p class="text-xs text-gray-400">
-                            Юклаган: {{ $file->uploader->name ?? 'Номаълум' }}
-                            <br>
-                            {{ $file->created_at->format('d.m.Y H:i') }}
-                        </p>
-                    </div>
-                </div>
-            @endforeach
+        <h4 class="text-sm font-medium text-gray-900 truncate" title="{{ $file->original_name }}">
+            {{ $file->original_name }}
+        </h4>
+
+        <div class="mt-2 space-y-1">
+            <p class="text-xs text-gray-500">Ҳажми: {{ $file->formatted_file_size }}</p>
+            @if($file->file_date)
+                <p class="text-xs text-gray-500">Санаси: {{ \Carbon\Carbon::parse($file->file_date)->format('d.m.Y') }}</p>
+            @endif
+            @if($file->comment)
+                <p class="text-xs text-gray-600 italic">{{ $file->comment }}</p>
+            @endif
+            <p class="text-xs text-gray-400">
+                Юклаган: {{ $file->uploader->name ?? 'Номаълум' }}
+                <br>
+                {{ $file->created_at->format('d.m.Y H:i') }}
+            </p>
+        </div>
+    </a>
+@endforeach
+
         </div>
     </div>
     @else

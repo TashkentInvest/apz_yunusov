@@ -69,7 +69,7 @@ class KengashHulosiExcelSeeder extends Seeder
             9 => 'Бино тури (турар, нотурар)',
             10 => 'Муаммо тури',
             11 => 'Лойхачи',
-            12 => 'Буюртмачи СТИР/ПИНФЛ',
+            12 => 'Лойхачи СТИР/ПИНФЛ',
             13 => 'Лойхачи телефон раками',
             14 => 'Лойиха смета хужжатларининг номланиши',
             15 => 'Туман',
@@ -182,12 +182,12 @@ class KengashHulosiExcelSeeder extends Seeder
                     'apz_raqami' => $this->cleanValue($row[3] ?? null),
                     'apz_berilgan_sanasi' => $this->parseDate($row[4] ?? null),
                     'buyurtmachi' => $this->cleanValue($row[5] ?? null),
-                    'buyurtmachi_stir_pinfl' => $this->cleanValue($row[6] ?? null),
+                    'buyurtmachi_stir_pinfl' => $this->cleanValue( null),
                     'buyurtmachi_telefon' => $this->cleanValue($row[7] ?? null),
                     // Skip row[8] - files column
                     'bino_turi' => $this->parseBinoTuri($row[9] ?? null),
                     'muammo_turi' => null, // Not available in parsed data
-                    'loyihachi' => $this->extractLoyihachi($row), // Extract from original Excel data
+                    'loyihachi' => $this->cleanValue($row[6]), // Extract from original Excel data
                     'loyihachi_stir_pinfl' => $this->cleanValue($row[12] ?? null),
                     'loyihachi_telefon' => $this->cleanValue($row[13] ?? null),
                     'loyiha_smeta_nomi' => $this->cleanValue($row[10] ?? null), // Project description is in col 10
@@ -468,27 +468,28 @@ class KengashHulosiExcelSeeder extends Seeder
      */
     private function extractLoyihachi($row)
     {
-        // Based on your Excel examples, loyihachi names are:
-        // "Bester arch MChJ", "ARCHITECT-PROJECT" МЧЖ", "ARCHDECOR PROJECT" МЧЖ", "INTER ACTIVE-TEAMS MCHJ"
+        // The loyihachi data is not being captured by the XML parser properly
+        // This suggests the Excel file has structural issues like merged cells
 
-        // Since the Excel parsing is not capturing loyihachi correctly,
-        // we'll use a lookup based on the kengash number or other unique identifiers
-        $kengashNumber = $this->cleanValue($row[1] ?? null);
+        // For now, we'll extract it from the project description or other available fields
+        $projectDesc = $this->cleanValue($row[10] ?? '');
+        $kengashNumber = $this->cleanValue($row[1] ?? '');
 
-        // Hardcoded mapping based on your Excel data examples
-        $loyihachiMap = [
-            '152186711' => 'Bester arch MChJ',
-            '152461464' => '"ARCHITECT-PROJECT" МЧЖ',
-            '152188611' => '"ARCHDECOR PROJECT" МЧЖ',
-            '152236920' => 'INTER ACTIVE-TEAMS MCHJ',
-            '152247333' => '"YUKSAK MAXORAT" MAS\'ULIYATI CHEKLANGAN JAMIYAT',
-            '152307457' => 'ООО «PRIME TOWER GROUP»',
-            '152395021' => 'OOO SPECIAL PROECT',
-            '152461194' => 'ООО "TREE LIVE PROJECT"',
-            '152514026' => '"MERIDIAN GARAPHICS" MCHJ',
+        // Try to extract company names from project description
+        $companyPatterns = [
+            '/([A-ZА-ЯЁ\s]+\s+(MChJ|MCHJ|МЧЖ|OOO|ООО|АЖ|ДМ))/u',
+            '/\"([^\"]+)\"\s*(МЧЖ|MCHJ|MChJ|ООО|OOO)/u',
+            '/([A-ZА-ЯЁ\s]+)\s+(MAS\'ULIYATI\s+CHEKLANGAN\s+JAMIYAT)/u'
         ];
 
-        return $loyihachiMap[$kengashNumber] ?? null;
+        foreach ($companyPatterns as $pattern) {
+            if (preg_match($pattern, $projectDesc, $matches)) {
+                return trim($matches[0]);
+            }
+        }
+
+        // Fallback: Return project description truncated as loyihachi
+        return $projectDesc ? substr($projectDesc, 0, 100) : null;
     }
 
     /**

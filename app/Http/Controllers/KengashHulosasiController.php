@@ -388,7 +388,7 @@ class KengashHulosasiController extends Controller
             'file_type' => $file->getClientMimeType(),
             'file_date' => $request->file_dates[$index] ?? now(),
             'comment' => $request->file_comments[$index] ?? null,
-            'uploaded_by' => Auth::id(),
+            'uploaded_by' => Auth::id() ?? null,
         ]);
     }
 

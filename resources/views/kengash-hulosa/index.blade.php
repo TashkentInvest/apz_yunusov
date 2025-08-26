@@ -139,7 +139,6 @@
                 </thead>
                 <tbody class="bg-white divide-y divide-gray-200">
                     @forelse($kengash_hulosalari as $item)
-@dump($item)
                         <tr class="hover:bg-gray-50">
                             <td class="px-4 py-4 whitespace-nowrap text-sm text-gray-900">
                                 {{ $loop->iteration + ($kengash_hulosalari->currentPage() - 1) * $kengash_hulosalari->perPage() }}

@@ -19,7 +19,7 @@ return new class extends Migration
             $table->date('apz_berilgan_sanasi')->nullable();
             $table->string('buyurtmachi')->nullable();
             $table->string('buyurtmachi_stir_pinfl')->nullable();
-            $table->string('buyurtmachi_telefon')->nullable();
+            $table->text('buyurtmachi_telefon')->nullable();
             $table->enum('bino_turi', ['турар', 'нотурар'])->nullable();
             $table->text('muammo_turi')->nullable();
             $table->string('loyihachi')->nullable();
@@ -61,7 +61,7 @@ return new class extends Migration
             $table->string('file_type')->nullable();
             $table->date('file_date')->nullable();
             $table->text('comment')->nullable();
-            $table->unsignedBigInteger('uploaded_by');
+            $table->unsignedBigInteger('uploaded_by')->nullable();
             $table->timestamps();
 
             $table->foreign('kengash_hulosasi_id')->references('id')->on('kengash_hulosasi')->onDelete('cascade');
