@@ -1,5 +1,6 @@
 <?php
 
+use App\Http\Controllers\KengashHulosasiController;
 use Illuminate\Support\Facades\Route;
 use App\Http\Controllers\DashboardController;
 use App\Http\Controllers\ContractController;
@@ -351,3 +352,26 @@ Route::fallback(function () {
     return response()->view('errors.404', [], 404);
 });
 });
+
+// Route::middleware(['auth'])->group(function () {
+    // Kengash Hulosa routes
+    Route::resource('kengash-hulosa', KengashHulosasiController::class)->parameters([
+        'kengash-hulosa' => 'kengashHulosa'
+    ]);
+
+    // Additional routes
+    Route::post('kengash-hulosa/import', [KengashHulosasiController::class, 'import'])
+         ->name('kengash-hulosa.import');
+
+    Route::get('kengash-hulosa-export', [KengashHulosasiController::class, 'export'])
+         ->name('kengash-hulosa.export');
+
+    Route::get('kengash-hulosa-svod', [KengashHulosasiController::class, 'svod'])
+         ->name('kengash-hulosasi.svod');
+
+    Route::delete('kengash-hulosa-file/{file}', [KengashHulosasiController::class, 'deleteFile'])
+         ->name('kengash-hulosa.file.delete');
+
+    Route::get('kengash-hulosa-file/{file}/download', [KengashHulosasiController::class, 'downloadFile'])
+         ->name('kengash-hulosa.file.download');
+// });

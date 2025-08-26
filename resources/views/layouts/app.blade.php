@@ -125,6 +125,28 @@
                         <i data-feather="download" class="w-5 h-5 mr-3 text-gray-400 group-hover:text-gray-600"></i>
                         <span class="font-medium">Экспорт</span>
                     </a>
+
+
+<a href="{{ route('kengash-hulosa.index') }}"
+   class="flex items-center px-4 py-3 text-gray-700 rounded-lg hover:bg-gray-100 group transition-colors {{ request()->routeIs('kengash-hulosa.*') ? 'bg-blue-50 text-blue-700' : '' }}">
+    <i data-feather="file-plus" class="w-5 h-5 mr-3 text-gray-400 group-hover:text-gray-600 {{ request()->routeIs('kengash-hulosa.*') ? 'text-blue-600' : '' }}"></i>
+    <span class="font-medium">Кенгаш хулосалари</span>
+    <span class="ml-auto bg-gray-100 text-gray-600 px-2 py-1 rounded-full text-xs font-semibold">
+        {{ \App\Models\KengashHulosasi::count() }}
+    </span>
+</a>
+
+
+<a href="{{ route('kengash-hulosasi.svod') }}"
+   class="flex items-center px-4 py-3 text-gray-700 rounded-lg hover:bg-gray-100 group transition-colors {{ request()->routeIs('kengash-hulosasi.svod*') ? 'bg-blue-50 text-blue-700' : '' }}">
+    <i data-feather="file-plus" class="w-5 h-5 mr-3 text-gray-400 group-hover:text-gray-600 {{ request()->routeIs('kengash-hulosasi.svod*') ? 'text-blue-600' : '' }}"></i>
+    <span class="font-medium">Кенгаш хулосалари СВОД</span>
+    <span class="ml-auto bg-gray-100 text-gray-600 px-2 py-1 rounded-full text-xs font-semibold">
+        {{ \App\Models\KengashHulosasi::count() }}
+    </span>
+</a>
+
+
                 </nav>
 
                 <!-- User Section -->
