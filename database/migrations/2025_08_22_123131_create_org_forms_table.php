@@ -10,12 +10,12 @@ return new class extends Migration
     public function up()
     {
         Schema::create('org_forms', function (Blueprint $table) {
-            $table->id();
-            $table->string('name_uz', 100);
-            $table->string('name_ru', 100)->nullable();
-            $table->string('code', 10)->nullable();
-            $table->boolean('is_active')->default(true);
-            $table->timestamps();
+            $table->id(); // Ташкилий шакл ID рақами
+            $table->string('name_uz', 100); // Ташкилий шакл номи ўзбек тилида
+            $table->string('name_ru', 100)->nullable(); // Ташкилий шакл номи рус тилида
+            $table->string('code', 10)->nullable(); // Ташкилий шакл коди
+            $table->boolean('is_active')->default(true); // Фаол ҳолати
+            $table->timestamps(); // Яратилган ва янгиланган санаси
         });
     }
 

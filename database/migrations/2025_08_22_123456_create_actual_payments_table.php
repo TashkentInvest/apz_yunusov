@@ -8,22 +8,25 @@ return new class extends Migration
 {
     public function up()
     {
+        // Амалий тўловлар - ҳақиқий тўловлар маълумоти
+
         Schema::create('actual_payments', function (Blueprint $table) {
-            $table->id();
-            $table->foreignId('contract_id')->constrained('contracts');
-            $table->string('payment_number', 50)->nullable();
-            $table->date('payment_date');
-            $table->decimal('amount', 15, 2);
+            $table->id(); // Тўлов ID рақами
+            $table->foreignId('contract_id')->constrained('contracts'); // Шартнома маълумоти
+            $table->string('payment_number', 50)->nullable(); // Тўлов рақами
+            $table->date('payment_date'); // Тўлов санаси
+            $table->decimal('amount', 15, 2); // Тўлов суммаси
 
-            $table->integer('year');
-            $table->integer('quarter');
+            $table->integer('year'); // Йил
+            $table->integer('quarter'); // Чорак йил
 
-            $table->text('notes')->nullable();
-            $table->unsignedBigInteger('created_by')->nullable();
-            $table->timestamps();
+            $table->text('notes')->nullable(); // Изоҳлар
+            $table->unsignedBigInteger('created_by')->nullable(); // Ким томонидан яратилган
+            $table->timestamps(); // Яратилган ва янгиланган санаси
 
-            $table->index(['contract_id', 'payment_date']);
-            $table->index(['year', 'quarter']);
+            // Тизимлаштириш учун индекслар
+            $table->index(['contract_id', 'payment_date']); // Шартнома ва сана бўйича
+            $table->index(['year', 'quarter']); // Вақт бўйича индекс
         });
     }
 

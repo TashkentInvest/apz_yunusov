@@ -12,6 +12,7 @@ use App\Models\BaseCalculationAmount;
 use App\Models\ActualPayment;
 use App\Models\PaymentSchedule;
 use App\Models\CouncilConclusion;
+use App\Models\OrgForm;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Log;
 use Carbon\Carbon;
@@ -26,9 +27,34 @@ class ApzDataSeeder extends Seeder
     private $headerRow = [];
     private $monthlyPaymentColumns = [];
 
+    // Fixed column indexes based on your data structure
+    private $columnMap = [
+        'council_conclusion_1' => 0,  // Умуман тўловни амалга оширмаганлар
+        'council_conclusion_2' => 2,  // Қарздорлар
+        'serial_number' => 3,         // №
+        'inn' => 4,                   // ИНН
+        'pinfl' => 5,                 // ПИНФЛ
+        'company_name' => 6,          // Корхона номи
+        'contract_number' => 7,       // шарт. №
+        'contract_status' => 8,       // Контракт ҳолати
+        'contract_date' => 9,         // шартнома санаси
+        'completion_date' => 10,      // Якунлаш сана
+        'payment_terms' => 11,        // Тўлов шарти
+        'payment_period' => 12,       // Тўлов муддати
+        'advance_percent' => 13,      // Аванс
+        'district' => 14,             // Туман
+        'area' => 15,                 // М3 (площадь)
+        'contract_amount' => 16,      // Шартнома қиймати
+        'installment_payment' => 17,  // Бўнак тўлов
+        'monthly_payment' => 18,      // Ойлик тўлов
+        'total_payment' => 19,        // Жами тўлов
+        'remaining' => 20,            // Қолдиқ
+        'actual_payment_indicator' => 21, // ФАКТ
+    ];
+
     public function run()
     {
-        $filePath = public_path('apz_new_siroj.xlsx');
+        $filePath = public_path('apz_dilmurod_23_08_25.xlsx');
 
         if (!file_exists($filePath)) {
             $this->command->error('APZ data file not found: ' . $filePath);
@@ -39,7 +65,9 @@ class ApzDataSeeder extends Seeder
         Log::info('Starting APZ data import from XLSX');
 
         try {
-            $this->validateEssentialData();
+            // Create essential data first
+            $this->createEssentialData();
+
             $data = $this->readXlsx($filePath);
 
             if (empty($data)) {
@@ -71,20 +99,96 @@ class ApzDataSeeder extends Seeder
         }
     }
 
-    private function validateEssentialData()
+    private function createEssentialData()
     {
-        $this->command->info('Checking essential data...');
-        $districtCount = District::where('is_active', true)->count();
-        $statusCount = ContractStatus::where('is_active', true)->count();
-        $orgFormCount = \App\Models\OrgForm::where('is_active', true)->count();
+        $this->command->info('Creating essential data...');
 
-        $this->command->info("Districts: {$districtCount}");
-        $this->command->info("Statuses: {$statusCount}");
-        $this->command->info("Org Forms: {$orgFormCount}");
+        // Create Organization Forms
+        $this->createOrgForms();
 
-        if ($districtCount === 0 || $statusCount === 0) {
-            throw new \Exception('Essential data missing! Run: php artisan db:seed --class=EssentialDataSeeder');
+        // Create Districts
+        $this->createDistricts();
+
+        // Create Contract Statuses
+        $this->createContractStatuses();
+
+        // Create Base Calculation Amount
+        $this->createBaseCalculationAmount();
+
+        $this->command->info('Essential data created successfully');
+    }
+
+    private function createOrgForms()
+    {
+        $orgForms = [
+            ['name_uz' => 'МЧЖ', 'name_ru' => 'ООО', 'code' => 'LLC', 'is_active' => true],
+            ['name_uz' => 'АЖ', 'name_ru' => 'АО', 'code' => 'JSC', 'is_active' => true],
+            ['name_uz' => 'МЧ ХК', 'name_ru' => 'ТОО', 'code' => 'LLP', 'is_active' => true],
+            ['name_uz' => 'ТИФ', 'name_ru' => 'ТИФ', 'code' => 'TIF', 'is_active' => true],
+        ];
+
+        foreach ($orgForms as $orgForm) {
+            OrgForm::firstOrCreate(
+                ['code' => $orgForm['code']],
+                $orgForm
+            );
         }
+    }
+
+    private function createDistricts()
+    {
+        $districts = [
+            ['name_uz' => 'Олмазор', 'name_ru' => 'Олмазор', 'code' => 'OLM', 'is_active' => true],
+            ['name_uz' => 'Мирзо-Улуғбек', 'name_ru' => 'Мирзо-Улуғбек', 'code' => 'MUB', 'is_active' => true],
+            ['name_uz' => 'Яккасарой', 'name_ru' => 'Яккасарой', 'code' => 'YAK', 'is_active' => true],
+            ['name_uz' => 'Шайхонтохур', 'name_ru' => 'Шайхонтохур', 'code' => 'SHA', 'is_active' => true],
+            ['name_uz' => 'Сергели', 'name_ru' => 'Сергели', 'code' => 'SER', 'is_active' => true],
+            ['name_uz' => 'Яшнобод', 'name_ru' => 'Яшнобод', 'code' => 'YAS', 'is_active' => true],
+            ['name_uz' => 'Учтепа', 'name_ru' => 'Учтепа', 'code' => 'UCH', 'is_active' => true],
+            ['name_uz' => 'Чилонзор', 'name_ru' => 'Чилонзор', 'code' => 'CHI', 'is_active' => true],
+            ['name_uz' => 'Юнусобод', 'name_ru' => 'Юнусобод', 'code' => 'YUN', 'is_active' => true],
+            ['name_uz' => 'Миробод', 'name_ru' => 'Миробод', 'code' => 'MIR', 'is_active' => true],
+            ['name_uz' => 'Янгихаёт', 'name_ru' => 'Янгихаёт', 'code' => 'YAN', 'is_active' => true],
+            ['name_uz' => 'Бектемир', 'name_ru' => 'Бектемир', 'code' => 'BEK', 'is_active' => true],
+        ];
+
+        foreach ($districts as $district) {
+            District::firstOrCreate(
+                ['name_uz' => $district['name_uz']],
+                $district
+            );
+        }
+    }
+
+    private function createContractStatuses()
+    {
+        $statuses = [
+            ['name_uz' => 'Амалда', 'name_ru' => 'Действующий', 'code' => 'active', 'color' => '#28a745', 'is_active' => true],
+            ['name_uz' => 'Бекор қилинган', 'name_ru' => 'Отменен', 'code' => 'cancelled', 'color' => '#dc3545', 'is_active' => true],
+            ['name_uz' => 'Якунланган', 'name_ru' => 'Завершен', 'code' => 'completed', 'color' => '#17a2b8', 'is_active' => true],
+            ['name_uz' => 'Кутилмоқда', 'name_ru' => 'Ожидание', 'code' => 'pending', 'color' => '#ffc107', 'is_active' => true],
+            ['name_uz' => 'Тўхтатилган', 'name_ru' => 'Приостановлен', 'code' => 'suspended', 'color' => '#6c757d', 'is_active' => true],
+        ];
+
+        foreach ($statuses as $status) {
+            ContractStatus::firstOrCreate(
+                ['code' => $status['code']],
+                $status
+            );
+        }
+    }
+
+    private function createBaseCalculationAmount()
+    {
+        BaseCalculationAmount::firstOrCreate(
+            ['is_current' => true],
+            [
+                'amount' => 412000.00,
+                'effective_from' => '2024-01-01',
+                'is_current' => true,
+                'description' => 'Базовая расчетная величина для APZ',
+            ]
+        );
     }
 
     private function analyzeExcelStructure($data)
@@ -98,17 +202,17 @@ class ApzDataSeeder extends Seeder
 
     private function processHeaderAndGetDataRows($data)
     {
-        // Find header row
+        // Find header row (should be row 2, index 1)
         $headerRowIndex = $this->findHeaderRow($data);
 
         if ($headerRowIndex === -1) {
             throw new \Exception('Could not find header row in Excel file');
         }
 
-        $this->headerRow = $this->buildCompleteHeader($data, $headerRowIndex);
-        $this->analyzeHeaderStructure($this->headerRow);
+        $this->headerRow = $data[$headerRowIndex];
+        $this->identifyMonthlyPaymentColumns();
 
-        // Remove header rows and return data rows
+        // Data starts after header row
         $dataRows = array_slice($data, $headerRowIndex + 1);
 
         Log::info("Header analysis completed", [
@@ -123,80 +227,75 @@ class ApzDataSeeder extends Seeder
 
     private function findHeaderRow($data)
     {
+        // Look for the row containing "№", "ИНН", "ПИНФЛ", etc.
         for ($i = 0; $i < min(10, count($data)); $i++) {
-            $score = $this->calculateHeaderScore($data[$i]);
-            if ($score >= 5) {
+            $row = $data[$i];
+            $score = 0;
+
+            // Check for key header indicators
+            foreach ($row as $cell) {
+                $cellText = trim($cell);
+                if ($cellText === '№' || $cellText === 'ИНН' || $cellText === 'ПИНФЛ' ||
+                    stripos($cellText, 'Корхона номи') !== false ||
+                    stripos($cellText, 'шарт. №') !== false) {
+                    $score++;
+                }
+            }
+
+            if ($score >= 3) {
                 return $i;
             }
         }
         return -1;
     }
 
-    private function calculateHeaderScore($row)
-    {
-        $requiredColumns = ['ИНН', 'ПИНФЛ', 'Корхона номи', 'шарт', 'Контракт', 'ФАКТ', '№', 'Туман', 'қиймати'];
-        $score = 0;
-
-        foreach ($row as $cell) {
-            $cellText = trim($cell);
-            foreach ($requiredColumns as $required) {
-                if (stripos($cellText, $required) !== false) {
-                    $score++;
-                    break;
-                }
-            }
-        }
-
-        return $score;
-    }
-
-    private function buildCompleteHeader($allData, $startRowIndex)
-    {
-        $baseHeader = $allData[$startRowIndex];
-
-        // Expected column structure based on your Excel file
-        $expectedColumns = [
-            'Умуман тўловни амалга оширмаганлар', '', 'Қарздорлар', '№', 'ИНН', 'ПИНФЛ', 'Корхона номи', 'шарт. №',
-            'Контракт ҳолати', 'шартнома санаси', 'Якунлаш сана', 'Тўлов шарти', 'Тўлов муддати', 'Аванс', 'Туман',
-            'М3 (площадь)', 'Шартнома қиймати', 'Бўнак тўлов', 'Ойлик тўлов', 'Жами тўлов', 'Қолдиқ', 'ФАКТ'
-        ];
-
-        // Extend base header if needed
-        $completeHeader = $baseHeader;
-        for ($i = count($completeHeader); $i < count($expectedColumns); $i++) {
-            $completeHeader[] = $expectedColumns[$i];
-        }
-
-        // Look for additional date columns in subsequent rows
-        for ($nextRow = $startRowIndex + 1; $nextRow < min($startRowIndex + 3, count($allData)); $nextRow++) {
-            $row = $allData[$nextRow];
-            foreach ($row as $index => $cell) {
-                if (preg_match('/^(\d{1,2})\.(\d{1,2})\.(\d{4})$/', trim($cell))) {
-                    // Extend header to include date columns
-                    while (count($completeHeader) <= $index) {
-                        $completeHeader[] = '';
-                    }
-                    $completeHeader[$index] = trim($cell);
-                }
-            }
-        }
-
-        return $completeHeader;
-    }
-
-    private function analyzeHeaderStructure($headerRow)
+    private function identifyMonthlyPaymentColumns()
     {
         $this->monthlyPaymentColumns = [];
 
-        foreach ($headerRow as $index => $header) {
-            $headerText = trim($header);
+        // Start searching from column 22 onwards
+        for ($i = 22; $i < count($this->headerRow); $i++) {
+            $headerText = trim($this->headerRow[$i]);
 
-            // Detect date columns (monthly payment columns)
-            if (preg_match('/^(\d{1,2})\.(\d{1,2})\.(\d{4})$/', $headerText)) {
-                $this->monthlyPaymentColumns[$index] = [
+            // Debug log each column header
+            if ($i < 35) {
+                Log::info("Checking column {$i}: '{$headerText}'");
+            }
+
+            // Check for M/D/YYYY format (like 4/30/2024)
+            if (preg_match('/^(\d{1,2})\/(\d{1,2})\/(\d{4})$/', $headerText)) {
+                $this->monthlyPaymentColumns[$i] = [
                     'date' => $headerText,
                     'parsed_date' => $this->parseExcelDateFromString($headerText)
                 ];
+                Log::info("Found M/D/YYYY date column at {$i}: {$headerText}");
+            }
+            // Also check for DD.MM.YYYY format (like 30.04.2024)
+            elseif (preg_match('/^(\d{1,2})\.(\d{1,2})\.(\d{4})$/', $headerText)) {
+                $this->monthlyPaymentColumns[$i] = [
+                    'date' => $headerText,
+                    'parsed_date' => $this->parseExcelDateFromString($headerText)
+                ];
+                Log::info("Found DD.MM.YYYY date column at {$i}: {$headerText}");
+            }
+            // Check for Excel serial numbers that represent dates (45412 = April 30, 2024)
+            elseif (is_numeric($headerText) && $headerText > 40000 && $headerText < 50000) {
+                $parsedDate = $this->parseExcelSerialDate($headerText);
+                if ($parsedDate) {
+                    $this->monthlyPaymentColumns[$i] = [
+                        'date' => $parsedDate->format('n/j/Y'),
+                        'parsed_date' => $parsedDate,
+                        'serial' => $headerText
+                    ];
+                    Log::info("Found Excel serial date column at {$i}: {$headerText} = {$parsedDate->format('M d, Y')}");
+                }
+            }
+
+            // Stop when we hit summary columns
+            if (stripos($headerText, 'ЖАМИ') !== false ||
+                stripos($headerText, 'ПЛАН') !== false ||
+                stripos($headerText, 'Реальная') !== false) {
+                break;
             }
         }
 
@@ -206,134 +305,54 @@ class ApzDataSeeder extends Seeder
         ]);
     }
 
-    private function getColumnMapping()
-    {
-        $map = [];
-
-        foreach ($this->headerRow as $index => $header) {
-            $headerText = strtolower(trim($header));
-
-            // Map columns based on keywords - only set if not already mapped
-            if (stripos($headerText, 'инн') !== false && !isset($map['inn'])) {
-                $map['inn'] = $index;
-            } elseif (stripos($headerText, 'пинфл') !== false && !isset($map['pinfl'])) {
-                $map['pinfl'] = $index;
-            } elseif (stripos($headerText, 'корхона') !== false && stripos($headerText, 'номи') !== false) {
-                $map['company_name'] = $index;
-            } elseif (stripos($headerText, 'шарт') !== false && stripos($headerText, '№') !== false) {
-                $map['contract_number'] = $index;
-            } elseif (stripos($headerText, 'контракт') !== false && stripos($headerText, 'ҳолати') !== false) {
-                $map['contract_status'] = $index;
-            } elseif (stripos($headerText, 'шартнома') !== false && stripos($headerText, 'санаси') !== false) {
-                $map['contract_date'] = $index;
-            } elseif (stripos($headerText, 'якунлаш') !== false && stripos($headerText, 'сана') !== false) {
-                $map['completion_date'] = $index;
-            } elseif (stripos($headerText, 'тўлов') !== false && stripos($headerText, 'шарти') !== false) {
-                $map['payment_terms'] = $index;
-            } elseif (stripos($headerText, 'тўлов') !== false && stripos($headerText, 'муддати') !== false) {
-                $map['payment_period'] = $index;
-            } elseif (stripos($headerText, 'аванс') !== false) {
-                $map['advance_percent'] = $index;
-            } elseif (stripos($headerText, 'туман') !== false) {
-                $map['district'] = $index;
-            } elseif (stripos($headerText, 'м3') !== false || stripos($headerText, 'площадь') !== false) {
-                $map['area'] = $index;
-            } elseif (stripos($headerText, 'шартнома') !== false && stripos($headerText, 'қиймати') !== false) {
-                $map['contract_amount'] = $index;
-            } elseif (stripos($headerText, 'бўнак') !== false && stripos($headerText, 'тўлов') !== false) {
-                $map['installment_payment'] = $index;
-            } elseif (stripos($headerText, 'ойлик') !== false && stripos($headerText, 'тўлов') !== false) {
-                $map['monthly_payment'] = $index;
-            } elseif (stripos($headerText, 'жами') !== false && stripos($headerText, 'тўлов') !== false && !stripos($headerText, 'факт')) {
-                $map['total_payment'] = $index;
-            } elseif (stripos($headerText, 'қолдиқ') !== false) {
-                $map['remaining'] = $index;
-            } elseif (stripos($headerText, 'факт') !== false && strlen($headerText) < 10) {
-                $map['actual_payment_indicator'] = $index;
-            } elseif (trim($headerText) === '№' || (stripos($headerText, '№') !== false && strlen($headerText) < 5)) {
-                $map['serial_number'] = $index;
-            }
-        }
-
-        // Set default fallbacks based on typical Excel structure
-        $this->setDefaultColumnMappings($map);
-
-        Log::debug("Column mapping created", [
-            'mapped_columns' => count($map),
-            'sample_mapping' => array_slice($map, 0, 10, true)
-        ]);
-
-        return $map;
-    }
-
-    private function setDefaultColumnMappings(&$map)
-    {
-        $defaults = [
-            'council_conclusion_1' => 0,
-            'council_conclusion_2' => 2,
-            'serial_number' => 3,
-            'inn' => 4,
-            'pinfl' => 5,
-            'company_name' => 6,
-            'contract_number' => 7,
-            'contract_status' => 8,
-            'contract_date' => 9,
-            'completion_date' => 10,
-            'payment_terms' => 11,
-            'payment_period' => 12,
-            'advance_percent' => 13,
-            'district' => 14,
-            'area' => 15,
-            'contract_amount' => 16,
-            'installment_payment' => 17,
-            'monthly_payment' => 18,
-            'total_payment' => 19,
-            'remaining' => 20,
-            'actual_payment_indicator' => 21,
-        ];
-
-        foreach ($defaults as $key => $defaultIndex) {
-            if (!isset($map[$key])) {
-                $map[$key] = $defaultIndex;
-            }
-        }
-    }
-
     private function processDataRows($dataRows, $districts, $statuses, $baseAmount)
     {
-        DB::beginTransaction();
-
         $processedCount = 0;
         $skippedCount = 0;
         $errorCount = 0;
 
-        foreach ($dataRows as $index => $row) {
-            $rowNumber = $index + 1;
+        // Process in chunks to handle large datasets
+        $chunks = array_chunk($dataRows, 50);
 
-            if ($this->shouldSkipRow($row)) {
-                $skippedCount++;
-                $this->logSkippedRow($rowNumber, 'Empty or summary row', $row);
-                continue;
-            }
+        foreach ($chunks as $chunkIndex => $chunk) {
+            DB::beginTransaction();
 
             try {
-                $result = $this->processApzRow($row, $districts, $statuses, $baseAmount, $rowNumber);
-                if ($result) {
-                    $processedCount++;
-                    if ($processedCount % 10 == 0) {
-                        $this->command->info("Processed {$processedCount} records...");
+                foreach ($chunk as $index => $row) {
+                    $rowNumber = ($chunkIndex * 50) + $index + 1;
+
+                    if ($this->shouldSkipRow($row)) {
+                        $skippedCount++;
+                        $this->logSkippedRow($rowNumber, 'Empty or summary row', $row);
+                        continue;
                     }
-                } else {
-                    $skippedCount++;
+
+                    try {
+                        $result = $this->processApzRow($row, $districts, $statuses, $baseAmount, $rowNumber);
+                        if ($result) {
+                            $processedCount++;
+                            if ($processedCount % 10 == 0) {
+                                $this->command->info("Processed {$processedCount} records...");
+                            }
+                        } else {
+                            $skippedCount++;
+                        }
+                    } catch (\Exception $e) {
+                        $errorCount++;
+                        $this->handleRowError($e, $rowNumber, $row, $errorCount);
+                        continue;
+                    }
                 }
+
+                DB::commit();
+                $this->command->info("Completed chunk " . ($chunkIndex + 1) . " of " . count($chunks));
+
             } catch (\Exception $e) {
-                $errorCount++;
-                $this->handleRowError($e, $rowNumber, $row, $errorCount);
-                continue;
+                DB::rollback();
+                throw $e;
             }
         }
 
-        DB::commit();
         $this->showImportSummary($processedCount, $skippedCount, $errorCount);
     }
 
@@ -362,15 +381,18 @@ class ApzDataSeeder extends Seeder
 
     private function processApzRow($row, $districts, $statuses, $baseAmount, $rowNumber)
     {
-        $columnMap = $this->getColumnMapping();
-        $rowData = $this->extractRowData($row, $columnMap);
+        $rowData = $this->extractRowData($row);
 
         // Debug logging for first few rows
-        if ($rowNumber <= 10) {
-            Log::info("Row {$rowNumber} analysis", [
+        if ($rowNumber <= 3) {
+            Log::info("Row {$rowNumber} extracted data", [
                 'company_name' => $rowData['companyName'],
+                'contract_number' => $rowData['contractNumber'],
                 'contract_amount' => $rowData['contractAmount'],
-                'monthly_payments_count' => count($rowData['monthlyPayments'])
+                'inn' => $rowData['inn'],
+                'pinfl' => $rowData['pinfl'],
+                'monthly_payments_count' => count($rowData['monthlyPayments']),
+                'total_actual_payment' => $rowData['totalActualPayment']
             ]);
         }
 
@@ -402,9 +424,9 @@ class ApzDataSeeder extends Seeder
         }
     }
 
-    private function extractRowData($row, $columnMap)
+    private function extractRowData($row)
     {
-        // Extract monthly payments
+        // Extract monthly payments from date columns
         $monthlyPayments = [];
         foreach ($this->monthlyPaymentColumns as $colIndex => $monthInfo) {
             $payment = $this->parseAmount($row[$colIndex] ?? 0);
@@ -415,34 +437,28 @@ class ApzDataSeeder extends Seeder
 
         // Calculate total actual payment
         $totalActualPayment = array_sum($monthlyPayments);
-        if ($totalActualPayment <= 0) {
-            $actualPaymentRaw = $row[$columnMap['actual_payment_indicator']] ?? 0;
-            $contractAmount = $this->parseAmount($row[$columnMap['contract_amount']] ?? 0);
-            $totalPayment = $this->parseAmount($row[$columnMap['total_payment']] ?? 0);
-            $totalActualPayment = $this->parseActualPayment($actualPaymentRaw, $contractAmount, $totalPayment);
-        }
 
         return [
-            'councilConclusion1' => $this->cleanString($row[$columnMap['council_conclusion_1']] ?? ''),
-            'councilConclusion2' => $this->cleanString($row[$columnMap['council_conclusion_2']] ?? ''),
-            'serialNumber' => $this->cleanString($row[$columnMap['serial_number']] ?? ''),
-            'inn' => $this->cleanString($row[$columnMap['inn']] ?? ''),
-            'pinfl' => $this->cleanString($row[$columnMap['pinfl']] ?? ''),
-            'companyName' => $this->cleanString($row[$columnMap['company_name']] ?? ''),
-            'contractNumber' => $this->cleanString($row[$columnMap['contract_number']] ?? ''),
-            'contractStatus' => $this->cleanString($row[$columnMap['contract_status']] ?? ''),
-            'contractDate' => $this->parseExcelDate($row[$columnMap['contract_date']] ?? ''),
-            'completionDate' => $this->parseExcelDate($row[$columnMap['completion_date']] ?? ''),
-            'paymentTerms' => $this->cleanString($row[$columnMap['payment_terms']] ?? ''),
-            'paymentPeriod' => (int)($row[$columnMap['payment_period']] ?? 0),
-            'advancePercent' => $this->parsePercent($row[$columnMap['advance_percent']] ?? ''),
-            'districtName' => $this->cleanString($row[$columnMap['district']] ?? ''),
-            'area' => $this->parseAmount($row[$columnMap['area']] ?? 0),
-            'contractAmount' => $this->parseAmount($row[$columnMap['contract_amount']] ?? 0),
-            'installmentPayment' => $this->parseAmount($row[$columnMap['installment_payment']] ?? 0),
-            'monthlyPayment' => $this->parseAmount($row[$columnMap['monthly_payment']] ?? 0),
-            'totalPayment' => $this->parseAmount($row[$columnMap['total_payment']] ?? 0),
-            'remaining' => $this->parseAmount($row[$columnMap['remaining']] ?? 0),
+            'councilConclusion1' => $this->cleanString($row[$this->columnMap['council_conclusion_1']] ?? ''),
+            'councilConclusion2' => $this->cleanString($row[$this->columnMap['council_conclusion_2']] ?? ''),
+            'serialNumber' => $this->cleanString($row[$this->columnMap['serial_number']] ?? ''),
+            'inn' => $this->cleanString($row[$this->columnMap['inn']] ?? ''),
+            'pinfl' => $this->cleanString($row[$this->columnMap['pinfl']] ?? ''),
+            'companyName' => $this->cleanString($row[$this->columnMap['company_name']] ?? ''),
+            'contractNumber' => $this->cleanString($row[$this->columnMap['contract_number']] ?? ''),
+            'contractStatus' => $this->cleanString($row[$this->columnMap['contract_status']] ?? ''),
+            'contractDate' => $this->parseExcelDate($row[$this->columnMap['contract_date']] ?? ''),
+            'completionDate' => $this->parseExcelDate($row[$this->columnMap['completion_date']] ?? ''),
+            'paymentTerms' => $this->cleanString($row[$this->columnMap['payment_terms']] ?? ''),
+            'paymentPeriod' => (int)($row[$this->columnMap['payment_period']] ?? 0),
+            'advancePercent' => $this->parsePercent($row[$this->columnMap['advance_percent']] ?? ''),
+            'districtName' => $this->cleanString($row[$this->columnMap['district']] ?? ''),
+            'area' => $this->parseAmount($row[$this->columnMap['area']] ?? 0),
+            'contractAmount' => $this->parseAmount($row[$this->columnMap['contract_amount']] ?? 0),
+            'installmentPayment' => $this->parseAmount($row[$this->columnMap['installment_payment']] ?? 0),
+            'monthlyPayment' => $this->parseAmount($row[$this->columnMap['monthly_payment']] ?? 0),
+            'totalPayment' => $this->parseAmount($row[$this->columnMap['total_payment']] ?? 0),
+            'remaining' => $this->parseAmount($row[$this->columnMap['remaining']] ?? 0),
             'monthlyPayments' => $monthlyPayments,
             'totalActualPayment' => $totalActualPayment
         ];
@@ -450,6 +466,16 @@ class ApzDataSeeder extends Seeder
 
     private function validateRowData($rowNumber, $rowData)
     {
+        // Skip completely empty rows
+        if (empty($rowData['companyName']) && empty($rowData['inn']) && empty($rowData['pinfl'])) {
+            return ['valid' => false, 'reason' => 'Completely empty row'];
+        }
+
+        // Skip cancelled contracts with no amounts
+        if (stripos($rowData['contractStatus'], 'Бекор') !== false && $rowData['contractAmount'] == 0) {
+            return ['valid' => false, 'reason' => 'Cancelled contract with zero amount'];
+        }
+
         if (empty($rowData['companyName'])) {
             return ['valid' => false, 'reason' => 'Missing company name'];
         }
@@ -463,16 +489,20 @@ class ApzDataSeeder extends Seeder
         }
 
         if ($rowData['contractAmount'] <= 0) {
-            return ['valid' => false, 'reason' => 'Invalid contract amount'];
+            return ['valid' => false, 'reason' => 'Invalid contract amount: ' . $rowData['contractAmount']];
         }
 
         // Check for Excel errors
-        if (stripos($rowData['inn'], '#REF') !== false || stripos($rowData['companyName'], '#REF') !== false) {
+        if (stripos($rowData['inn'], '#REF') !== false ||
+            stripos($rowData['companyName'], '#REF') !== false ||
+            stripos($rowData['inn'], '#N/A') !== false) {
             return ['valid' => false, 'reason' => 'Contains Excel error'];
         }
 
         // Check for summary rows
-        if (stripos($rowData['companyName'], 'ЖАМИ') !== false || stripos($rowData['companyName'], 'ИТОГО') !== false) {
+        if (stripos($rowData['companyName'], 'ЖАМИ') !== false ||
+            stripos($rowData['companyName'], 'ИТОГО') !== false ||
+            stripos($rowData['serialNumber'], 'ЖАМИ') !== false) {
             return ['valid' => false, 'reason' => 'Summary row'];
         }
 
@@ -490,11 +520,17 @@ class ApzDataSeeder extends Seeder
         }
 
         $isLegalEntity = !empty($inn) || $this->isLegalEntityByName($companyName);
-        $searchField = $isLegalEntity ? 'inn' : 'pinfl';
-        $searchValue = $isLegalEntity ? $inn : $pinfl;
 
-        // Generate identifier if missing
-        if (empty($searchValue)) {
+        // Handle the case where both INN and PINFL exist (use INN for legal entities)
+        if ($isLegalEntity && !empty($inn)) {
+            $searchField = 'inn';
+            $searchValue = $inn;
+        } elseif (!$isLegalEntity && !empty($pinfl)) {
+            $searchField = 'pinfl';
+            $searchValue = $pinfl;
+        } else {
+            // Generate identifier if missing
+            $searchField = $isLegalEntity ? 'inn' : 'pinfl';
             $searchValue = $isLegalEntity ?
                 'IMP' . str_pad($rowNumber, 6, '0', STR_PAD_LEFT) :
                 'IND' . str_pad($rowNumber, 11, '0', STR_PAD_LEFT);
@@ -504,13 +540,13 @@ class ApzDataSeeder extends Seeder
         $subject = Subject::where($searchField, $searchValue)->first();
 
         if (!$subject) {
-            $subject = $this->createNewSubject($searchValue, $companyName, $isLegalEntity);
+            $subject = $this->createNewSubject($searchValue, $companyName, $isLegalEntity, $inn, $pinfl);
         }
 
         return $subject;
     }
 
-    private function createNewSubject($identifier, $companyName, $isLegalEntity)
+    private function createNewSubject($identifier, $companyName, $isLegalEntity, $inn = null, $pinfl = null)
     {
         $subjectData = [
             'is_legal_entity' => $isLegalEntity,
@@ -521,11 +557,19 @@ class ApzDataSeeder extends Seeder
         ];
 
         if ($isLegalEntity) {
-            $subjectData['inn'] = $identifier;
+            $subjectData['inn'] = $inn ?: $identifier;
             $subjectData['org_form_id'] = $this->ensureOrgFormExists();
+            // Also store PINFL if it exists for legal entity
+            if (!empty($pinfl)) {
+                $subjectData['pinfl'] = $pinfl;
+            }
         } else {
-            $subjectData['pinfl'] = $identifier;
+            $subjectData['pinfl'] = $pinfl ?: $identifier;
             $subjectData['document_type'] = 'Паспорт';
+            // Also store INN if it exists for individual
+            if (!empty($inn)) {
+                $subjectData['inn'] = $inn;
+            }
         }
 
         return Subject::create($subjectData);
@@ -542,10 +586,10 @@ class ApzDataSeeder extends Seeder
         return Objectt::create([
             'subject_id' => $subject->id,
             'district_id' => $district->id,
-            'address' => 'APZ импорт - Адрес не указан',
+            'address' => 'APZ импорт - ' . ($rowData['districtName'] ?: 'Адрес не указан'),
             'construction_volume' => $volume,
             'is_active' => true,
-            'application_date' => now(),
+            'application_date' => $rowData['contractDate'] ?: now(),
         ]);
     }
 
@@ -555,27 +599,46 @@ class ApzDataSeeder extends Seeder
             return $districts->first(); // Fallback to first district
         }
 
-        // Try exact match
-        $district = $districts->where('name_ru', $districtName)->first();
+        // District mappings for common variations
+        $districtMappings = [
+            'Олмазор' => ['Олмазор', 'Алмазар', 'Алмазарский', 'Olmazar'],
+            'Мирзо-Улуғбек' => ['Мирзо-Улуғбек', 'Мирзо-Улугбек', 'Мирзо-Улугбекский', 'Mirzo-Ulugbek'],
+            'Яккасарой' => ['Яккасарой', 'Яккасарай', 'Яккасарайский', 'Yakkasaray'],
+            'Шайхонтохур' => ['Шайхонтохур', 'Шайхантахур', 'Шайхантахурский', 'Shayhantahur'],
+            'Сергели' => ['Сергели', 'Сергелийский', 'Sergeli'],
+            'Яшнобод' => ['Яшнобод', 'Яшнабад', 'Яшнободский', 'Yashnobod'],
+            'Учтепа' => ['Учтепа', 'Учтепинский', 'Uchtepa'],
+            'Чилонзор' => ['Чилонзор', 'Чиланзар', 'Чилонзорский', 'Chilonzor'],
+            'Юнусобод' => ['Юнусобод', 'Юнусабад', 'Юнусободский', 'Yunusobod'],
+            'Миробод' => ['Миробод', 'Мирабад', 'Мирободский', 'Mirobod'],
+            'Янгихаёт' => ['Янгихаёт', 'Янгихайот', 'Yangihayet'],
+        ];
 
-        // Try case-insensitive match
+        // Try exact match first
+        $district = $districts->where('name_ru', $districtName)->first() ?:
+                   $districts->where('name_uz', $districtName)->first();
+
+        // Try mappings
         if (!$district) {
-            $district = $districts->filter(function($d) use ($districtName) {
-                return strcasecmp($d->name_ru, $districtName) === 0;
-            })->first();
+            foreach ($districtMappings as $standardName => $variations) {
+                foreach ($variations as $variation) {
+                    if (strcasecmp($districtName, $variation) === 0) {
+                        $district = $districts->where('name_ru', $standardName)->first() ?:
+                                   $districts->where('name_uz', $standardName)->first();
+                        if ($district) break 2;
+                    }
+                }
+            }
         }
 
         // Try partial match
         if (!$district) {
             $district = $districts->filter(function($d) use ($districtName) {
                 return stripos($d->name_ru, $districtName) !== false ||
-                       stripos($districtName, $d->name_ru) !== false;
+                       stripos($d->name_uz, $districtName) !== false ||
+                       stripos($districtName, $d->name_ru) !== false ||
+                       stripos($districtName, $d->name_uz) !== false;
             })->first();
-        }
-
-        // Try district mappings
-        if (!$district) {
-            $district = $this->findDistrictByMapping($districtName, $districts);
         }
 
         // Log unmapped districts
@@ -585,27 +648,6 @@ class ApzDataSeeder extends Seeder
         }
 
         return $district;
-    }
-
-    private function findDistrictByMapping($districtName, $districts)
-    {
-        $districtMappings = [
-            'Алмазарский' => ['Олмазор', 'Olmazar', 'Алмазарский', 'Алмазар'],
-            'Мирзо-Улугбекский' => ['Мирзо-Улуғбек', 'Мирзо-Улугбек', 'Mirzo-Ulugbek'],
-            'Яккасарайский' => ['Яккасарой', 'Яккасарай', 'Yakkasaray'],
-            'Шайхантахурский' => ['Шайхонтохур', 'Шайхантаур', 'Shayhantahur'],
-            // Add more mappings as needed
-        ];
-
-        foreach ($districtMappings as $standardName => $variations) {
-            foreach ($variations as $variation) {
-                if (stripos($districtName, $variation) !== false) {
-                    return $districts->where('name_ru', $standardName)->first();
-                }
-            }
-        }
-
-        return null;
     }
 
     private function logUnmappedDistrict($districtName, $rowNumber)
@@ -618,24 +660,30 @@ class ApzDataSeeder extends Seeder
 
     private function createContract($subject, $object, $rowData, $statuses, $baseAmount, $rowNumber)
     {
-        // Parse payment terms
+        // Parse payment terms (e.g., "20/80", "40/60")
         $initialPaymentPercent = 20; // Default
         if (!empty($rowData['paymentTerms'])) {
-            if (preg_match('/(\d+)/', $rowData['paymentTerms'], $matches)) {
+            if (preg_match('/(\d+)\/(\d+)/', $rowData['paymentTerms'], $matches)) {
                 $initialPaymentPercent = (int)$matches[1];
+            } elseif (preg_match('/(\d+)/', $rowData['paymentTerms'], $matches)) {
+                $percent = (int)$matches[1];
+                $initialPaymentPercent = $percent > 100 ? 20 : $percent;
             }
         }
 
+        // Override with advance percent if provided
         if ($rowData['advancePercent'] > 0) {
-            $initialPaymentPercent = $rowData['advancePercent'];
+            $initialPaymentPercent = min(100, $rowData['advancePercent']);
         }
 
         $status = $this->getContractStatus($rowData['contractStatus'], $statuses);
         $isActive = !$this->isContractCancelled($rowData['contractStatus']);
 
         $contractDate = $rowData['contractDate'] ?: now();
-        $constructionPeriodYears = $rowData['paymentPeriod'] > 0 ? max(1, ceil($rowData['paymentPeriod'] / 12)) : 1;
-        $quartersCount = max(1, ceil($rowData['paymentPeriod'] / 3));
+        $constructionPeriodYears = $rowData['paymentPeriod'] > 0 ?
+            max(1, ceil($rowData['paymentPeriod'] / 12)) : 1;
+        $quartersCount = $rowData['paymentPeriod'] > 0 ?
+            max(1, ceil($rowData['paymentPeriod'] / 3)) : 4;
 
         // Ensure unique contract number
         $contractNumber = $rowData['contractNumber'];
@@ -643,8 +691,12 @@ class ApzDataSeeder extends Seeder
             $contractNumber = 'APZ-' . now()->format('Y') . '-' . str_pad($rowNumber, 6, '0', STR_PAD_LEFT);
         }
 
-        if (Contract::where('contract_number', $contractNumber)->exists()) {
-            $contractNumber .= '-' . $rowNumber;
+        // Check for duplicate and make unique if necessary
+        $originalNumber = $contractNumber;
+        $counter = 1;
+        while (Contract::where('contract_number', $contractNumber)->exists()) {
+            $contractNumber = $originalNumber . '-' . $counter;
+            $counter++;
         }
 
         return Contract::create([
@@ -669,7 +721,7 @@ class ApzDataSeeder extends Seeder
     private function calculateCoefficient($contractAmount, $volume, $baseAmount)
     {
         if ($contractAmount > 0 && $volume > 0 && $baseAmount > 0) {
-            return $contractAmount / ($volume * $baseAmount);
+            return round($contractAmount / ($volume * $baseAmount), 2);
         }
         return 1.0;
     }
@@ -678,29 +730,29 @@ class ApzDataSeeder extends Seeder
     {
         if (!empty($contractStatus)) {
             // Check for cancelled status
-            if (stripos($contractStatus, 'Бекор') !== false) {
-                $cancelled = $statuses->where('name_ru', 'LIKE', '%Бекор%')->first();
+            if (stripos($contractStatus, 'Бекор') !== false || stripos($contractStatus, 'қилинган') !== false) {
+                $cancelled = $statuses->filter(function($s) {
+                    return stripos($s->name_ru, 'Бекор') !== false ||
+                           stripos($s->name_uz, 'Бекор') !== false ||
+                           stripos($s->name_ru, 'Отмен') !== false;
+                })->first();
                 if ($cancelled) return $cancelled;
-            }
-            // Check for completed status
-            elseif (stripos($contractStatus, 'завершен') !== false ||
-                   stripos($contractStatus, 'якун') !== false ||
-                   stripos($contractStatus, 'tugal') !== false) {
-                $completed = $statuses->where('name_ru', 'LIKE', '%Якун%')->first();
-                if ($completed) return $completed;
             }
         }
 
         // Default to active status
-        return $statuses->where('name_ru', 'LIKE', '%Действ%')->first() ?:
-               $statuses->where('name_ru', 'LIKE', '%Амал%')->first() ?:
-               $statuses->first();
+        return $statuses->filter(function($s) {
+            return stripos($s->name_ru, 'Действ') !== false ||
+                   stripos($s->name_uz, 'Амал') !== false ||
+                   stripos($s->name_ru, 'Активн') !== false;
+        })->first() ?: $statuses->first();
     }
 
     private function isContractCancelled($contractStatus)
     {
         return !empty($contractStatus) && (
             stripos($contractStatus, 'Бекор') !== false ||
+            stripos($contractStatus, 'қилинган') !== false ||
             stripos($contractStatus, 'отменен') !== false ||
             stripos($contractStatus, 'cancelled') !== false
         );
@@ -815,19 +867,30 @@ class ApzDataSeeder extends Seeder
         }
 
         $status = 'pending';
-        if (stripos($conclusionText, 'да') !== false) {
+        if (stripos($conclusionText, 'да') !== false || stripos($conclusionText, 'Да') !== false) {
             $status = 'approved';
-        } elseif (stripos($conclusionText, 'нет') !== false) {
+        } elseif (stripos($conclusionText, 'нет') !== false || stripos($conclusionText, 'Нет') !== false) {
             $status = 'rejected';
         }
 
         try {
-            CouncilConclusion::create([
+            // Check if CouncilConclusion model has notes field
+            $schema = DB::connection()->getSchemaBuilder();
+            $hasNotesField = $schema->hasColumn('council_conclusions', 'notes');
+
+            $conclusionData = [
                 'object_id' => $object->id,
-                'application_date' => now(),
+                'application_date' => $object->application_date,
                 'conclusion_date' => now(),
                 'status' => $status,
-            ]);
+            ];
+
+            // Only add notes if the field exists
+            if ($hasNotesField) {
+                $conclusionData['notes'] = 'Импортировано из APZ: ' . $conclusionText;
+            }
+
+            CouncilConclusion::create($conclusionData);
         } catch (\Exception $e) {
             Log::error("Failed to create council conclusion for row {$rowNumber}", [
                 'object_id' => $object->id,
@@ -837,40 +900,32 @@ class ApzDataSeeder extends Seeder
         }
     }
 
-    private function parseActualPayment($rawValue, $contractAmount, $totalPayment)
-    {
-        if (empty($rawValue) || $rawValue === '-' || $rawValue === 0) {
-            return 0;
-        }
-
-        $numericValue = $this->parseAmount($rawValue);
-
-        // If value is between 0 and 1, treat as percentage
-        if ($numericValue > 0 && $numericValue <= 1) {
-            $baseAmount = $totalPayment > 0 ? $totalPayment : $contractAmount;
-            return $baseAmount * $numericValue;
-        }
-
-        return $numericValue > 1 ? $numericValue : 0;
-    }
-
     // Utility methods for data validation and cleaning
     private function cleanIdentifier($value, $maxLength)
     {
         if (empty($value)) return '';
 
-        // Handle scientific notation
-        if (is_numeric($value) && (stripos($value, 'E+') !== false || stripos($value, 'E-') !== false)) {
+        // Handle scientific notation (e.g., 3,07058E+13)
+        if (is_string($value) && (stripos($value, 'E+') !== false || stripos($value, 'E-') !== false)) {
+            $numericValue = (float)str_replace(',', '.', $value);
+            $value = number_format($numericValue, 0, '', '');
+        }
+
+        // Handle numeric values
+        if (is_numeric($value)) {
             $value = number_format((float)$value, 0, '', '');
         }
 
-        $cleaned = preg_replace('/[^\w]/', '', (string)$value);
+        $cleaned = preg_replace('/[^\d]/', '', (string)$value);
         return substr($cleaned, 0, $maxLength);
     }
 
     private function isLegalEntityByName($companyName)
     {
-        $legalPatterns = ['OOO', 'МЧЖ', 'MCHJ', 'ООО', 'ТОО', 'LLC', 'АЖ', 'СП', 'ТИФ', 'Ltd', 'Inc'];
+        $legalPatterns = [
+            'OOO', 'МЧЖ', 'MCHJ', 'ООО', 'ТОО', 'LLC', 'АЖ', 'СП', 'ТИФ',
+            'Ltd', 'Inc', 'МЧ ХК', 'XK', 'САВДО', 'TRADE', 'BUSINESS'
+        ];
 
         foreach ($legalPatterns as $pattern) {
             if (stripos($companyName, $pattern) !== false) {
@@ -883,10 +938,10 @@ class ApzDataSeeder extends Seeder
 
     private function ensureOrgFormExists()
     {
-        $orgForm = \App\Models\OrgForm::where('is_active', true)->first();
+        $orgForm = OrgForm::where('is_active', true)->first();
 
         if (!$orgForm) {
-            $orgForm = \App\Models\OrgForm::create([
+            $orgForm = OrgForm::create([
                 'name_ru' => 'ООО',
                 'name_uz' => 'МЧЖ',
                 'code' => 'LLC',
@@ -906,11 +961,11 @@ class ApzDataSeeder extends Seeder
         $this->skippedRows[$reason][] = [
             'row' => $rowNumber,
             'sample_data' => [
-                'company_name' => $row[6] ?? '',
-                'contract_number' => $row[7] ?? '',
-                'inn' => $row[4] ?? '',
-                'district' => $row[14] ?? '',
-                'amount' => $row[16] ?? ''
+                'company_name' => $row[$this->columnMap['company_name']] ?? '',
+                'contract_number' => $row[$this->columnMap['contract_number']] ?? '',
+                'inn' => $row[$this->columnMap['inn']] ?? '',
+                'district' => $row[$this->columnMap['district']] ?? '',
+                'amount' => $row[$this->columnMap['contract_amount']] ?? ''
             ]
         ];
     }
@@ -986,40 +1041,17 @@ class ApzDataSeeder extends Seeder
     // Data access methods
     private function getDistricts()
     {
-        $districts = District::where('is_active', true)->get();
-
-        if ($districts->isEmpty()) {
-            throw new \Exception("No districts found in database. Please run EssentialDataSeeder first.");
-        }
-
-        return $districts;
+        return District::where('is_active', true)->get();
     }
 
     private function getContractStatuses()
     {
-        $statuses = ContractStatus::where('is_active', true)->get();
-
-        if ($statuses->isEmpty()) {
-            throw new \Exception("No contract statuses found in database. Please run EssentialDataSeeder first.");
-        }
-
-        return $statuses;
+        return ContractStatus::where('is_active', true)->get();
     }
 
     private function getOrCreateBaseAmount()
     {
-        $baseAmount = BaseCalculationAmount::where('is_current', true)->first();
-
-        if (!$baseAmount) {
-            $baseAmount = BaseCalculationAmount::create([
-                'amount' => 412000.00,
-                'effective_from' => '2024-01-01',
-                'is_current' => true
-            ]);
-            Log::info("Created default base amount", ['amount' => $baseAmount->amount]);
-        }
-
-        return $baseAmount;
+        return BaseCalculationAmount::where('is_current', true)->first();
     }
 
     // Row validation methods
@@ -1072,6 +1104,9 @@ class ApzDataSeeder extends Seeder
     // XLSX Reading Methods
     private function readXlsx($filePath)
     {
+        // Increase memory limit for large files
+        ini_set('memory_limit', '1G');
+
         $zip = new ZipArchive;
 
         if ($zip->open($filePath) !== TRUE) {
@@ -1163,8 +1198,8 @@ class ApzDataSeeder extends Seeder
             }
         }
 
-        // Fill missing columns with empty strings
-        for ($i = 0; $i <= max(45, $maxCol); $i++) {
+        // Fill missing columns with empty strings (extend to at least 50 columns to handle all data)
+        for ($i = 0; $i <= max(50, $maxCol); $i++) {
             $rowData[] = isset($cells[$i]) ? $cells[$i] : '';
         }
 
@@ -1222,24 +1257,47 @@ class ApzDataSeeder extends Seeder
         return trim(preg_replace('/\s+/', ' ', (string)$value));
     }
 
+    private function parseExcelSerialDate($serialNumber)
+    {
+        try {
+            if (!is_numeric($serialNumber) || $serialNumber <= 0) {
+                return null;
+            }
+
+            // Excel epoch starts at January 1, 1900
+            // But Excel incorrectly treats 1900 as a leap year, so we subtract 2 days
+            $excelEpoch = Carbon::create(1900, 1, 1);
+            return $excelEpoch->addDays((int)$serialNumber - 2);
+        } catch (\Exception $e) {
+            Log::warning("Failed to parse Excel serial date: {$serialNumber}");
+            return null;
+        }
+    }
+
     private function parseExcelDate($value)
     {
         if (empty($value) || $value === '-' || $value === '00.01.1900') return null;
 
         try {
             // Handle Excel serial date numbers
-            if (is_numeric($value) && $value > 1) {
+            if (is_numeric($value) && $value > 1 && $value < 100000) {
+                // Excel epoch starts at 1900-01-01, but Excel incorrectly treats 1900 as leap year
                 $excelEpoch = Carbon::create(1900, 1, 1);
                 return $excelEpoch->addDays((int)$value - 2);
             }
 
-            // Handle date strings
-            if (preg_match('/^(\d{1,2})\.(\d{1,2})\.(\d{4})$/', $value)) {
+            // Handle M/D/YYYY format (4/30/2024)
+            if (preg_match('/^(\d{1,2})\/(\d{1,2})\/(\d{4})$/', $value, $matches)) {
+                return Carbon::createFromFormat('n/j/Y', $value);
+            }
+
+            // Handle DD.MM.YYYY format
+            if (preg_match('/^(\d{1,2})\.(\d{1,2})\.(\d{4})$/', $value, $matches)) {
                 return Carbon::createFromFormat('d.m.Y', $value);
             }
 
             // Try common date formats
-            $formats = ['d.m.Y', 'Y-m-d', 'd/m/Y', 'm/d/Y', 'Y/m/d'];
+            $formats = ['n/j/Y', 'd.m.Y', 'Y-m-d', 'd/m/Y', 'm/d/Y', 'Y/m/d'];
             foreach ($formats as $format) {
                 try {
                     return Carbon::createFromFormat($format, $value);
@@ -1258,13 +1316,18 @@ class ApzDataSeeder extends Seeder
     private function parseExcelDateFromString($dateString)
     {
         try {
-            // Handle dates like '30.09.2024'
+            // Handle M/D/YYYY format (4/30/2024)
+            if (preg_match('/^(\d{1,2})\/(\d{1,2})\/(\d{4})$/', $dateString, $matches)) {
+                return Carbon::createFromFormat('n/j/Y', $dateString);
+            }
+
+            // Handle DD.MM.YYYY format (30.04.2024)
             if (preg_match('/^(\d{1,2})\.(\d{1,2})\.(\d{4})$/', $dateString, $matches)) {
                 return Carbon::createFromFormat('d.m.Y', $dateString);
             }
 
             // Try other common formats
-            $formats = ['d.m.Y', 'd/m/Y', 'Y-m-d', 'm/d/Y'];
+            $formats = ['n/j/Y', 'd.m.Y', 'd/m/Y', 'Y-m-d', 'm/d/Y'];
             foreach ($formats as $format) {
                 try {
                     return Carbon::createFromFormat($format, $dateString);
@@ -1286,18 +1349,18 @@ class ApzDataSeeder extends Seeder
             return 0;
         }
 
-        // Handle scientific notation
+        // Handle scientific notation (e.g., 2,13272E+12)
+        if (is_string($value) && (stripos($value, 'E+') !== false || stripos($value, 'E-') !== false)) {
+            return (float)str_replace(',', '.', $value);
+        }
+
+        // Handle numeric values
         if (is_numeric($value)) {
             return (float)$value;
         }
 
-        // Handle string representations
-        if (is_string($value) && (stripos($value, 'E+') !== false || stripos($value, 'E-') !== false)) {
-            return (float)$value;
-        }
-
-        // Clean and convert to float
-        $cleaned = str_replace([',', ' '], ['.', ''], (string)$value);
+        // Handle comma-separated numbers (2,132,715,475,659)
+        $cleaned = str_replace(',', '', (string)$value);
         $cleaned = preg_replace('/[^\d.-]/', '', $cleaned);
 
         return (float)$cleaned;

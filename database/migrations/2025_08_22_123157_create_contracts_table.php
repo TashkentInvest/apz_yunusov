@@ -8,38 +8,40 @@ return new class extends Migration
 {
     public function up()
     {
+        // Шартномалар жадвали - асосий контракт маълумотлари
         Schema::create('contracts', function (Blueprint $table) {
-            $table->id();
-            $table->string('contract_number', 50)->unique();
-            $table->foreignId('object_id')->constrained('objects');
-            $table->foreignId('subject_id')->constrained('subjects');
+            $table->id(); // Шартнома ID рақами
+            $table->string('contract_number', 50)->unique(); // Шартнома рақами (ноёб)
+            $table->foreignId('object_id')->constrained('objects'); // Объект маълумоти
+            $table->foreignId('subject_id')->constrained('subjects'); // Субъект маълумоти
 
             // Шартнома асосий маълумотлари
-            $table->date('contract_date');
-            $table->date('completion_date')->nullable();
-            $table->foreignId('status_id')->constrained('contract_statuses');
+            $table->date('contract_date'); // Шартнома санаси
+            $table->date('completion_date')->nullable(); // Якунланиш санаси
+            $table->foreignId('status_id')->constrained('contract_statuses'); // Шартнома ҳолати
 
-            // Ҳисоблаш маълумотлари
-            $table->foreignId('base_amount_id')->constrained('base_calculation_amounts');
-            $table->decimal('contract_volume', 12, 2);
-            $table->decimal('coefficient', 5, 2)->default(1.00);
-            $table->decimal('total_amount', 15, 2);
-            $table->text('formula')->nullable();
+            // Молиявий ҳисоблаш маълумотлари
+            $table->foreignId('base_amount_id')->constrained('base_calculation_amounts'); // Асос ҳисоблаш миқдори
+            $table->decimal('contract_volume', 12, 2); // Шартнома ҳажми
+            $table->decimal('coefficient', 5, 2)->default(1.00); // Коэффициент
+            $table->decimal('total_amount', 15, 2); // Жами сумма
+            $table->text('formula')->nullable(); // Ҳисоблаш формуласи
 
             // Тўлов шартлари
-            $table->enum('payment_type', ['full', 'installment'])->default('installment');
-            $table->integer('initial_payment_percent')->default(20);
-            $table->integer('construction_period_years')->default(2);
-            $table->integer('quarters_count')->default(8);
+            $table->enum('payment_type', ['full', 'installment'])->default('installment'); // Тўлов тури
+            $table->integer('initial_payment_percent')->default(20); // Бошланғич тўлов фоизи
+            $table->integer('construction_period_years')->default(2); // Қурилиш муддати (йил)
+            $table->integer('quarters_count')->default(8); // Чорак йиллар сони
 
-            $table->boolean('is_active')->default(true);
-            $table->unsignedBigInteger('created_by')->nullable();
-            $table->timestamps();
-            $table->softDeletes();
+            $table->boolean('is_active')->default(true); // Фаол ҳолати
+            $table->unsignedBigInteger('created_by')->nullable(); // Ким томонидан яратилган
+            $table->timestamps(); // Яратилган ва янгиланган санаси
+            $table->softDeletes(); // Юмшоқ ўчириш
 
-            $table->index('status_id');
-            $table->index(['contract_date', 'completion_date']);
-            $table->index('is_active');
+            // Индекслар тезлик учун
+            $table->index('status_id'); // Статус бўйича индекс
+            $table->index(['contract_date', 'completion_date']); // Санасалар бўйича индекс
+            $table->index('is_active'); // Фаол ҳолат бўйича индекс
         });
     }
 

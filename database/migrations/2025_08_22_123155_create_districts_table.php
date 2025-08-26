@@ -9,12 +9,12 @@ return new class extends Migration
     public function up()
     {
         Schema::create('districts', function (Blueprint $table) {
-            $table->id();
-            $table->string('name_uz', 100);
-            $table->string('name_ru', 100)->nullable();
-            $table->string('code', 10)->nullable();
-            $table->boolean('is_active')->default(true);
-            $table->timestamps();
+            $table->id(); // Туман ID рақами
+            $table->string('name_uz', 100); // Туман номи ўзбек тилида
+            $table->string('name_ru', 100)->nullable(); // Туман номи рус тилида
+            $table->string('code', 10)->nullable(); // Туман коди
+            $table->boolean('is_active')->default(true); // Фаол ҳолати
+            $table->timestamps(); // Яратилган ва янгиланган санаси
         });
     }
 
@@ -23,4 +23,3 @@ return new class extends Migration
         Schema::dropIfExists('districts');
     }
 };
-
