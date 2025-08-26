@@ -150,28 +150,55 @@
                     </tr>
                 </thead>
                 <tbody class="bg-white divide-y divide-gray-200">
-                    @foreach($byDistrict as $district)
+                    @forelse($byDistrict as $district)
                         <tr class="hover:bg-gray-50">
                             <td class="px-6 py-4 whitespace-nowrap text-sm font-medium text-gray-900">
-                                {{ number_format($status->count) }}
+                                {{ $district->tuman ?: 'Номаълум' }}
                             </td>
                             <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-900">
-                                {{ $stats['total'] > 0 ? number_format(($status->count / $stats['total']) * 100, 1) : 0 }}%
-                            </td>
-                            <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-900">
-                                {{ number_format($status->total_qiymat / 1000000, 1) }}М сўм
+                                {{ number_format($district->total) }}
                             </td>
                             <td class="px-6 py-4 whitespace-nowrap text-sm text-green-600">
-                                {{ number_format($status->total_tulov / 1000000, 1) }}М сўм
+                                {{ number_format($district->ozod) }}
                             </td>
                             <td class="px-6 py-4 whitespace-nowrap text-sm text-red-600">
-                                {{ number_format($status->total_qarz / 1000000, 1) }}М сўм
+                                {{ number_format($district->majburiy) }}
+                            </td>
+                            <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-900">
+                                {{ $district->total > 0 ? number_format(($district->ozod / $district->total) * 100, 1) : 0 }}%
+                            </td>
+                            <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-900">
+                                {{ number_format($district->total_qiymat / 1000000, 1) }}М
+                            </td>
+                            <td class="px-6 py-4 whitespace-nowrap text-sm text-green-600">
+                                {{ number_format($district->total_tulov / 1000000, 1) }}М
+                            </td>
+                            <td class="px-6 py-4 whitespace-nowrap text-sm text-red-600">
+                                {{ number_format($district->total_qarz / 1000000, 1) }}М
                             </td>
                         </tr>
-                    @endforeach
+                    @empty
+                        <tr>
+                            <td colspan="8" class="px-6 py-4 text-center text-gray-500">
+                                Туман маълумотлари топилмади
+                            </td>
+                        </tr>
+                    @endforelse
                 </tbody>
             </table>
         </div>
+    </div>
+
+    <!-- Monthly Statistics -->
+    <div class="bg-white rounded-lg shadow-sm border border-gray-200 p-6">
+        <h3 class="text-lg font-medium text-gray-900 mb-4">Ойлик статистика</h3>
+        <canvas id="monthlyChart" class="max-h-80"></canvas>
+    </div>
+
+    <!-- Districts Chart -->
+    <div class="bg-white rounded-lg shadow-sm border border-gray-200 p-6">
+        <h3 class="text-lg font-medium text-gray-900 mb-4">Туманлар бўйича тақсимот</h3>
+        <canvas id="districtChart" class="max-h-96"></canvas>
     </div>
 </div>
 @endsection
@@ -342,6 +369,81 @@
                         text: 'Хужжатлар сони'
                     },
                     beginAtZero: true,
+                    ticks: {
+                        stepSize: 1
+                    }
+                }
+            },
+            interaction: {
+                mode: 'nearest',
+                axis: 'x',
+                intersect: false
+            }
+        }
+    });
+
+    // Districts Chart
+    const districtCtx = document.getElementById('districtChart').getContext('2d');
+    const districtData = @json($byDistrict);
+
+    new Chart(districtCtx, {
+        type: 'bar',
+        data: {
+            labels: districtData.map(item => item.tuman || 'Номаълум'),
+            datasets: [
+                {
+                    label: 'Тўловдан озод',
+                    data: districtData.map(item => item.ozod),
+                    backgroundColor: '#10B981',
+                    borderColor: '#059669',
+                    borderWidth: 1
+                },
+                {
+                    label: 'Мажбурий тўлов',
+                    data: districtData.map(item => item.majburiy),
+                    backgroundColor: '#EF4444',
+                    borderColor: '#DC2626',
+                    borderWidth: 1
+                }
+            ]
+        },
+        options: {
+            responsive: true,
+            maintainAspectRatio: false,
+            plugins: {
+                legend: {
+                    position: 'top',
+                },
+                tooltip: {
+                    mode: 'index',
+                    intersect: false,
+                    callbacks: {
+                        afterLabel: function(context) {
+                            const district = districtData[context.dataIndex];
+                            const total = district.ozod + district.majburiy;
+                            const percentage = total > 0 ? ((context.parsed.y / total) * 100).toFixed(1) : 0;
+                            return `${percentage}% от общего количества по району`;
+                        }
+                    }
+                }
+            },
+            scales: {
+                x: {
+                    title: {
+                        display: true,
+                        text: 'Туманлар'
+                    },
+                    ticks: {
+                        maxRotation: 45,
+                        minRotation: 45
+                    }
+                },
+                y: {
+                    beginAtZero: true,
+                    title: {
+                        display: true,
+                        text: 'Хужжатлар сони'
+                    },
                     ticks: {
                         stepSize: 1
                     }

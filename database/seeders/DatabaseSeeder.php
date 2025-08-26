@@ -22,6 +22,7 @@ class DatabaseSeeder extends Seeder
         $this->call([
             // EssentialDataSeeder::class,
             ApzDataSeeder::class,
+            KengashHulosiExcelSeeder::class
         ]);
     }
 }

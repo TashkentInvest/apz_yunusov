@@ -39,7 +39,7 @@ class KengashHulosasiController extends Controller
             $query->where('bino_turi', $request->bino_turi);
         }
 
-        $kengash_hulosalari = $query->orderBy('created_at', 'desc')->paginate(20);
+        $kengash_hulosalari = $query->paginate(20);
 
         // Get filter options
         $districts = KengashHulosasi::distinct()->pluck('tuman')->filter()->sort();
@@ -111,7 +111,7 @@ class KengashHulosasiController extends Controller
         }
 
         return redirect()->route('kengash-hulosa.index')
-                         ->with('success', 'Кенгаш хулосаси муваффақиятли сақланди.');
+            ->with('success', 'Кенгаш хулосаси муваффақиятли сақланди.');
     }
 
     /**
@@ -183,7 +183,7 @@ class KengashHulosasiController extends Controller
         }
 
         return redirect()->route('kengash-hulosa.show', $kengashHulosa)
-                         ->with('success', 'Кенгаш хулосаси муваффақиятли янгиланди.');
+            ->with('success', 'Кенгаш хулосаси муваффақиятли янгиланди.');
     }
 
     /**
@@ -195,7 +195,7 @@ class KengashHulosasiController extends Controller
         $kengashHulosa->delete();
 
         return redirect()->route('kengash-hulosa.index')
-                         ->with('success', 'Кенгаш хулосаси муваффақиятли ўчирилди.');
+            ->with('success', 'Кенгаш хулосаси муваффақиятли ўчирилди.');
     }
 
     /**
@@ -251,11 +251,10 @@ class KengashHulosasiController extends Controller
             }
 
             return redirect()->route('kengash-hulosa.index')
-                           ->with('success', "Жами {$imported} та маълумот импорт қилинди.");
-
+                ->with('success', "Жами {$imported} та маълумот импорт қилинди.");
         } catch (\Exception $e) {
             return redirect()->back()
-                           ->with('error', 'Импорт қилишда хатолик: ' . $e->getMessage());
+                ->with('error', 'Импорт қилишда хатолик: ' . $e->getMessage());
         }
     }
 
@@ -276,7 +275,7 @@ class KengashHulosasiController extends Controller
         $file->delete();
 
         return redirect()->back()
-                         ->with('success', 'Файл муваффақиятли ўчирилди.');
+            ->with('success', 'Файл муваффақиятли ўчирилди.');
     }
 
     /**
@@ -300,40 +299,67 @@ class KengashHulosasiController extends Controller
             'total' => KengashHulosasi::count(),
             'ozod' => KengashHulosasi::tulovdanOzod()->count(),
             'majburiy' => KengashHulosasi::majburiyTulov()->count(),
-            'total_qiymat' => KengashHulosasi::sum('shartnoma_qiymati'),
-            'total_tulov' => KengashHulosasi::sum('fakt_tulov'),
-            'total_qarz' => KengashHulosasi::sum('qarzdarlik'),
+            'total_qiymat' => KengashHulosasi::sum('shartnoma_qiymati') ?? 0,
+            'total_tulov' => KengashHulosasi::sum('fakt_tulov') ?? 0,
+            'total_qarz' => KengashHulosasi::sum('qarzdarlik') ?? 0,
         ];
 
-        $byDistrict = KengashHulosasi::selectRaw('tuman, count(*) as total,
-                                                 sum(case when status = "Тўловдан озод этилган" then 1 else 0 end) as ozod,
-                                                 sum(case when status = "Мажбурий тўлов" then 1 else 0 end) as majburiy,
-                                                 sum(shartnoma_qiymati) as total_qiymat,
-                                                 sum(fakt_tulov) as total_tulov,
-                                                 sum(qarzdarlik) as total_qarz')
-                        ->whereNotNull('tuman')
-                        ->groupBy('tuman')
-                        ->orderBy('tuman')
-                        ->get();
+        // Get district statistics with proper null handling
+        $byDistrict = KengashHulosasi::selectRaw('
+                tuman,
+                count(*) as total,
+                sum(case when status = "Тўловдан озод этилган" then 1 else 0 end) as ozod,
+                sum(case when status = "Мажбурий тўлов" then 1 else 0 end) as majburiy,
+                coalesce(sum(shartnoma_qiymati), 0) as total_qiymat,
+                coalesce(sum(fakt_tulov), 0) as total_tulov,
+                coalesce(sum(qarzdarlik), 0) as total_qarz
+            ')
+            ->where('tuman', '!=', '')
+            ->whereNotNull('tuman')
+            ->groupBy('tuman')
+            ->orderBy('total', 'desc')
+            ->get();
 
-        $byStatus = KengashHulosasi::selectRaw('status, count(*) as count,
-                                               sum(shartnoma_qiymati) as total_qiymat,
-                                               sum(fakt_tulov) as total_tulov,
-                                               sum(qarzdarlik) as total_qarz')
-                    ->groupBy('status')
-                    ->get();
+        // Status breakdown
+        $byStatus = KengashHulosasi::selectRaw('
+                status,
+                count(*) as count,
+                coalesce(sum(shartnoma_qiymati), 0) as total_qiymat,
+                coalesce(sum(fakt_tulov), 0) as total_tulov,
+                coalesce(sum(qarzdarlik), 0) as total_qarz
+            ')
+            ->groupBy('status')
+            ->get();
 
-        $byBinoTuri = KengashHulosasi::selectRaw('bino_turi, count(*) as count')
-                        ->whereNotNull('bino_turi')
-                        ->groupBy('bino_turi')
-                        ->get();
+        // Building types
+        $byBinoTuri = KengashHulosasi::selectRaw('
+                bino_turi,
+                count(*) as count
+            ')
+            ->whereNotNull('bino_turi')
+            ->where('bino_turi', '!=', '')
+            ->groupBy('bino_turi')
+            ->get();
 
-        $monthlyStats = KengashHulosasi::selectRaw('YEAR(created_at) as year, MONTH(created_at) as month, count(*) as count')
-                          ->groupBy('year', 'month')
-                          ->orderBy('year', 'desc')
-                          ->orderBy('month', 'desc')
-                          ->limit(12)
-                          ->get();
+        // Monthly statistics
+        $monthlyStats = KengashHulosasi::selectRaw('
+                YEAR(created_at) as year,
+                MONTH(created_at) as month,
+                count(*) as count
+            ')
+            ->groupBy('year', 'month')
+            ->orderBy('year', 'desc')
+            ->orderBy('month', 'desc')
+            ->limit(12)
+            ->get();
+
+        // Debug information
+        \Log::info('Svod Stats', [
+            'total_records' => $stats['total'],
+            'districts_count' => $byDistrict->count(),
+            'districts' => $byDistrict->pluck('tuman')->toArray(),
+            'sample_district' => $byDistrict->first()
+        ]);
 
         return view('kengash-hulosa.svod', compact(
             'stats',

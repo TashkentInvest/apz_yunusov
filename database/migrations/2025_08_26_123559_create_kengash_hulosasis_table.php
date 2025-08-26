@@ -21,7 +21,7 @@ return new class extends Migration
             $table->string('buyurtmachi_stir_pinfl')->nullable();
             $table->string('buyurtmachi_telefon')->nullable();
             $table->enum('bino_turi', ['турар', 'нотурар'])->nullable();
-            $table->string('muammo_turi')->nullable();
+            $table->text('muammo_turi')->nullable();
             $table->string('loyihachi')->nullable();
             $table->string('loyihachi_stir_pinfl')->nullable();
             $table->string('loyihachi_telefon')->nullable();
@@ -36,9 +36,9 @@ return new class extends Migration
             $table->string('qurilish_turi')->nullable();
             $table->string('shartnoma_raqami')->nullable();
             $table->date('shartnoma_sanasi')->nullable();
-            $table->decimal('shartnoma_qiymati', 15, 2)->nullable();
-            $table->decimal('fakt_tulov', 15, 2)->default(0);
-            $table->decimal('qarzdarlik', 15, 2)->default(0);
+            $table->decimal('shartnoma_qiymati', 20, 2)->nullable(); // Increased precision
+            $table->decimal('fakt_tulov', 20, 2)->default(0);
+            $table->decimal('qarzdarlik', 20, 2)->default(0);
             $table->string('tic_apz_id')->nullable();
             $table->unsignedBigInteger('creator_user_id')->nullable();
             $table->unsignedBigInteger('updater_user_id')->nullable();
