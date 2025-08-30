@@ -453,21 +453,25 @@
 </div>
 
 <!-- Object Creation Modal -->
+<!-- Object Creation Modal with Enhanced Calculations -->
 <div id="objectModal" class="hidden fixed inset-0 z-50 overflow-y-auto">
     <div class="flex items-center justify-center min-h-screen px-4">
         <div class="fixed inset-0 bg-gray-500 bg-opacity-75 transition-opacity"></div>
-        <div class="inline-block bg-white rounded-lg shadow-xl transform transition-all sm:max-w-7xl sm:w-full max-h-[90vh] overflow-y-auto">
+        <div class="inline-block bg-white rounded-lg shadow-xl transform transition-all sm:max-w-7xl sm:w-full max-h-[95vh] overflow-y-auto">
             <form id="objectModalForm">
                 <div class="px-6 py-4 border-b border-gray-200">
-                    <h3 class="text-lg font-semibold text-gray-900">Yangi obyekt yaratish</h3>
+                    <h3 class="text-lg font-semibold text-gray-900">Yangi obyekt yaratish va shartnoma hisoblash</h3>
                 </div>
                 <div class="px-6 py-4">
-                    <div class="grid grid-cols-2 gap-8">
-                        <!-- Left Column -->
+                    <div class="grid grid-cols-3 gap-6">
+                        <!-- Left Column - Basic Info -->
                         <div class="space-y-4">
+                            <h4 class="font-semibold text-gray-900 border-b pb-2">Asosiy ma'lumotlar</h4>
+
                             <div>
                                 <label class="block text-sm font-medium text-gray-700 mb-1">Tuman *</label>
-                                <select name="district_id" required class="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500">
+                                <select name="district_id" required onchange="updateDistrictInfo()"
+                                        class="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500">
                                     <option value="">Tumanni tanlang</option>
                                     @foreach($districts as $district)
                                         <option value="{{ $district->id }}">{{ $district->name_ru }}</option>
@@ -477,74 +481,107 @@
 
                             <div>
                                 <label class="block text-sm font-medium text-gray-700 mb-1">Obyekt manzili *</label>
-                                <textarea name="address" rows="2" required class="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500" placeholder="Toshkent sh., Ko'cha nomi, Uy raqami"></textarea>
+                                <textarea name="address" rows="2" required
+                                          class="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
+                                          placeholder="Toshkent sh., Ko'cha nomi, Uy raqami"></textarea>
                             </div>
 
-                            <div class="grid grid-cols-2 gap-4">
+                            <div class="grid grid-cols-2 gap-3">
                                 <div>
                                     <label class="block text-sm font-medium text-gray-700 mb-1">Kadastr raqami</label>
-                                    <input type="text" name="cadastre_number" class="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500">
+                                    <input type="text" name="cadastre_number"
+                                           class="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500">
                                 </div>
                                 <div>
                                     <label class="block text-sm font-medium text-gray-700 mb-1">Koordinatalar</label>
-                                    <input type="text" name="geolocation" placeholder="41.2995, 69.2401" onblur="detectZoneFromCoordinates()" class="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500">
+                                    <input type="text" name="geolocation" placeholder="41.2995, 69.2401"
+                                           onblur="detectZoneFromCoordinates()"
+                                           class="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500">
                                 </div>
                             </div>
 
                             <!-- Volume Fields -->
                             <div class="space-y-3">
-                                <h4 class="font-medium text-gray-900">Qurilish hajmi (m³)</h4>
+                                <h5 class="font-medium text-gray-900">Qurilish hajmi (m³)</h5>
                                 <div>
                                     <label class="block text-sm font-medium text-gray-700 mb-1">Binoning umumiy hajmi (Hb) *</label>
-                                    <input type="number" name="construction_volume" step="0.01" required onchange="calculateModalVolume()" class="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500">
+                                    <input type="number" name="construction_volume" step="0.01" required
+                                           onchange="calculateModalEverything()"
+                                           class="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500">
                                 </div>
                                 <div>
                                     <label class="block text-sm font-medium text-gray-700 mb-1">Ruxsat etilgan qavatlar sonidan yuqori (Hyu)</label>
-                                    <input type="number" name="above_permit_volume" step="0.01" onchange="calculateModalVolume()" class="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500">
+                                    <input type="number" name="above_permit_volume" step="0.01"
+                                           onchange="calculateModalEverything()"
+                                           class="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500">
                                 </div>
                                 <div>
                                     <label class="block text-sm font-medium text-gray-700 mb-1">Avtoturargoh hajmi (Ha)</label>
-                                    <input type="number" name="parking_volume" step="0.01" onchange="calculateModalVolume()" class="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500">
+                                    <input type="number" name="parking_volume" step="0.01"
+                                           onchange="calculateModalEverything()"
+                                           class="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500">
                                 </div>
                                 <div>
                                     <label class="block text-sm font-medium text-gray-700 mb-1">Texnik qavatlari hajmi (Ht)</label>
-                                    <input type="number" name="technical_rooms_volume" step="0.01" onchange="calculateModalVolume()" class="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500">
+                                    <input type="number" name="technical_rooms_volume" step="0.01"
+                                           onchange="calculateModalEverything()"
+                                           class="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500">
                                 </div>
                                 <div>
                                     <label class="block text-sm font-medium text-gray-700 mb-1">Umumiy foydalanish hajmi (Hu)</label>
-                                    <input type="number" name="common_area_volume" step="0.01" onchange="calculateModalVolume()" class="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500">
+                                    <input type="number" name="common_area_volume" step="0.01"
+                                           onchange="calculateModalEverything()"
+                                           class="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500">
                                 </div>
+
+                                <!-- Volume Summary -->
                                 <div class="p-3 bg-blue-50 rounded-lg">
-                                    <p class="text-sm text-gray-600">Hisoblash hajmi: (Hb + Hyu) - (Ha + Ht + Hu)</p>
-                                    <p id="calculated_volume_modal" class="font-bold text-blue-600">0.00 m³</p>
+                                    <div class="grid grid-cols-2 gap-2 text-sm">
+                                        <div>
+                                            <p class="text-gray-600">Hisoblash hajmi:</p>
+                                            <p class="font-bold text-blue-600" id="calculated_volume_modal">0.00 m³</p>
+                                        </div>
+                                        <div>
+                                            <p class="text-gray-600">Formula:</p>
+                                            <p class="text-xs text-gray-500">(Hb + Hyu) - (Ha + Ht + Hu)</p>
+                                        </div>
+                                    </div>
                                 </div>
                             </div>
 
-                            <!-- Type Fields -->
+                            <!-- Coefficient Types -->
                             <div class="space-y-3">
+                                <h5 class="font-medium text-gray-900">Koeffitsientlar</h5>
                                 <div>
-                                    <label class="block text-sm font-medium text-gray-700 mb-1">Obyekt turi</label>
-                                    <select name="object_type_id" class="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500">
-                                        <option value="">Tanlang</option>
-                                        @foreach($objectTypes as $objectType)
-                                            <option value="{{ $objectType->id }}" data-coefficient="{{ $objectType->coefficient }}">{{ $objectType->name_ru }}</option>
-                                        @endforeach
-                                    </select>
-                                </div>
-
-                                <div>
-                                    <label class="block text-sm font-medium text-gray-700 mb-1">Qurilish turi</label>
-                                    <select name="construction_type_id" class="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500">
+                                    <label class="block text-sm font-medium text-gray-700 mb-1">Qurilish turi (Kt)</label>
+                                    <select name="construction_type_id" onchange="calculateModalEverything()"
+                                            class="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500">
                                         <option value="">Tanlang</option>
                                         @foreach($constructionTypes as $constructionType)
-                                            <option value="{{ $constructionType->id }}" data-coefficient="{{ $constructionType->coefficient }}">{{ $constructionType->name_ru }}</option>
+                                            <option value="{{ $constructionType->id }}" data-coefficient="{{ $constructionType->coefficient }}">
+                                                {{ $constructionType->name_ru }} ({{ $constructionType->coefficient }})
+                                            </option>
                                         @endforeach
                                     </select>
                                 </div>
 
                                 <div>
-                                    <label class="block text-sm font-medium text-gray-700 mb-1">Hududiy zona</label>
-                                    <select name="territorial_zone_id" class="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500">
+                                    <label class="block text-sm font-medium text-gray-700 mb-1">Obyekt turi (Ko)</label>
+                                    <select name="object_type_id" onchange="calculateModalEverything()"
+                                            class="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500">
+                                        <option value="">Tanlang</option>
+                                        @foreach($objectTypes as $objectType)
+                                            <option value="{{ $objectType->id }}" data-coefficient="{{ $objectType->coefficient }}">
+                                                {{ $objectType->name_ru }} ({{ $objectType->coefficient }})
+                                            </option>
+                                        @endforeach
+                                    </select>
+                                </div>
+
+                                <div>
+                                    <label class="block text-sm font-medium text-gray-700 mb-1">Hududiy zona (Kz)</label>
+                                    <select name="territorial_zone_id" onchange="calculateModalEverything()"
+                                            class="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500">
                                         <option value="">Tanlang</option>
                                         @foreach($territorialZones as $zone)
                                             <option value="{{ $zone->id }}" data-coefficient="{{ $zone->coefficient }}">
@@ -555,32 +592,152 @@
                                 </div>
 
                                 <div>
-                                    <label class="block text-sm font-medium text-gray-700 mb-1">Obyekt joylashuvi</label>
-                                    <select name="location_type" class="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500">
+                                    <label class="block text-sm font-medium text-gray-700 mb-1">Obyekt joylashuvi (Kj)</label>
+                                    <select name="location_type" onchange="calculateModalEverything()"
+                                            class="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500">
                                         <option value="">Tanlang</option>
-                                        <option value="metro_radius_200m_outside" data-coefficient="0.6">Metro 200m radiusidan tashqarida</option>
-                                        <option value="other_locations" data-coefficient="1.0">Boshqa joylar</option>
+                                        <option value="metro_radius_200m_outside" data-coefficient="0.6">Metro 200m radiusidan tashqarida (0.6)</option>
+                                        <option value="other_locations" data-coefficient="1.0">Boshqa joylar (1.0)</option>
                                     </select>
+                                </div>
+
+                                <!-- Coefficients Display -->
+                                <div class="p-3 bg-purple-50 rounded-lg">
+                                    <div class="grid grid-cols-2 gap-3 text-sm">
+                                        <div>
+                                            <p class="text-gray-600">Kt: <span id="modal_kt" class="font-semibold text-purple-600">1.0</span></p>
+                                            <p class="text-gray-600">Ko: <span id="modal_ko" class="font-semibold text-purple-600">1.0</span></p>
+                                        </div>
+                                        <div>
+                                            <p class="text-gray-600">Kz: <span id="modal_kz" class="font-semibold text-purple-600">1.0</span></p>
+                                            <p class="text-gray-600">Kj: <span id="modal_kj" class="font-semibold text-purple-600">1.0</span></p>
+                                        </div>
+                                        <div class="col-span-2">
+                                            <p class="text-gray-600">Jami koef: <span id="modal_total_coef" class="font-bold text-orange-600">1.0</span></p>
+                                        </div>
+                                    </div>
                                 </div>
                             </div>
                         </div>
 
-                        <!-- Right Column - Map -->
+                        <!-- Middle Column - Map -->
                         <div class="space-y-4">
+                            <h4 class="font-semibold text-gray-900 border-b pb-2">Xarita va zona aniqlash</h4>
+
                             <div>
-                                <label class="block text-sm font-medium text-gray-700 mb-1">Xaritada joylashuvni tanlang</label>
-                                <div id="objectMap" style="height: 500px; width: 100%;" class="border rounded-lg"></div>
+                                <div id="objectMap" style="height: 600px; width: 100%;" class="border rounded-lg"></div>
                                 <div id="zoneInfo" class="mt-2 p-2 bg-yellow-50 border border-yellow-200 rounded hidden">
                                     <p class="text-sm text-yellow-800">Zona: <span id="detectedZone"></span></p>
                                     <p class="text-sm text-yellow-800">Koeffitsient: <span id="zoneCoefficient"></span></p>
                                 </div>
                             </div>
                         </div>
+
+                        <!-- Right Column - Contract Calculations -->
+                        <div class="space-y-4">
+                            <h4 class="font-semibold text-gray-900 border-b pb-2">Shartnoma hisoblash</h4>
+
+                            <!-- Base Amount Selection -->
+                            <div>
+                                <label class="block text-sm font-medium text-gray-700 mb-1">Bazaviy hisoblash miqdori (Bh)</label>
+                                <select id="modal_base_amount" onchange="calculateModalEverything()"
+                                        class="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500">
+                                    <option value="">Tanlang</option>
+                                    @foreach($baseAmounts as $baseAmount)
+                                        <option value="{{ $baseAmount->amount }}" {{ $loop->last ? 'selected' : '' }}>
+                                            {{ number_format($baseAmount->amount) }} сум ({{ $baseAmount->effective_from->format('Y') }})
+                                        </option>
+                                    @endforeach
+                                </select>
+                            </div>
+
+                            <!-- Contract Sum Display -->
+                            <div class="p-4 bg-green-50 rounded-lg">
+                                <div class="text-center">
+                                    <p class="text-sm text-gray-600 mb-2">Shartnoma summasi (Ti)</p>
+                                    <p id="modal_total_amount" class="text-2xl font-bold text-green-600">0 сум</p>
+                                    <div class="mt-2 text-xs text-gray-500">
+                                        <p id="modal_formula_display">Ti = Bh × Hajm × Koef</p>
+                                    </div>
+                                </div>
+                            </div>
+
+                            <!-- Payment Terms -->
+                            <div class="space-y-3">
+                                <h5 class="font-medium text-gray-900">To'lov shartlari</h5>
+
+                                <div>
+                                    <label class="block text-sm font-medium text-gray-700 mb-1">To'lov turi</label>
+                                    <select id="modal_payment_type" onchange="calculateModalPaymentSchedule()"
+                                            class="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500">
+                                        <option value="full">To'liq to'lov</option>
+                                        <option value="installment" selected>Bo'lib to'lash</option>
+                                    </select>
+                                </div>
+
+                                <div id="modal_installment_fields">
+                                    <div>
+                                        <label class="block text-sm font-medium text-gray-700 mb-1">Boshlang'ich to'lov (%)</label>
+                                        <input type="number" id="modal_initial_percent" min="0" max="100" value="20"
+                                               onchange="calculateModalPaymentSchedule()"
+                                               class="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500">
+                                    </div>
+                                    <div>
+                                        <label class="block text-sm font-medium text-gray-700 mb-1">Qurilish muddati (yil)</label>
+                                        <input type="number" id="modal_construction_years" min="1" max="10" value="2"
+                                               onchange="calculateModalPaymentSchedule()"
+                                               class="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500">
+                                    </div>
+                                </div>
+
+                                <!-- Payment Summary -->
+                                <div class="grid grid-cols-1 gap-2">
+                                    <div class="p-2 bg-white border rounded text-center">
+                                        <p class="text-xs text-gray-600">Boshlang'ich to'lov</p>
+                                        <p id="modal_initial_amount" class="font-semibold text-green-600">0 сум</p>
+                                    </div>
+                                    <div class="p-2 bg-white border rounded text-center">
+                                        <p class="text-xs text-gray-600">Qoldiq summa</p>
+                                        <p id="modal_remaining_amount" class="font-semibold text-orange-600">0 сум</p>
+                                    </div>
+                                    <div class="p-2 bg-white border rounded text-center">
+                                        <p class="text-xs text-gray-600">Choraklik to'lov</p>
+                                        <p id="modal_quarterly_payment" class="font-semibold text-blue-600">0 сум</p>
+                                    </div>
+                                </div>
+                            </div>
+
+                            <!-- Payment Schedule Table -->
+                            <div id="modal_payment_schedule" class="max-h-64 overflow-y-auto">
+                                <table class="min-w-full bg-white border border-gray-200 rounded text-sm">
+                                    <thead class="bg-gray-50">
+                                        <tr>
+                                            <th class="px-2 py-1 border text-left">Yil</th>
+                                            <th class="px-2 py-1 border text-left">Chorak</th>
+                                            <th class="px-2 py-1 border text-right">Summa</th>
+                                        </tr>
+                                    </thead>
+                                    <tbody id="modal_quarters_tbody">
+                                    </tbody>
+                                </table>
+                            </div>
+                        </div>
                     </div>
                 </div>
-                <div class="px-6 py-4 border-t border-gray-200 flex justify-end space-x-3">
-                    <button type="button" onclick="closeObjectModal()" class="px-4 py-2 bg-gray-100 text-gray-700 rounded-lg hover:bg-gray-200 transition-colors">Bekor qilish</button>
-                    <button type="submit" class="px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors">Yaratish</button>
+                <div class="px-6 py-4 border-t border-gray-200 flex justify-between">
+                    <div class="text-sm text-gray-600">
+                        <p>Shartnoma summasi: <span id="modal_summary_amount" class="font-semibold text-blue-600">0 сум</span></p>
+                    </div>
+                    <div class="flex space-x-3">
+                        <button type="button" onclick="closeObjectModal()"
+                                class="px-4 py-2 bg-gray-100 text-gray-700 rounded-lg hover:bg-gray-200 transition-colors">
+                            Bekor qilish
+                        </button>
+                        <button type="submit"
+                                class="px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors">
+                            Obyekt yaratish
+                        </button>
+                    </div>
                 </div>
             </form>
         </div>
@@ -1334,6 +1491,261 @@ document.addEventListener('DOMContentLoaded', function() {
     });
     document.querySelector('input[name="initial_payment_percent"]').addEventListener('input', calculatePaymentSchedule);
     document.querySelector('input[name="construction_period_years"]').addEventListener('input', calculatePaymentSchedule);
+});
+
+function calculateModalEverything() {
+    calculateModalVolume();
+    calculateModalCoefficients();
+    calculateModalContractSum();
+    calculateModalPaymentSchedule();
+}
+
+function calculateModalVolume() {
+    const hb = parseFloat(document.querySelector('input[name="construction_volume"]').value) || 0;
+    const hyu = parseFloat(document.querySelector('input[name="above_permit_volume"]').value) || 0;
+    const ha = parseFloat(document.querySelector('input[name="parking_volume"]').value) || 0;
+    const ht = parseFloat(document.querySelector('input[name="technical_rooms_volume"]').value) || 0;
+    const hu = parseFloat(document.querySelector('input[name="common_area_volume"]').value) || 0;
+
+    const calculatedVolume = (hb + hyu) - (ha + ht + hu);
+    document.getElementById('calculated_volume_modal').textContent = calculatedVolume.toFixed(2) + ' m³';
+}
+
+function calculateModalCoefficients() {
+    // Get coefficient values from selected options
+    const constructionType = document.querySelector('select[name="construction_type_id"]');
+    const objectType = document.querySelector('select[name="object_type_id"]');
+    const territorialZone = document.querySelector('select[name="territorial_zone_id"]');
+    const locationType = document.querySelector('select[name="location_type"]');
+
+    const kt = constructionType.selectedIndex > 0 ?
+        parseFloat(constructionType.options[constructionType.selectedIndex].dataset.coefficient) : 1.0;
+    const ko = objectType.selectedIndex > 0 ?
+        parseFloat(objectType.options[objectType.selectedIndex].dataset.coefficient) : 1.0;
+    const kz = territorialZone.selectedIndex > 0 ?
+        parseFloat(territorialZone.options[territorialZone.selectedIndex].dataset.coefficient) : 1.0;
+    const kj = locationType.selectedIndex > 0 ?
+        parseFloat(locationType.options[locationType.selectedIndex].dataset.coefficient) : 1.0;
+
+    // Calculate total coefficient with minimum 0.5 rule
+    let totalCoef = kt * ko * kz * kj;
+    totalCoef = Math.max(0.5, totalCoef);
+
+    // Update display
+    document.getElementById('modal_kt').textContent = kt.toFixed(2);
+    document.getElementById('modal_ko').textContent = ko.toFixed(2);
+    document.getElementById('modal_kz').textContent = kz.toFixed(2);
+    document.getElementById('modal_kj').textContent = kj.toFixed(2);
+    document.getElementById('modal_total_coef').textContent = totalCoef.toFixed(2);
+}
+
+function calculateModalContractSum() {
+    const baseAmountSelect = document.getElementById('modal_base_amount');
+    const baseAmount = parseFloat(baseAmountSelect.value) || 0;
+
+    const volumeText = document.getElementById('calculated_volume_modal').textContent;
+    const volume = parseFloat(volumeText.replace(' m³', '')) || 0;
+
+    const coefficientText = document.getElementById('modal_total_coef').textContent;
+    const coefficient = parseFloat(coefficientText) || 1;
+
+    if (baseAmount > 0 && volume > 0) {
+        const totalAmount = baseAmount * volume * coefficient;
+
+        document.getElementById('modal_total_amount').textContent = formatNumber(totalAmount) + ' сум';
+        document.getElementById('modal_summary_amount').textContent = formatNumber(totalAmount) + ' сум';
+
+        // Update formula display
+        document.getElementById('modal_formula_display').textContent =
+            `Ti = ${formatNumber(baseAmount)} × ${volume.toFixed(2)} × ${coefficient} = ${formatNumber(totalAmount)} сум`;
+    } else {
+        document.getElementById('modal_total_amount').textContent = '0 сум';
+        document.getElementById('modal_summary_amount').textContent = '0 сум';
+        document.getElementById('modal_formula_display').textContent = 'Ti = Bh × Hajm × Koef';
+    }
+}
+
+function calculateModalPaymentSchedule() {
+    const paymentType = document.getElementById('modal_payment_type').value;
+    const totalAmountText = document.getElementById('modal_total_amount').textContent;
+    const totalAmount = parseFloat(totalAmountText.replace(/[^\d]/g, '')) || 0;
+
+    if (totalAmount <= 0) {
+        clearModalPaymentDisplay();
+        return;
+    }
+
+    const initialPercent = parseInt(document.getElementById('modal_initial_percent').value) || 20;
+    const years = parseInt(document.getElementById('modal_construction_years').value) || 2;
+    const quarters = years * 4;
+
+    if (paymentType === 'full') {
+        // Full payment
+        document.getElementById('modal_initial_amount').textContent = formatNumber(totalAmount) + ' сум';
+        document.getElementById('modal_remaining_amount').textContent = '0 сум';
+        document.getElementById('modal_quarterly_payment').textContent = '0 сум';
+
+        document.getElementById('modal_quarters_tbody').innerHTML = `
+            <tr class="bg-green-50">
+                <td class="px-2 py-1 border font-semibold">${new Date().getFullYear()}</td>
+                <td class="px-2 py-1 border font-semibold">To'liq</td>
+                <td class="px-2 py-1 border text-right font-semibold">${formatNumber(totalAmount)} сум</td>
+            </tr>
+        `;
+
+        // Hide installment fields
+        document.getElementById('modal_installment_fields').style.display = 'none';
+    } else {
+        // Installment payment
+        document.getElementById('modal_installment_fields').style.display = 'block';
+
+        const initialPayment = totalAmount * (initialPercent / 100);
+        const remainingAmount = totalAmount - initialPayment;
+        const quarterlyPayment = remainingAmount / quarters;
+
+        document.getElementById('modal_initial_amount').textContent = formatNumber(initialPayment) + ' сум';
+        document.getElementById('modal_remaining_amount').textContent = formatNumber(remainingAmount) + ' сум';
+        document.getElementById('modal_quarterly_payment').textContent = formatNumber(quarterlyPayment) + ' сум';
+
+        // Generate payment schedule
+        let tbody = `
+            <tr class="bg-green-50">
+                <td class="px-2 py-1 border font-semibold">${new Date().getFullYear()}</td>
+                <td class="px-2 py-1 border font-semibold">Boshlang'ich</td>
+                <td class="px-2 py-1 border text-right font-semibold">${formatNumber(initialPayment)} сум</td>
+            </tr>
+        `;
+
+        const startYear = new Date().getFullYear();
+        const startQuarter = Math.ceil((new Date().getMonth() + 1) / 3);
+
+        for (let i = 0; i < quarters; i++) {
+            const currentQuarter = ((startQuarter - 1 + i) % 4) + 1;
+            const currentYear = startYear + Math.floor((startQuarter - 1 + i) / 4);
+
+            tbody += `
+                <tr>
+                    <td class="px-2 py-1 border">${currentYear}</td>
+                    <td class="px-2 py-1 border">${currentQuarter}-chorak</td>
+                    <td class="px-2 py-1 border text-right">${formatNumber(quarterlyPayment)} сум</td>
+                </tr>
+            `;
+        }
+
+        document.getElementById('modal_quarters_tbody').innerHTML = tbody;
+    }
+}
+
+function clearModalPaymentDisplay() {
+    document.getElementById('modal_initial_amount').textContent = '0 сум';
+    document.getElementById('modal_remaining_amount').textContent = '0 сум';
+    document.getElementById('modal_quarterly_payment').textContent = '0 сум';
+    document.getElementById('modal_quarters_tbody').innerHTML = '';
+}
+
+function updateDistrictInfo() {
+    // Optional: Add any district-specific logic here
+    calculateModalEverything();
+}
+
+// Auto-detect zone when coordinates change
+function detectZoneFromCoordinates() {
+    const geoInput = document.querySelector('input[name="geolocation"]');
+    if (geoInput.value) {
+        const coords = geoInput.value.split(',');
+        if (coords.length === 2) {
+            const lat = parseFloat(coords[0].trim());
+            const lng = parseFloat(coords[1].trim());
+            detectZoneByCoordinates(lat, lng);
+        }
+    }
+}
+
+function detectZoneByCoordinates(lat, lng) {
+    const point = [lng, lat];
+    let detectedZone = null;
+
+    // Check each zone polygon
+    zonePolygons.forEach(zoneData => {
+        if (pointInPolygon(point, zoneData.polygon.map(p => [p[1], p[0]]))) {
+            detectedZone = {
+                name: zoneData.name,
+                coefficient: getZoneCoefficient(zoneData.name)
+            };
+        }
+    });
+
+    if (detectedZone) {
+        document.getElementById('zoneInfo').classList.remove('hidden');
+        document.getElementById('detectedZone').textContent = detectedZone.name;
+        document.getElementById('zoneCoefficient').textContent = detectedZone.coefficient;
+
+        // Auto-select territorial zone
+        const zoneSelect = document.querySelector('select[name="territorial_zone_id"]');
+        for (let option of zoneSelect.options) {
+            if (option.text.includes(detectedZone.name)) {
+                option.selected = true;
+                calculateModalEverything(); // Recalculate with new zone
+                break;
+            }
+        }
+    } else {
+        document.getElementById('zoneInfo').classList.add('hidden');
+    }
+}
+
+// Enhanced object modal open function
+function openObjectModal() {
+    const subjectId = document.querySelector('select[name="subject_id"]').value;
+    if (!subjectId) {
+        showNotification('Avval buyurtmachini tanlang', 'warning');
+        return;
+    }
+
+    document.getElementById('objectModal').classList.remove('hidden');
+    document.body.style.overflow = 'hidden';
+
+    setTimeout(() => {
+        initializeMap();
+        if (objectMap) {
+            objectMap.invalidateSize();
+        }
+        // Initialize calculations
+        calculateModalEverything();
+    }, 200);
+}
+
+// Enhanced object modal close function
+function closeObjectModal() {
+    document.getElementById('objectModal').classList.add('hidden');
+    document.body.style.overflow = 'auto';
+    document.getElementById('objectModalForm').reset();
+    document.getElementById('zoneInfo').classList.add('hidden');
+
+    // Reset all displays
+    document.getElementById('calculated_volume_modal').textContent = '0.00 m³';
+    document.getElementById('modal_kt').textContent = '1.0';
+    document.getElementById('modal_ko').textContent = '1.0';
+    document.getElementById('modal_kz').textContent = '1.0';
+    document.getElementById('modal_kj').textContent = '1.0';
+    document.getElementById('modal_total_coef').textContent = '1.0';
+    document.getElementById('modal_total_amount').textContent = '0 сум';
+    document.getElementById('modal_summary_amount').textContent = '0 сум';
+    clearModalPaymentDisplay();
+
+    if (mapMarker) {
+        objectMap.removeLayer(mapMarker);
+        mapMarker = null;
+    }
+}
+
+// Initialize calculations when modal loads
+document.addEventListener('DOMContentLoaded', function() {
+    // Set default base amount to latest
+    const baseAmountSelect = document.getElementById('modal_base_amount');
+    if (baseAmountSelect && baseAmountSelect.options.length > 1) {
+        baseAmountSelect.selectedIndex = baseAmountSelect.options.length - 1;
+    }
 });
 </script>
 @endpush

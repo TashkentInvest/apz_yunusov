@@ -310,33 +310,3 @@ class ContractSystemSeeder extends Seeder
         }
     }
 }
-
-// Create individual seeder files as well for modularity
-
-// database/seeders/DistrictSeeder.php
-class DistrictSeeder extends Seeder
-{
-    public function run()
-    {
-        (new ContractSystemSeeder())->seedDistricts();
-    }
-}
-
-// database/seeders/ContractStatusSeeder.php
-class ContractStatusSeeder extends Seeder
-{
-    public function run()
-    {
-        (new ContractSystemSeeder())->seedContractStatuses();
-    }
-}
-
-// Run this seeder by adding to DatabaseSeeder.php:
-/*
-public function run()
-{
-    $this->call([
-        ContractSystemSeeder::class,
-    ]);
-}
-*/
