@@ -7,10 +7,7 @@ use Illuminate\Database\Eloquent\Model;
 
 class TerritorialZone extends Model
 {
-    use HasFactory;
-
-    protected $fillable = ['name_uz', 'name_ru', 'code', 'coefficient', 'is_active'];
-
+    protected $fillable = ['name_uz', 'name_ru', 'coefficient', 'description', 'is_active'];
     protected $casts = [
         'coefficient' => 'decimal:2',
         'is_active' => 'boolean'
@@ -18,6 +15,6 @@ class TerritorialZone extends Model
 
     public function objects()
     {
-        return $this->hasMany(Objectt::class);
+        return $this->hasMany(Objectt::class, 'territorial_zone_id');
     }
 }

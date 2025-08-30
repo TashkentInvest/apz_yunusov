@@ -88,7 +88,7 @@
                         </span>
                     </a>
 
-                    <a href="{{ route('contracts.debtors') }}"
+                    {{-- <a href="{{ route('contracts.debtors') }}"
                        class="flex items-center px-4 py-3 text-gray-700 rounded-lg hover:bg-gray-100 group transition-colors {{ request()->routeIs('contracts.debtors') ? 'bg-red-50 text-red-700' : '' }}">
                         <i data-feather="alert-triangle" class="w-5 h-5 mr-3 text-gray-400 group-hover:text-gray-600 {{ request()->routeIs('contracts.debtors') ? 'text-red-600' : '' }}"></i>
                         <span class="font-medium">Должники</span>
@@ -98,7 +98,7 @@
                                   ->whereRaw('quarter_amount > (SELECT COALESCE(SUM(amount), 0) FROM actual_payments WHERE contract_id = contracts.id AND year = payment_schedules.year AND quarter = payment_schedules.quarter)');
                             })->count() }}
                         </span>
-                    </a>
+                    </a> --}}
 
                     <a href="{{ route('payments.index') }}"
                        class="flex items-center px-4 py-3 text-gray-700 rounded-lg hover:bg-gray-100 group transition-colors {{ request()->routeIs('payments.*') ? 'bg-blue-50 text-blue-700' : '' }}">

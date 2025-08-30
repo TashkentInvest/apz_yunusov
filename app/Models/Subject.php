@@ -2,73 +2,78 @@
 
 namespace App\Models;
 
-use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
+use Illuminate\Database\Eloquent\Relations\BelongsTo;
+use Illuminate\Database\Eloquent\Relations\HasMany;
+use Illuminate\Database\Eloquent\SoftDeletes;
 
 class Subject extends Model
 {
-    use HasFactory;
-
     protected $fillable = [
-        'is_legal_entity', 'org_form_id', 'company_name', 'inn', 'is_resident',
-        'country_code', 'oked', 'bank_name', 'bank_code', 'bank_account',
-        'legal_address', 'document_type', 'document_series', 'document_number',
-        'issued_by', 'issued_date', 'pinfl', 'phone', 'email', 'physical_address'
+        'is_legal_entity',
+        'org_form_id',
+        'company_name',
+        'inn',
+        'is_resident',
+        'country_code',
+        'oked',
+        'bank_name',
+        'bank_code',
+        'bank_account',
+        'legal_address',
+        'document_type',
+        'document_series',
+        'document_number',
+        'issued_by',
+        'issued_date',
+        'pinfl',
+        'phone',
+        'email',
+        'physical_address',
+        'is_active'
     ];
 
     protected $casts = [
         'is_legal_entity' => 'boolean',
         'is_resident' => 'boolean',
-        'issued_date' => 'date'
+        'issued_date' => 'date',
+        'is_active' => 'boolean'
     ];
 
-    public function permitType()
+    public function orgForm(): BelongsTo
     {
-        return $this->belongsTo(PermitType::class);
+        return $this->belongsTo(OrgForm::class, 'org_form_id');
     }
 
-    public function issuingAuthority()
-    {
-        return $this->belongsTo(IssuingAuthority::class);
-    }
-
-    public function constructionType()
-    {
-        return $this->belongsTo(ConstructionType::class);
-    }
-
-    public function objectType()
-    {
-        return $this->belongsTo(ObjectType::class);
-    }
-
-    public function territorialZone()
-    {
-        return $this->belongsTo(TerritorialZone::class);
-    }
-
-    public function orgForm()
-    {
-        return $this->belongsTo(OrgForm::class);
-    }
-
-    public function contracts()
+    public function contracts(): HasMany
     {
         return $this->hasMany(Contract::class);
     }
 
-    public function objects()
+    public function objects(): HasMany
     {
         return $this->hasMany(Objectt::class);
     }
 
-    public function getDisplayNameAttribute()
+    // Accessor for display name
+    public function getDisplayNameAttribute(): string
     {
-        return $this->is_legal_entity ? $this->company_name : $this->full_name;
+        if ($this->is_legal_entity) {
+            return $this->company_name ?? 'Не указано';
+        }
+
+        $parts = array_filter([
+            $this->last_name ?? '',
+            $this->first_name ?? '',
+            $this->father_name ?? ''
+        ]);
+
+        return !empty($parts) ? implode(' ', $parts) : 'Не указано';
     }
 
-    public function getIdentifierAttribute()
+    // Accessor for identifier (INN or PINFL)
+    public function getIdentifierAttribute(): string
     {
-        return $this->is_legal_entity ? $this->inn : $this->pinfl;
+        return $this->is_legal_entity ? ($this->inn ?? '') : ($this->pinfl ?? '');
     }
 }

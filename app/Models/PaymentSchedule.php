@@ -27,6 +27,10 @@ class PaymentSchedule extends Model
     {
         return $this->belongsTo(Contract::class);
     }
+    public function amendment(): BelongsTo
+    {
+        return $this->belongsTo(ContractAmendment::class, 'amendment_id');
+    }
 
     public function actualPayments(): HasMany
     {
@@ -58,14 +62,14 @@ class PaymentSchedule extends Model
     {
         $currentYear = now()->year;
         $currentQuarter = ceil(now()->month / 3);
-        
+
         // If it's a past quarter and not fully paid
         if ($this->year < $currentYear) {
             return $this->remaining_amount > 0;
         } elseif ($this->year == $currentYear && $this->quarter < $currentQuarter) {
             return $this->remaining_amount > 0;
         }
-        
+
         return false;
     }
 
@@ -85,7 +89,7 @@ class PaymentSchedule extends Model
     public function getPaymentPercentAttribute(): float
     {
         if ($this->quarter_amount <= 0) return 0;
-        
+
         return min(100, ($this->paid_amount / $this->quarter_amount) * 100);
     }
 
@@ -100,13 +104,13 @@ class PaymentSchedule extends Model
     {
         $currentYear = now()->year;
         $currentQuarter = ceil(now()->month / 3);
-        
-        return $query->where(function($q) use ($currentYear, $currentQuarter) {
+
+        return $query->where(function ($q) use ($currentYear, $currentQuarter) {
             $q->where('year', '<', $currentYear)
-              ->orWhere(function($subQ) use ($currentYear, $currentQuarter) {
-                  $subQ->where('year', $currentYear)
-                       ->where('quarter', '<', $currentQuarter);
-              });
+                ->orWhere(function ($subQ) use ($currentYear, $currentQuarter) {
+                    $subQ->where('year', $currentYear)
+                        ->where('quarter', '<', $currentQuarter);
+                });
         });
     }
 
@@ -115,9 +119,9 @@ class PaymentSchedule extends Model
     {
         $currentYear = now()->year;
         $currentQuarter = ceil(now()->month / 3);
-        
+
         return $query->where('year', $currentYear)
-                    ->where('quarter', $currentQuarter);
+            ->where('quarter', $currentQuarter);
     }
 
     // Format quarter display
@@ -130,11 +134,11 @@ class PaymentSchedule extends Model
     public function getOverdueDaysAttribute(): int
     {
         if (!$this->is_overdue) return 0;
-        
+
         $quarterEndDate = now()->setYear($this->year)
             ->setMonth($this->quarter * 3)
             ->endOfMonth();
-            
+
         return max(0, now()->diffInDays($quarterEndDate));
     }
 }

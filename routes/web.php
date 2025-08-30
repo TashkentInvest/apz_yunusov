@@ -30,22 +30,25 @@ Route::get('/dashboard/chart-data', [DashboardController::class, 'getChartDataAj
 Route::get('/dashboard/export', [DashboardController::class, 'export'])->name('dashboard.export');
 Route::get('/dashboard/district/{district}', [DashboardController::class, 'districtDetails'])->name('dashboard.district');
 // Contracts Management
-Route::prefix('contracts')->name('contracts.')->group(function () {
-    Route::get('/', [ContractController::class, 'index'])->name('index');
-    Route::get('/create', [ContractController::class, 'create'])->name('create');
-    Route::post('/', [ContractController::class, 'store'])->name('store');
-    Route::get('/debtors', [ContractController::class, 'debtors'])->name('debtors');
-    Route::get('/{contract}', [ContractController::class, 'show'])->name('show');
-    Route::get('/{contract}/edit', [ContractController::class, 'edit'])->name('edit');
-    Route::put('/{contract}', [ContractController::class, 'update'])->name('update');
-    Route::delete('/{contract}', [ContractController::class, 'destroy'])->name('destroy');
+Route::prefix('contracts')->group(function () {
+    Route::get('/', [ContractController::class, 'index'])->name('contracts.index');
+    Route::get('/create', [ContractController::class, 'create'])->name('contracts.create');
+    Route::post('/store', [ContractController::class, 'store'])->name('contracts.store');
+    Route::get('/{contract}', [ContractController::class, 'show'])->name('contracts.show');
+    Route::get('/{contract}/edit', [ContractController::class, 'edit'])->name('contracts.edit');
+    Route::put('/{contract}', [ContractController::class, 'update'])->name('contracts.update');
+    Route::delete('/{contract}', [ContractController::class, 'destroy'])->name('contracts.destroy');
 
-    // Contract amendments
-    Route::post('/{contract}/amendments', [ContractController::class, 'createAmendment'])->name('amendments.store');
+    // AJAX routes for creating subjects and objects
+    Route::post('/create-subject', [ContractController::class, 'createSubject']);
+    Route::post('/create-object', [ContractController::class, 'createObject']);
 
-    // Contract cancellation
-    Route::post('/{contract}/cancel', [ContractController::class, 'cancel'])->name('cancel');
+    // Additional AJAX endpoints
+    Route::get('/objects-by-subject/{subject}', [ContractController::class, 'getObjectsBySubject']);
+    Route::post('/calculate-coefficients', [ContractController::class, 'calculateCoefficients']);
+    Route::post('/validate-volumes', [ContractController::class, 'validateObjectVolumes']);
 });
+
 
 // Payments Management
 Route::prefix('payments')->name('payments.')->group(function () {
@@ -55,26 +58,28 @@ Route::prefix('payments')->name('payments.')->group(function () {
 });
 
 // Objects Management
-Route::prefix('objects')->name('objects.')->group(function () {
-    Route::get('/', [App\Http\Controllers\ObjectController::class, 'index'])->name('index');
-    Route::get('/create', [App\Http\Controllers\ObjectController::class, 'create'])->name('create');
-    Route::post('/', [App\Http\Controllers\ObjectController::class, 'store'])->name('store');
-    Route::get('/{object}', [App\Http\Controllers\ObjectController::class, 'show'])->name('show');
-    Route::get('/{object}/edit', [App\Http\Controllers\ObjectController::class, 'edit'])->name('edit');
-    Route::put('/{object}', [App\Http\Controllers\ObjectController::class, 'update'])->name('update');
-    Route::delete('/{object}', [App\Http\Controllers\ObjectController::class, 'destroy'])->name('destroy');
+Route::prefix('objects')->group(function () {
+    Route::get('/', [ObjectController::class, 'index'])->name('objects.index');
+    Route::get('/create', [ObjectController::class, 'create'])->name('objects.create');
+    Route::post('/store', [ObjectController::class, 'store'])->name('objects.store');
+    Route::get('/{object}', [ObjectController::class, 'show'])->name('objects.show');
+    Route::get('/{object}/edit', [ObjectController::class, 'edit'])->name('objects.edit');
+    Route::put('/{object}', [ObjectController::class, 'update'])->name('objects.update');
+    Route::delete('/{object}', [ObjectController::class, 'destroy'])->name('objects.destroy');
 });
 
 // Subjects (Customers) Management
-Route::prefix('subjects')->name('subjects.')->group(function () {
-    Route::get('/', [SubjectController::class, 'index'])->name('index');
-    Route::get('/create', [SubjectController::class, 'create'])->name('create');
-    Route::post('/', [SubjectController::class, 'store'])->name('store');
-    Route::get('/{subject}', [SubjectController::class, 'show'])->name('show');
-    Route::get('/{subject}/edit', [SubjectController::class, 'edit'])->name('edit');
-    Route::put('/{subject}', [SubjectController::class, 'update'])->name('update');
-    Route::delete('/{subject}', [SubjectController::class, 'destroy'])->name('destroy');
+Route::prefix('subjects')->group(function () {
+    Route::get('/', [SubjectController::class, 'index'])->name('subjects.index');
+    Route::get('/create', [SubjectController::class, 'create'])->name('subjects.create');
+    Route::post('/store', [SubjectController::class, 'store'])->name('subjects.store');
+    Route::get('/{subject}', [SubjectController::class, 'show'])->name('subjects.show');
+    Route::get('/{subject}/edit', [SubjectController::class, 'edit'])->name('subjects.edit');
+    Route::put('/{subject}', [SubjectController::class, 'update'])->name('subjects.update');
+    Route::delete('/{subject}', [SubjectController::class, 'destroy'])->name('subjects.destroy');
 });
+
+
 
 // Documents Generation
 Route::prefix('documents')->name('documents.')->group(function () {
@@ -375,3 +380,17 @@ Route::fallback(function () {
     Route::get('kengash-hulosa-file/{file}/download', [KengashHulosasiController::class, 'downloadFile'])
          ->name('kengash-hulosa.file.download');
 // });
+
+
+Route::get('/zona.kml', function () {
+    $path = public_path('zona.kml');
+    if (!file_exists($path)) {
+        abort(404);
+    }
+
+    return response()->file($path, [
+        'Content-Type' => 'application/vnd.google-earth.kml+xml',
+        'Content-Disposition' => 'inline; filename="zona.kml"'
+    ]);
+})->name('zona.kml');
+// web.php

@@ -7,9 +7,8 @@ use Illuminate\Database\Eloquent\Model;
 
 class Objectt extends Model
 {
-    use HasFactory;
-
     protected $table = 'objects';
+
     protected $fillable = [
         'subject_id',
         'application_number',
@@ -33,7 +32,8 @@ class Objectt extends Model
         'territorial_zone_id',
         'location_type',
         'additional_info',
-        'geolocation'
+        'geolocation',
+        'is_active'
     ];
 
     protected $casts = [
@@ -43,7 +43,8 @@ class Objectt extends Model
         'above_permit_volume' => 'decimal:2',
         'parking_volume' => 'decimal:2',
         'technical_rooms_volume' => 'decimal:2',
-        'common_area_volume' => 'decimal:2'
+        'common_area_volume' => 'decimal:2',
+        'is_active' => 'boolean'
     ];
 
     public function subject()
@@ -56,8 +57,58 @@ class Objectt extends Model
         return $this->belongsTo(District::class);
     }
 
+    public function constructionType()
+    {
+        return $this->belongsTo(ConstructionType::class, 'construction_type_id');
+    }
+
+    public function objectType()
+    {
+        return $this->belongsTo(ObjectType::class, 'object_type_id');
+    }
+
+    public function territorialZone()
+    {
+        return $this->belongsTo(TerritorialZone::class, 'territorial_zone_id');
+    }
+
+    public function permitType()
+    {
+        return $this->belongsTo(PermitType::class, 'permit_type_id');
+    }
+
+    public function issuingAuthority()
+    {
+        return $this->belongsTo(IssuingAuthority::class, 'issuing_authority_id');
+    }
+
     public function contracts()
     {
-        return $this->hasMany(Contract::class);
+        return $this->hasMany(Contract::class, 'object_id');
+    }
+
+    // Calculate effective construction volume using formula
+    public function getCalculatedVolumeAttribute(): float
+    {
+        return ($this->construction_volume + $this->above_permit_volume) -
+               ($this->parking_volume + $this->technical_rooms_volume + $this->common_area_volume);
+    }
+
+    // Get coordinates as array
+    public function getCoordinatesAttribute(): ?array
+    {
+        if (!$this->geolocation) {
+            return null;
+        }
+
+        $coords = explode(',', $this->geolocation);
+        if (count($coords) !== 2) {
+            return null;
+        }
+
+        return [
+            'lat' => floatval(trim($coords[0])),
+            'lng' => floatval(trim($coords[1]))
+        ];
     }
 }

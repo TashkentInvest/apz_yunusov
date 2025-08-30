@@ -7,10 +7,7 @@ use Illuminate\Database\Eloquent\Model;
 
 class ContractStatus extends Model
 {
-    use HasFactory;
-
     protected $fillable = ['name_uz', 'name_ru', 'code', 'color', 'is_active'];
-
     protected $casts = ['is_active' => 'boolean'];
 
     public function contracts()
