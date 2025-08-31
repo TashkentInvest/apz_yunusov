@@ -37,7 +37,7 @@
                 <select name="district_id"
                         class="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500">
                     <option value="">Все районы</option>
-                    @foreach($districts as $district)
+                    @foreach($districts ?? [] as $district)
                         <option value="{{ $district->id }}" {{ request('district_id') == $district->id ? 'selected' : '' }}>
                             {{ $district->name_ru }}
                         </option>
@@ -50,7 +50,7 @@
                 <select name="status_id"
                         class="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500">
                     <option value="">Все статусы</option>
-                    @foreach($statuses as $status)
+                    @foreach($statuses ?? [] as $status)
                         <option value="{{ $status->id }}" {{ request('status_id') == $status->id ? 'selected' : '' }}>
                             {{ $status->name_ru }}
                         </option>
