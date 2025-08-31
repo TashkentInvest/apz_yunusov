@@ -38,6 +38,8 @@ Route::prefix('contracts')->group(function () {
     Route::get('/{contract}/edit', [ContractController::class, 'edit'])->name('contracts.edit');
     Route::put('/{contract}', [ContractController::class, 'update'])->name('contracts.update');
     Route::delete('/{contract}', [ContractController::class, 'destroy'])->name('contracts.destroy');
+        Route::post('/detect-zone', [ContractController::class, 'getZoneByCoordinates'])->name('detect-zone');
+
 
     // AJAX routes for creating subjects and objects
     Route::post('/create-subject', [ContractController::class, 'createSubject'])->name('createSubject');
@@ -48,6 +50,25 @@ Route::prefix('contracts')->group(function () {
     Route::post('/calculate-coefficients', [ContractController::class, 'calculateCoefficients']);
     Route::post('/validate-volumes', [ContractController::class, 'validateObjectVolumes']);
 });
+
+// Route::prefix('contracts')->group(function () {
+//     Route::get('/', [ContractController::class, 'index'])->name('contracts.index');
+//     Route::get('/create', [ContractController::class, 'create'])->name('contracts.create');
+//     Route::post('/store', [ContractController::class, 'store'])->name('contracts.store');
+//     Route::get('/{contract}', [ContractController::class, 'show'])->name('contracts.show');
+//     Route::get('/{contract}/edit', [ContractController::class, 'edit'])->name('contracts.edit');
+//     Route::put('/{contract}', [ContractController::class, 'update'])->name('contracts.update');
+//     Route::delete('/{contract}', [ContractController::class, 'destroy'])->name('contracts.destroy');
+    
+//     // Zone detection endpoint
+//     Route::post('/detect-zone', [ContractController::class, 'getZoneByCoordinates'])->name('detect-zone');
+
+//     // Additional AJAX endpoints
+//     Route::get('/objects-by-subject/{subject}', [ContractController::class, 'getObjectsBySubject']);
+//     Route::post('/calculate-coefficients', [ContractController::class, 'calculateCoefficients']);
+//     Route::post('/validate-volumes', [ContractController::class, 'validateObjectVolumes']);
+// });
+
 
 
 // Payments Management

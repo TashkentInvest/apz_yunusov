@@ -806,6 +806,15 @@
 @endsection
 
 @push('scripts')
+
+<script>
+    // Make Laravel routes available to JavaScript
+    window.appRoutes = {
+        createSubject: "{{ route('createSubject') }}",
+        createObject: "{{ route('createObject') }}",
+        contractStore: "{{ route('contracts.store') }}"
+    };
+</script>
 <!-- Leaflet JS -->
 <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
 
@@ -1097,10 +1106,16 @@ function detectZoneByCoordinates(lat, lng) {
         const zone = zoneData[detectedZone];
         showZoneInfo(detectedZone, zone.name, zone.coefficient);
         
-        // Auto select zone in dropdown
+        // Auto select zone in dropdown and trigger calculations
         const zoneSelect = document.getElementById('modalTerritorialZone');
         if (zoneSelect) {
             zoneSelect.value = detectedZone;
+            
+            // ⚠️ KEY FIX: Trigger the change event to update calculations
+            const changeEvent = new Event('change', { bubbles: true });
+            zoneSelect.dispatchEvent(changeEvent);
+            
+            // Also manually trigger calculation to ensure it runs
             calculateModalEverything();
         }
     } else {
@@ -1110,7 +1125,6 @@ function detectZoneByCoordinates(lat, lng) {
         }
     }
 }
-
 // Point in polygon algorithm (Ray casting algorithm)
 function isPointInPolygon(point, polygon) {
     const [x, y] = point;
@@ -1178,7 +1192,8 @@ function handleObjectFormSubmission() {
             const csrfToken = document.querySelector('meta[name="csrf-token"]')?.content || 
                             document.querySelector('input[name="_token"]')?.value;
             
-            const response = await fetch('/create-object', {
+            // ✅ Fixed URL - use the correct route path  
+            const response = await fetch('/contracts/create-object', {
                 method: 'POST',
                 headers: {
                     'X-CSRF-TOKEN': csrfToken,
@@ -1229,7 +1244,6 @@ function handleObjectFormSubmission() {
         }
     });
 }
-
 // Search functions
 function searchSubjects() {
     const searchInput = document.getElementById('subjectSearch');
@@ -1812,7 +1826,8 @@ function handleSubjectFormSubmission() {
             const csrfToken = document.querySelector('meta[name="csrf-token"]')?.content || 
                             document.querySelector('input[name="_token"]')?.value;
 
-            const response = await fetch('/create-subject', {
+            // ✅ Fixed URL - use the correct route path
+            const response = await fetch('/contracts/create-subject', {
                 method: 'POST',
                 headers: {
                     'X-CSRF-TOKEN': csrfToken,
@@ -1850,7 +1865,6 @@ function handleSubjectFormSubmission() {
         }
     });
 }
-
 function handleContractFormSubmission() {
     const form = document.getElementById('contractForm');
     if (!form) return;
