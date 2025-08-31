@@ -1004,9 +1004,18 @@ function initializeMap() {
                         const polygons = zoneBoundaries[zoneId];
                         
                         if (zoneInfo && polygons) {
+                            // 🔑 create pane for this zone (if not already)
+                            const paneName = `zone${zoneId}`;
+                            if (!objectMap.getPane(paneName)) {
+                                objectMap.createPane(paneName);
+                                // smaller zoneId => higher priority
+                                objectMap.getPane(paneName).style.zIndex = 6000 - parseInt(zoneId, 10);
+                            }
+
                             polygons.forEach((coords, index) => {
                                 try {
                                     const polygon = L.polygon(coords, {
+                                        pane: paneName,  // 👈 assign polygon to its pane
                                         color: zoneInfo.color,
                                         fillColor: zoneInfo.color,
                                         fillOpacity: 0.3,
@@ -1056,6 +1065,7 @@ function initializeMap() {
         }
     }
 }
+
 
 // Zone detection by coordinates using KML polygon boundaries
 function detectZoneByCoordinates(lat, lng) {
