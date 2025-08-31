@@ -157,7 +157,7 @@
         </div>
 
         <!-- Hisoblash summasi -->
-        <div class="bg-white rounded-xl shadow-sm border border-gray-200 p-6">
+         <div class="bg-white rounded-xl shadow-sm border border-gray-200 p-6">
             <h3 class="text-lg font-semibold text-gray-900 mb-6">Shartnoma summasi hisoblash</h3>
 
             <!-- Obyekt hajmlari ko'rsatish -->
@@ -257,6 +257,7 @@
                 </div>
             </div>
         </div>
+
 
         <!-- To'lov shartlari -->
         <div class="bg-white rounded-xl shadow-sm border border-gray-200 p-6">
@@ -440,8 +441,6 @@
                         </div>
                         <div>
                             <label class="block text-sm font-medium text-gray-700 mb-1">Manzil</label>
-<div>
-                            <label class="block text-sm font-medium text-gray-700 mb-1">Manzil</label>
                             <textarea name="physical_address" rows="2" class="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500"></textarea>
                         </div>
                     </div>
@@ -466,7 +465,7 @@
                     <p class="text-sm text-gray-600 mt-1">Obyekt ma'lumotlarini kiriting, zona avtomatik aniqlanadi va shartnoma summasi hisoblanadi</p>
                 </div>
                 <div class="px-6 py-4">
-                    <div class="grid grid-cols-3 gap-6">
+                    <div class="grid grid-cols-2 gap-6">
                         <!-- Chap ustun - Asosiy ma'lumotlar -->
                         <div class="space-y-4">
                             <h4 class="font-semibold text-gray-900 border-b pb-2 flex items-center">
@@ -565,7 +564,7 @@
                             </div>
 
                             <!-- Koeffitsientlar -->
-                            <div class="bg-purple-50 p-4 rounded-lg">
+                              <div class="bg-purple-50 p-4 rounded-lg">
                                 <h5 class="font-medium text-gray-900 mb-3 flex items-center">
                                     <i data-feather="percent" class="w-4 h-4 mr-2"></i>
                                     Koeffitsientlar
@@ -637,33 +636,7 @@
                             </div>
                         </div>
 
-                        <!-- O'rta ustun - Xarita -->
-                        <div class="space-y-4">
-                            <h4 class="font-semibold text-gray-900 border-b pb-2 flex items-center">
-                                <i data-feather="map" class="w-4 h-4 mr-2"></i>
-                                Xarita va zona aniqlash
-                            </h4>
-
-                            <div>
-                                <div id="objectMap" style="height: 600px; width: 100%;" class="border rounded-lg"></div>
-                                <div id="zoneInfo" class="mt-2 p-3 border-l-4 rounded hidden">
-                                    <div class="flex items-center justify-between">
-                                        <div>
-                                            <p class="font-semibold text-gray-900">Aniqlangan zona:</p>
-                                            <p id="detectedZone" class="text-lg font-bold"></p>
-                                        </div>
-                                        <div class="text-right">
-                                            <p class="text-sm text-gray-600">Koeffitsient:</p>
-                                            <p id="zoneCoefficient" class="text-lg font-bold"></p>
-                                        </div>
-                                    </div>
-                                </div>
-                                <div class="mt-2 text-xs text-gray-500 text-center">
-                                    Xaritadan bosing yoki koordinatalar kiriting
-                                </div>
-                            </div>
-                        </div>
-
+           
                         <!-- O'ng ustun - Shartnoma hisoblash -->
                         <div class="space-y-4">
                             <h4 class="font-semibold text-gray-900 border-b pb-2 flex items-center">
@@ -688,8 +661,17 @@
                                     <p class="text-sm opacity-90 mb-2">Shartnoma summasi (Ti)</p>
                                     <p id="modal_total_amount" class="text-3xl font-bold">0 so'm</p>
                                     <div class="mt-3 text-sm opacity-75">
-                                        <p id="modal_formula_display">Ti = Bh × Hajm × Koef</p>
+                                        <p id="modal_formula_display">Ti = Calculated_Bh × Hajm</p>
                                     </div>
+                                </div>
+                            </div>
+
+                            <!-- Hisobga olinadigan Bh -->
+                            <div class="p-3 bg-yellow-50 border border-yellow-200 rounded-lg">
+                                <div class="text-center">
+                                    <p class="text-sm font-medium text-gray-700">Hisobga olinadigan Bh:</p>
+                                    <p id="modal_calculated_bh" class="text-lg font-bold text-yellow-800">0 so'm</p>
+                                    <p class="text-xs text-gray-500 mt-1">Bh × Koeffitsient</p>
                                 </div>
                             </div>
 
@@ -758,6 +740,34 @@
                                 </table>
                             </div>
                         </div>
+
+                                     <!-- O'rta ustun - Xarita -->
+                        <div class="space-y-4 col-span-2">
+                            <h4 class="font-semibold text-gray-900 border-b pb-2 flex items-center">
+                                <i data-feather="map" class="w-4 h-4 mr-2"></i>
+                                Xarita va zona aniqlash
+                            </h4>
+
+                            <div>
+                                <div id="objectMap" style="height: 600px; width: 100%;" class="border rounded-lg"></div>
+                                <div id="zoneInfo" class="mt-2 p-3 border-l-4 rounded hidden">
+                                    <div class="flex items-center justify-between">
+                                        <div>
+                                            <p class="font-semibold text-gray-900">Aniqlangan zona:</p>
+                                            <p id="detectedZone" class="text-lg font-bold"></p>
+                                        </div>
+                                        <div class="text-right">
+                                            <p class="text-sm text-gray-600">Koeffitsient:</p>
+                                            <p id="zoneCoefficient" class="text-lg font-bold"></p>
+                                        </div>
+                                    </div>
+                                </div>
+                                <div class="mt-2 text-xs text-gray-500 text-center">
+                                    Xaritadan bosing yoki koordinatalar kiriting
+                                </div>
+                            </div>
+                        </div>
+
                     </div>
                 </div>
                 <div class="px-6 py-4 border-t border-gray-200 flex justify-between">
@@ -780,7 +790,6 @@
     </div>
 </div>
 
-                   
 <!-- Leaflet CSS -->
 <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
 @endsection
@@ -793,7 +802,7 @@
 // Global variables
 let objectMap = null;
 let mapMarker = null;
-let zonePolygons = [];
+let currentZones = null;
 
 // Zone data with coefficients
 const zoneData = {
@@ -830,7 +839,26 @@ const coefficients = {
     }
 };
 
-// Initialize map
+// Zone boundaries for Tashkent (simplified polygons)
+const zoneBoundaries = {
+    '1': [
+        [41.330, 69.200], [41.360, 69.200], [41.360, 69.280], [41.330, 69.280]
+    ],
+    '2': [
+        [41.280, 69.230], [41.330, 69.230], [41.330, 69.310], [41.280, 69.310]
+    ],
+    '3': [
+        [41.250, 69.260], [41.300, 69.260], [41.300, 69.340], [41.250, 69.340]
+    ],
+    '4': [
+        [41.220, 69.290], [41.270, 69.290], [41.270, 69.370], [41.220, 69.370]
+    ],
+    '5': [
+        [41.190, 69.320], [41.240, 69.320], [41.240, 69.400], [41.190, 69.400]
+    ]
+};
+
+// Initialize map with zone layers
 function initializeMap() {
     if (!objectMap && typeof L !== 'undefined') {
         try {
@@ -839,6 +867,23 @@ function initializeMap() {
             L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
                 attribution: '© OpenStreetMap contributors'
             }).addTo(objectMap);
+
+            // Add zone polygons to map
+            currentZones = L.layerGroup().addTo(objectMap);
+            
+            Object.keys(zoneBoundaries).forEach(zoneId => {
+                const zoneInfo = zoneData[zoneId];
+                const bounds = zoneBoundaries[zoneId];
+                
+                const polygon = L.polygon(bounds, {
+                    color: zoneInfo.color,
+                    fillColor: zoneInfo.color,
+                    fillOpacity: 0.2,
+                    weight: 2
+                }).bindPopup(`${zoneInfo.name} (K=${zoneInfo.coefficient})`);
+                
+                currentZones.addLayer(polygon);
+            });
 
             // Map click event
             objectMap.on('click', function(e) {
@@ -863,23 +908,20 @@ function initializeMap() {
     }
 }
 
-// Zone detection by coordinates (simplified without polygons)
+// Zone detection by coordinates using polygon boundaries
 function detectZoneByCoordinates(lat, lng) {
     let detectedZone = null;
     
-    // Simple zone detection based on approximate boundaries
-    if (lat > 41.33 && lng > 69.20 && lat < 41.36 && lng < 69.28) {
-        detectedZone = '1';
-    } else if (lat > 41.28 && lng > 69.23 && lat < 41.33 && lng < 69.31) {
-        detectedZone = '2';
-    } else if (lat > 41.25 && lng > 69.26 && lat < 41.30 && lng < 69.34) {
-        detectedZone = '3';
-    } else if (lat > 41.22 && lng > 69.29 && lat < 41.27 && lng < 69.37) {
-        detectedZone = '4';
-    } else if (lat > 41.19 && lng > 69.32 && lat < 41.24 && lng < 69.40) {
-        detectedZone = '5';
-    } else {
-        // Default to zone 3 if coordinates are in general Tashkent area
+    // Check each zone boundary
+    for (const [zoneId, bounds] of Object.entries(zoneBoundaries)) {
+        if (isPointInPolygon([lat, lng], bounds)) {
+            detectedZone = zoneId;
+            break;
+        }
+    }
+
+    // Default to zone 3 if no zone found but within general Tashkent area
+    if (!detectedZone && lat > 41.15 && lat < 41.45 && lng > 69.1 && lng < 69.5) {
         detectedZone = '3';
     }
 
@@ -896,6 +938,23 @@ function detectZoneByCoordinates(lat, lng) {
     } else {
         hideZoneInfo();
     }
+}
+
+// Point in polygon algorithm
+function isPointInPolygon(point, polygon) {
+    const [x, y] = point;
+    let inside = false;
+    
+    for (let i = 0, j = polygon.length - 1; i < polygon.length; j = i++) {
+        const [xi, yi] = polygon[i];
+        const [xj, yj] = polygon[j];
+        
+        if (((yi > y) !== (yj > y)) && (x < (xj - xi) * (y - yi) / (yj - yi) + xi)) {
+            inside = !inside;
+        }
+    }
+    
+    return inside;
 }
 
 // Detect zone from coordinates input
@@ -1053,29 +1112,30 @@ function selectSearchResult(option, type) {
     }
 }
 
-// Calculate total amount
+// CORRECTED CALCULATION LOGIC (as per invest.toshkentinvest.uz)
 function calculateTotal() {
     const baseAmountSelect = document.querySelector('select[name="base_amount_id"]');
     const volumeInput = document.querySelector('input[name="contract_volume"]');
-    const coefficientInput = document.querySelector('input[name="coefficient"]');
+    const calculatedBhInput = document.querySelector('input[name="calculated_bh"]');
     const totalDisplay = document.getElementById('total_amount_display');
     const formulaDisplay = document.getElementById('formula_display');
 
-    if (!baseAmountSelect || !volumeInput || !coefficientInput || !totalDisplay) return;
+    if (!baseAmountSelect || !volumeInput || !calculatedBhInput || !totalDisplay) return;
 
     const selectedOption = baseAmountSelect.options[baseAmountSelect.selectedIndex];
     const baseAmount = selectedOption ? parseFloat(selectedOption.dataset.amount) : 0;
     const volume = parseFloat(volumeInput.value) || 0;
-    const coefficient = parseFloat(coefficientInput.value) || 1;
+    const calculatedBh = parseFloat(calculatedBhInput.value) || 0;
 
-    const totalAmount = baseAmount * volume * coefficient;
+    // CORRECT FORMULA: Ti = Calculated_Bh × Volume (NOT base × volume × coef)
+    const totalAmount = calculatedBh * volume;
 
     totalDisplay.textContent = formatNumber(totalAmount) + ' so\'m';
 
     if (formulaDisplay) {
-        if (baseAmount && volume && coefficient) {
+        if (calculatedBh && volume) {
             formulaDisplay.textContent =
-                `Ti = ${formatNumber(baseAmount)} × ${formatNumber(volume)} m³ × ${coefficient} = ${formatNumber(totalAmount)} so'm`;
+                `Ti = ${formatNumber(calculatedBh)} × ${formatNumber(volume)} m³ = ${formatNumber(totalAmount)} so'm`;
         } else {
             formulaDisplay.textContent = '';
         }
@@ -1137,8 +1197,9 @@ function updateObjectVolume() {
 
         let totalCoef = kt * ko * kz * kj;
         
-        if (kt === 0 || ko === 0 || kz === 0 || kj === 0) {
-            totalCoef = 0.5; // Minimum coefficient
+        // Apply coefficient limits as per logic
+        if (kt === 0 || ko === 0) {
+            totalCoef = 0.0; // If construction or object type is 0, total is 0
         } else {
             totalCoef = Math.max(0.5, Math.min(2.0, totalCoef));
         }
@@ -1157,9 +1218,15 @@ function updateObjectVolume() {
             if (element) element.textContent = coefficientElements[id];
         });
 
-        const coefficientInput = document.querySelector('input[name="coefficient"]');
-        if (coefficientInput) {
-            coefficientInput.value = totalCoef.toFixed(2);
+        // CORRECT CALCULATION: Calculated_Bh = Base_Amount × Coefficient
+        const baseAmountSelect = document.querySelector('select[name="base_amount_id"]');
+        const calculatedBhInput = document.querySelector('input[name="calculated_bh"]');
+        
+        if (baseAmountSelect && calculatedBhInput) {
+            const selectedBaseOption = baseAmountSelect.options[baseAmountSelect.selectedIndex];
+            const baseAmount = selectedBaseOption ? parseFloat(selectedBaseOption.dataset.amount) : 0;
+            const calculatedBh = baseAmount * totalCoef;
+            calculatedBhInput.value = calculatedBh.toFixed(2);
         }
 
         calculateTotal();
@@ -1205,12 +1272,11 @@ function calculateModalCoefficients() {
 
     let totalCoef = kt * ko * kz * kj;
     
-    if (kt === 0 || ko === 0 || kz === 0 || kj === 0) {
-        totalCoef = 0.5;
-    } else if (totalCoef > 0) {
-        totalCoef = Math.max(0.5, Math.min(2.0, totalCoef));
+    // Apply coefficient rules
+    if (kt === 0 || ko === 0) {
+        totalCoef = 0.0;
     } else {
-        totalCoef = 0.5;
+        totalCoef = Math.max(0.5, Math.min(2.0, totalCoef));
     }
 
     // Update displays
@@ -1241,26 +1307,32 @@ function calculateModalContractSum() {
     const coefficient = parseFloat(coefficientText) || 1;
 
     if (baseAmount > 0 && volume > 0) {
-        const totalAmount = baseAmount * volume * coefficient;
+        // CORRECT CALCULATION: Calculated_Bh = Base × Coefficient, then Ti = Calculated_Bh × Volume
+        const calculatedBh = baseAmount * coefficient;
+        const totalAmount = calculatedBh * volume;
 
         const totalAmountEl = document.getElementById('modal_total_amount');
         const summaryAmountEl = document.getElementById('modal_summary_amount');
         const formulaEl = document.getElementById('modal_formula_display');
+        const calculatedBhEl = document.getElementById('modal_calculated_bh');
 
         if (totalAmountEl) totalAmountEl.textContent = formatNumber(totalAmount) + ' so\'m';
         if (summaryAmountEl) summaryAmountEl.textContent = formatNumber(totalAmount) + ' so\'m';
+        if (calculatedBhEl) calculatedBhEl.textContent = formatNumber(calculatedBh) + ' so\'m';
 
         if (formulaEl) {
-            formulaEl.textContent = `Ti = ${formatNumber(baseAmount)} × ${volume.toFixed(2)} × ${coefficient.toFixed(2)} = ${formatNumber(totalAmount)} so'm`;
+            formulaEl.textContent = `Ti = ${formatNumber(calculatedBh)} × ${volume.toFixed(2)} = ${formatNumber(totalAmount)} so'm`;
         }
     } else {
         const totalAmountEl = document.getElementById('modal_total_amount');
         const summaryAmountEl = document.getElementById('modal_summary_amount');
         const formulaEl = document.getElementById('modal_formula_display');
+        const calculatedBhEl = document.getElementById('modal_calculated_bh');
 
         if (totalAmountEl) totalAmountEl.textContent = '0 so\'m';
         if (summaryAmountEl) summaryAmountEl.textContent = '0 so\'m';
-        if (formulaEl) formulaEl.textContent = 'Ti = Bh × Hajm × Koef';
+        if (calculatedBhEl) calculatedBhEl.textContent = '0 so\'m';
+        if (formulaEl) formulaEl.textContent = 'Ti = Calculated_Bh × Hajm';
     }
 }
 
@@ -1499,7 +1571,6 @@ function closeSubjectModal() {
         toggleEntityFields();
     }
 }
-
 function toggleEntityFields() {
     const legalEntityRadio = document.querySelector('input[name="is_legal_entity"]:checked');
     if (!legalEntityRadio) return;

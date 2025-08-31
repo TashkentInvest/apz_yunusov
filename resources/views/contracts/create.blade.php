@@ -157,29 +157,29 @@
         </div>
 
         <!-- Hisoblash summasi -->
-         <div class="bg-white rounded-xl shadow-sm border border-gray-200 p-6">
+        <div class="bg-white rounded-xl shadow-sm border border-gray-200 p-6">
             <h3 class="text-lg font-semibold text-gray-900 mb-6">Shartnoma summasi hisoblash</h3>
 
             <!-- Obyekt hajmlari ko'rsatish -->
             <div class="grid grid-cols-2 md:grid-cols-5 gap-4 mb-6 p-4 bg-gray-50 rounded-lg">
                 <div class="text-center">
-                    <p class="text-sm text-gray-600">Binoning umumiy hajm (Hb)</p>
+                    <p class="text-sm text-gray-600">Umumiy hajm (Hb)</p>
                     <p id="display_hb" class="font-semibold text-blue-600">0 m³</p>
                 </div>
                 <div class="text-center">
-                    <p class="text-sm text-gray-600">Ruxsat etilgan qavatlar sonidan yuqori bo‘lgan bino hajmi; (Hyu)</p>
+                    <p class="text-sm text-gray-600">Ruxsatdan yuqori (Hyu)</p>
                     <p id="display_hyu" class="font-semibold text-blue-600">0 m³</p>
                 </div>
                 <div class="text-center">
-                    <p class="text-sm text-gray-600">Binoning avtoturargoh qismi umumiy hajmi; (Ha)</p>
+                    <p class="text-sm text-gray-600">Avtoturargoh (Ha)</p>
                     <p id="display_ha" class="font-semibold text-red-600">0 m³</p>
                 </div>
                 <div class="text-center">
-                    <p class="text-sm text-gray-600">Binoning texnik qavatlari, inshootlar va xonalar qismi umumiy hajmi; (Ht)</p>
+                    <p class="text-sm text-gray-600">Texnik (Ht)</p>
                     <p id="display_ht" class="font-semibold text-red-600">0 m³</p>
                 </div>
                 <div class="text-center">
-                    <p class="text-sm text-gray-600">Turar joy binosining umumiy foydalanishdagi qismi umumiy hajmi; (Hu)</p>
+                    <p class="text-sm text-gray-600">Umumiy foyd. (Hu)</p>
                     <p id="display_hu" class="font-semibold text-red-600">0 m³</p>
                 </div>
             </div>
@@ -192,19 +192,19 @@
                     <p class="text-xs text-gray-500">(Hb + Hyu) - (Ha + Ht + Hu)</p>
                 </div>
                 <div class="text-center">
-                    <p class="text-sm text-gray-600">Kt (Qurilish turi)</p>
+                    <p class="text-sm text-gray-600">Kt (Qurilish)</p>
                     <p id="display_kt" class="font-bold text-purple-600">1.0</p>
                 </div>
                 <div class="text-center">
-                    <p class="text-sm text-gray-600">Ko (Obyekt turi)</p>
+                    <p class="text-sm text-gray-600">Ko (Obyekt)</p>
                     <p id="display_ko" class="font-bold text-purple-600">1.0</p>
                 </div>
                 <div class="text-center">
-                    <p class="text-sm text-gray-600">Kz (Hududiy zonalar koeffitsiyentlari;)</p>
+                    <p class="text-sm text-gray-600">Kz (Zona)</p>
                     <p id="display_kz" class="font-bold text-purple-600">1.0</p>
                 </div>
                 <div class="text-center">
-                    <p class="text-sm text-gray-600">Kj (Obyekt joylashuvi.)</p>
+                    <p class="text-sm text-gray-600">Kj (Joy)</p>
                     <p id="display_kj" class="font-bold text-purple-600">1.0</p>
                 </div>
                 <div class="text-center">
@@ -240,10 +240,10 @@
                 </div>
 
                 <div>
-                    <label class="block text-sm font-medium text-gray-700 mb-1">Jami koeffitsient *</label>
-                    <input type="number" name="coefficient" step="0.01" value="{{ old('coefficient', '1.00') }}" required readonly
+                    <label class="block text-sm font-medium text-gray-700 mb-1">Hisobga olinadigan Bh (koef. bilan) *</label>
+                    <input type="number" name="calculated_bh" step="0.01" value="{{ old('calculated_bh') }}" required readonly
                            class="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 bg-gray-100">
-                    @error('coefficient')
+                    @error('calculated_bh')
                         <p class="text-red-600 text-sm mt-1">{{ $message }}</p>
                     @enderror
                 </div>
@@ -257,7 +257,6 @@
                 </div>
             </div>
         </div>
-
 
         <!-- To'lov shartlari -->
         <div class="bg-white rounded-xl shadow-sm border border-gray-200 p-6">
@@ -465,7 +464,7 @@
                     <p class="text-sm text-gray-600 mt-1">Obyekt ma'lumotlarini kiriting, zona avtomatik aniqlanadi va shartnoma summasi hisoblanadi</p>
                 </div>
                 <div class="px-6 py-4">
-                    <div class="grid grid-cols-2 gap-6">
+                    <div class="grid grid-cols-3 gap-6">
                         <!-- Chap ustun - Asosiy ma'lumotlar -->
                         <div class="space-y-4">
                             <h4 class="font-semibold text-gray-900 border-b pb-2 flex items-center">
@@ -564,7 +563,7 @@
                             </div>
 
                             <!-- Koeffitsientlar -->
-                              <div class="bg-purple-50 p-4 rounded-lg">
+                            <div class="bg-purple-50 p-4 rounded-lg">
                                 <h5 class="font-medium text-gray-900 mb-3 flex items-center">
                                     <i data-feather="percent" class="w-4 h-4 mr-2"></i>
                                     Koeffitsientlar
@@ -636,7 +635,33 @@
                             </div>
                         </div>
 
-           
+                        <!-- O'rta ustun - Xarita -->
+                        <div class="space-y-4">
+                            <h4 class="font-semibold text-gray-900 border-b pb-2 flex items-center">
+                                <i data-feather="map" class="w-4 h-4 mr-2"></i>
+                                Xarita va zona aniqlash
+                            </h4>
+
+                            <div>
+                                <div id="objectMap" style="height: 600px; width: 100%;" class="border rounded-lg"></div>
+                                <div id="zoneInfo" class="mt-2 p-3 border-l-4 rounded hidden">
+                                    <div class="flex items-center justify-between">
+                                        <div>
+                                            <p class="font-semibold text-gray-900">Aniqlangan zona:</p>
+                                            <p id="detectedZone" class="text-lg font-bold"></p>
+                                        </div>
+                                        <div class="text-right">
+                                            <p class="text-sm text-gray-600">Koeffitsient:</p>
+                                            <p id="zoneCoefficient" class="text-lg font-bold"></p>
+                                        </div>
+                                    </div>
+                                </div>
+                                <div class="mt-2 text-xs text-gray-500 text-center">
+                                    Xaritadan bosing yoki koordinatalar kiriting
+                                </div>
+                            </div>
+                        </div>
+
                         <!-- O'ng ustun - Shartnoma hisoblash -->
                         <div class="space-y-4">
                             <h4 class="font-semibold text-gray-900 border-b pb-2 flex items-center">
@@ -740,34 +765,6 @@
                                 </table>
                             </div>
                         </div>
-
-                                     <!-- O'rta ustun - Xarita -->
-                        <div class="space-y-4 col-span-2">
-                            <h4 class="font-semibold text-gray-900 border-b pb-2 flex items-center">
-                                <i data-feather="map" class="w-4 h-4 mr-2"></i>
-                                Xarita va zona aniqlash
-                            </h4>
-
-                            <div>
-                                <div id="objectMap" style="height: 600px; width: 100%;" class="border rounded-lg"></div>
-                                <div id="zoneInfo" class="mt-2 p-3 border-l-4 rounded hidden">
-                                    <div class="flex items-center justify-between">
-                                        <div>
-                                            <p class="font-semibold text-gray-900">Aniqlangan zona:</p>
-                                            <p id="detectedZone" class="text-lg font-bold"></p>
-                                        </div>
-                                        <div class="text-right">
-                                            <p class="text-sm text-gray-600">Koeffitsient:</p>
-                                            <p id="zoneCoefficient" class="text-lg font-bold"></p>
-                                        </div>
-                                    </div>
-                                </div>
-                                <div class="mt-2 text-xs text-gray-500 text-center">
-                                    Xaritadan bosing yoki koordinatalar kiriting
-                                </div>
-                            </div>
-                        </div>
-
                     </div>
                 </div>
                 <div class="px-6 py-4 border-t border-gray-200 flex justify-between">
@@ -804,16 +801,16 @@ let objectMap = null;
 let mapMarker = null;
 let currentZones = null;
 
-// Zone data with coefficients
+// Zone data with correct coefficients from document
 const zoneData = {
-    '1': { name: 'ЗОНА-1', coefficient: 1.40, color: '#ef4444' },
-    '2': { name: 'ЗОНА-2', coefficient: 1.25, color: '#f97316' },
-    '3': { name: 'ЗОНА-3', coefficient: 1.00, color: '#eab308' },
-    '4': { name: 'ЗОНА-4', coefficient: 0.75, color: '#22c55e' },
-    '5': { name: 'ЗОНА-5', coefficient: 0.50, color: '#06b6d4' }
+    '1': { name: 'ЗОНА-1', coefficient: 2.00, color: '#ef4444' },
+    '2': { name: 'ЗОНА-2', coefficient: 1.80, color: '#f97316' },
+    '3': { name: 'ЗОНА-3', coefficient: 1.53, color: '#eab308' },
+    '4': { name: 'ЗОНА-4', coefficient: 1.34, color: '#22c55e' },
+    '5': { name: 'ЗОНА-5', coefficient: 1.23, color: '#06b6d4' }
 };
 
-// Coefficient configuration
+// Coefficient configuration (correct as per invest.toshkentinvest.uz logic)
 const coefficients = {
     construction_type: {
         1: 1.0,    // Yangi qurilish (renovatsiya va (yoki) rivojlanish).
@@ -839,26 +836,67 @@ const coefficients = {
     }
 };
 
-// Zone boundaries for Tashkent (simplified polygons)
-const zoneBoundaries = {
-    '1': [
-        [41.330, 69.200], [41.360, 69.200], [41.360, 69.280], [41.330, 69.280]
-    ],
-    '2': [
-        [41.280, 69.230], [41.330, 69.230], [41.330, 69.310], [41.280, 69.310]
-    ],
-    '3': [
-        [41.250, 69.260], [41.300, 69.260], [41.300, 69.340], [41.250, 69.340]
-    ],
-    '4': [
-        [41.220, 69.290], [41.270, 69.290], [41.270, 69.370], [41.220, 69.370]
-    ],
-    '5': [
-        [41.190, 69.320], [41.240, 69.320], [41.240, 69.400], [41.190, 69.400]
-    ]
-};
 
-// Initialize map with zone layers
+// Zone boundaries - will be loaded from KML
+let zoneBoundaries = {};
+let kmlLoaded = false;
+
+// Load KML file and parse zones
+async function loadZoneKML() {
+    try {
+        const response = await fetch('/zone.kml');
+        const kmlText = await response.text();
+        
+        const parser = new DOMParser();
+        const kmlDoc = parser.parseFromString(kmlText, 'text/xml');
+        
+        // Parse KML placemarks
+        const placemarks = kmlDoc.querySelectorAll('Placemark');
+        
+        placemarks.forEach(placemark => {
+            const nameElement = placemark.querySelector('name');
+            const coordinatesElement = placemark.querySelector('coordinates');
+            
+            if (nameElement && coordinatesElement) {
+                const zoneName = nameElement.textContent.trim();
+                const coordinatesText = coordinatesElement.textContent.trim();
+                
+                // Extract zone ID from name (e.g., "ZONA-1" -> "1")
+                const zoneMatch = zoneName.match(/ZONA[_-]?(\d+)/i);
+                if (zoneMatch) {
+                    const zoneId = zoneMatch[1];
+                    
+                    // Parse coordinates (KML format: lng,lat,alt lng,lat,alt ...)
+                    const coords = coordinatesText.split(/\s+/)
+                        .filter(coord => coord.trim())
+                        .map(coord => {
+                            const parts = coord.split(',');
+                            return [parseFloat(parts[1]), parseFloat(parts[0])]; // [lat, lng]
+                        })
+                        .filter(coord => !isNaN(coord[0]) && !isNaN(coord[1]));
+                    
+                    if (coords.length > 0) {
+                        zoneBoundaries[zoneId] = coords;
+                    }
+                }
+            }
+        });
+        
+        kmlLoaded = true;
+        console.log('KML zones loaded:', Object.keys(zoneBoundaries));
+        
+    } catch (error) {
+        console.error('Error loading KML zones:', error);
+        
+        // Fallback to basic zone detection without polygons
+        kmlLoaded = false;
+        
+        // Show notification to user
+        showNotification('Zone xaritasi yuklanmadi. Zona avtomatik aniqlanmasligi mumkin.', 'warning');
+    }
+}
+
+// Initialize map with KML zone layers
 function initializeMap() {
     if (!objectMap && typeof L !== 'undefined') {
         try {
@@ -868,21 +906,29 @@ function initializeMap() {
                 attribution: '© OpenStreetMap contributors'
             }).addTo(objectMap);
 
-            // Add zone polygons to map
+            // Initialize zones layer group
             currentZones = L.layerGroup().addTo(objectMap);
             
-            Object.keys(zoneBoundaries).forEach(zoneId => {
-                const zoneInfo = zoneData[zoneId];
-                const bounds = zoneBoundaries[zoneId];
-                
-                const polygon = L.polygon(bounds, {
-                    color: zoneInfo.color,
-                    fillColor: zoneInfo.color,
-                    fillOpacity: 0.2,
-                    weight: 2
-                }).bindPopup(`${zoneInfo.name} (K=${zoneInfo.coefficient})`);
-                
-                currentZones.addLayer(polygon);
+            // Load KML and add zones to map
+            loadZoneKML().then(() => {
+                if (kmlLoaded && Object.keys(zoneBoundaries).length > 0) {
+                    Object.keys(zoneBoundaries).forEach(zoneId => {
+                        const zoneInfo = zoneData[zoneId];
+                        const bounds = zoneBoundaries[zoneId];
+                        
+                        if (zoneInfo && bounds) {
+                            const polygon = L.polygon(bounds, {
+                                color: zoneInfo.color,
+                                fillColor: zoneInfo.color,
+                                fillOpacity: 0.2,
+                                weight: 2
+                            }).bindPopup(`${zoneInfo.name} (K=${zoneInfo.coefficient})`);
+                            
+                            currentZones.addLayer(polygon);
+                        }
+                    });
+                    console.log('Zone polygons added to map');
+                }
             });
 
             // Map click event
@@ -908,28 +954,36 @@ function initializeMap() {
     }
 }
 
-// Zone detection by coordinates using polygon boundaries
+// Zone detection by coordinates using actual KML polygon boundaries
 function detectZoneByCoordinates(lat, lng) {
     let detectedZone = null;
     
-    // Check each zone boundary
-    for (const [zoneId, bounds] of Object.entries(zoneBoundaries)) {
-        if (isPointInPolygon([lat, lng], bounds)) {
-            detectedZone = zoneId;
-            break;
+    // If KML is loaded, use actual zone boundaries
+    if (kmlLoaded && Object.keys(zoneBoundaries).length > 0) {
+        // Check each zone boundary from KML data
+        for (const [zoneId, bounds] of Object.entries(zoneBoundaries)) {
+            if (isPointInPolygon([lat, lng], bounds)) {
+                detectedZone = zoneId;
+                break;
+            }
         }
     }
-
-    // Default to zone 3 if no zone found but within general Tashkent area
+    
+    // Fallback for coordinates within Tashkent area but not in any specific zone
     if (!detectedZone && lat > 41.15 && lat < 41.45 && lng > 69.1 && lng < 69.5) {
-        detectedZone = '3';
+        // If KML failed to load, show a warning and default to zone 3
+        if (!kmlLoaded) {
+            showNotification('Zona ma\'lumotlari yuklanmagan. Qo\'lda tanlang.', 'warning');
+        }
+        detectedZone = '3'; // Default zone for Tashkent
     }
 
+    // Show detected zone info
     if (detectedZone && zoneData[detectedZone]) {
         const zone = zoneData[detectedZone];
         showZoneInfo(detectedZone, zone.name, zone.coefficient);
         
-        // Auto select zone
+        // Auto select zone in dropdown
         const zoneSelect = document.getElementById('modalTerritorialZone');
         if (zoneSelect) {
             zoneSelect.value = detectedZone;
@@ -937,6 +991,11 @@ function detectZoneByCoordinates(lat, lng) {
         }
     } else {
         hideZoneInfo();
+        
+        // If no zone detected and coordinates are valid, show message
+        if (lat && lng) {
+            showNotification('Bu koordinatalar uchun zona aniqlanmadi. Qo\'lda tanlang.', 'warning');
+        }
     }
 }
 
@@ -1120,14 +1179,22 @@ function calculateTotal() {
     const totalDisplay = document.getElementById('total_amount_display');
     const formulaDisplay = document.getElementById('formula_display');
 
-    if (!baseAmountSelect || !volumeInput || !calculatedBhInput || !totalDisplay) return;
+    if (!baseAmountSelect || !volumeInput || !totalDisplay) return;
 
     const selectedOption = baseAmountSelect.options[baseAmountSelect.selectedIndex];
     const baseAmount = selectedOption ? parseFloat(selectedOption.dataset.amount) : 0;
     const volume = parseFloat(volumeInput.value) || 0;
-    const calculatedBh = parseFloat(calculatedBhInput.value) || 0;
+    
+    // Get calculated Bh (base amount with coefficient applied)
+    let calculatedBh = 0;
+    if (calculatedBhInput) {
+        calculatedBh = parseFloat(calculatedBhInput.value) || 0;
+    } else {
+        // Fallback if calculated_bh input not found
+        calculatedBh = baseAmount;
+    }
 
-    // CORRECT FORMULA: Ti = Calculated_Bh × Volume (NOT base × volume × coef)
+    // CORRECT FORMULA: Ti = Calculated_Bh × Volume
     const totalAmount = calculatedBh * volume;
 
     totalDisplay.textContent = formatNumber(totalAmount) + ' so\'m';
@@ -1137,7 +1204,7 @@ function calculateTotal() {
             formulaDisplay.textContent =
                 `Ti = ${formatNumber(calculatedBh)} × ${formatNumber(volume)} m³ = ${formatNumber(totalAmount)} so'm`;
         } else {
-            formulaDisplay.textContent = '';
+            formulaDisplay.textContent = 'Ti = Hisobga olinadigan Bh × Hisoblash hajmi';
         }
     }
 
@@ -1571,6 +1638,7 @@ function closeSubjectModal() {
         toggleEntityFields();
     }
 }
+
 function toggleEntityFields() {
     const legalEntityRadio = document.querySelector('input[name="is_legal_entity"]:checked');
     if (!legalEntityRadio) return;
