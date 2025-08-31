@@ -163,23 +163,23 @@
             <!-- Obyekt hajmlari ko'rsatish -->
             <div class="grid grid-cols-2 md:grid-cols-5 gap-4 mb-6 p-4 bg-gray-50 rounded-lg">
                 <div class="text-center">
-                    <p class="text-sm text-gray-600">Umumiy hajm (Hb)</p>
+                    <p class="text-sm text-gray-600">Binoning umumiy hajm (Hb)</p>
                     <p id="display_hb" class="font-semibold text-blue-600">0 m³</p>
                 </div>
                 <div class="text-center">
-                    <p class="text-sm text-gray-600">Ruxsatdan yuqori (Hyu)</p>
+                    <p class="text-sm text-gray-600">Ruxsat etilgan qavatlar sonidan yuqori bo‘lgan bino hajmi; (Hyu)</p>
                     <p id="display_hyu" class="font-semibold text-blue-600">0 m³</p>
                 </div>
                 <div class="text-center">
-                    <p class="text-sm text-gray-600">Avtoturargoh (Ha)</p>
+                    <p class="text-sm text-gray-600">Binoning avtoturargoh qismi umumiy hajmi; (Ha)</p>
                     <p id="display_ha" class="font-semibold text-red-600">0 m³</p>
                 </div>
                 <div class="text-center">
-                    <p class="text-sm text-gray-600">Texnik (Ht)</p>
+                    <p class="text-sm text-gray-600">Binoning texnik qavatlari, inshootlar va xonalar qismi umumiy hajmi; (Ht)</p>
                     <p id="display_ht" class="font-semibold text-red-600">0 m³</p>
                 </div>
                 <div class="text-center">
-                    <p class="text-sm text-gray-600">Umumiy foyd. (Hu)</p>
+                    <p class="text-sm text-gray-600">Turar joy binosining umumiy foydalanishdagi qismi umumiy hajmi; (Hu)</p>
                     <p id="display_hu" class="font-semibold text-red-600">0 m³</p>
                 </div>
             </div>
@@ -192,19 +192,19 @@
                     <p class="text-xs text-gray-500">(Hb + Hyu) - (Ha + Ht + Hu)</p>
                 </div>
                 <div class="text-center">
-                    <p class="text-sm text-gray-600">Kt (Qurilish)</p>
+                    <p class="text-sm text-gray-600">Kt (Qurilish turi)</p>
                     <p id="display_kt" class="font-bold text-purple-600">1.0</p>
                 </div>
                 <div class="text-center">
-                    <p class="text-sm text-gray-600">Ko (Obyekt)</p>
+                    <p class="text-sm text-gray-600">Ko (Obyekt turi)</p>
                     <p id="display_ko" class="font-bold text-purple-600">1.0</p>
                 </div>
                 <div class="text-center">
-                    <p class="text-sm text-gray-600">Kz (Zona)</p>
+                    <p class="text-sm text-gray-600">Kz (Hududiy zonalar koeffitsiyentlari;)</p>
                     <p id="display_kz" class="font-bold text-purple-600">1.0</p>
                 </div>
                 <div class="text-center">
-                    <p class="text-sm text-gray-600">Kj (Joy)</p>
+                    <p class="text-sm text-gray-600">Kj (Obyekt joylashuvi.)</p>
                     <p id="display_kj" class="font-bold text-purple-600">1.0</p>
                 </div>
                 <div class="text-center">
@@ -577,10 +577,9 @@
                                         <select name="construction_type_id" onchange="calculateModalEverything()"
                                                 class="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500">
                                             <option value="">Tanlang</option>
-                                            <option value="1" data-coef="1.0">Yangi qurilish (1.0)</option>
-                                            <option value="2" data-coef="1.0">Rekonstruksiya (1.0)</option>
-                                            <option value="3" data-coef="0.0">Ekspertiza talab etilmaydigan (0.0)</option>
-                                            <option value="4" data-coef="0.0">Hajmni o'zgartirmagan (0.0)</option>
+                                            <option value="1" data-coef="1.0">Yangi qurilish (renovatsiya va (yoki) rivojlanish).Yangi qurilish (renovatsiya va (yoki) rivojlanish). (1.0)</option>
+                                            <option value="2" data-coef="0.85">Obyektni rekonstruksiya qilish (0.85)</option>
+                                     
                                         </select>
                                     </div>
 
@@ -589,10 +588,9 @@
                                         <select name="object_type_id" onchange="calculateModalEverything()"
                                                 class="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500">
                                             <option value="">Tanlang</option>
-                                            <option value="1" data-coef="0.5">Ijtimoiy infratuzilma (0.5)</option>
-                                            <option value="2" data-coef="0.5">Davlat ulushi 50%+ (0.5)</option>
-                                            <option value="3" data-coef="0.5">Ishlab chiqarish (0.5)</option>
-                                            <option value="4" data-coef="0.5">Omborxonalar (0.5)</option>
+                                            <option value="1" data-coef="0.8">Ijtimoiy xususiy obyektlar (nodavlat maktab va maktabgacha ta’lim muassasalari, xususiy tibbiyot muassasalari va boshqalar) (0.8)</option>
+                                            <option value="2" data-coef="0.5">Davlat ulushi 50 (ellik) foizdan ortiq bo‘lgan davlat va (yoki) munitsipal mulk negizida davlat va (yoki) mulk ishtirokchisi tomonidan, shu jumladan, hamkorlikda butun mulkiy kompleks miqyosida amalga oshiriladigan investitsiya loyihalari doirasida qurilish (rekonstruksiya qilish) obyektlariga. (0.5)</option>
+                                            <option value="3" data-coef="0.5">Sanoat maqsadlarida foydalaniladigan binolarni (ishlab chiqarish binolari, omborxonalar, sanoat-sinov laboratoriyalari binolari va shu kabilar) qurishga har bir qavati uchun 3 (uch) metr balandlikdan oshmagan o‘lchamda. (0.5)</option>
                                             <option value="5" data-coef="1.0">Boshqa obyektlar (1.0)</option>
                                         </select>
                                     </div>
@@ -602,11 +600,11 @@
                                         <select name="territorial_zone_id" id="modalTerritorialZone" onchange="calculateModalEverything()"
                                                 class="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500">
                                             <option value="">Zonani tanlang</option>
-                                            <option value="1" data-coef="1.40">1-zona (1.40)</option>
-                                            <option value="2" data-coef="1.25">2-zona (1.25)</option>
-                                            <option value="3" data-coef="1.00">3-zona (1.00)</option>
-                                            <option value="4" data-coef="0.75">4-zona (0.75)</option>
-                                            <option value="5" data-coef="0.50">5-zona (0.50)</option>
+                                            <option value="1" data-coef="2">1-zona (2)</option>
+                                            <option value="2" data-coef="1.80">2-zona (1.80)</option>
+                                            <option value="3" data-coef="1.53">3-zona (1.53)</option>
+                                            <option value="4" data-coef="1.34">4-zona (1.34)</option>
+                                            <option value="5" data-coef="1.23">5-zona (1.23)</option>
                                         </select>
                                     </div>
 
@@ -614,7 +612,7 @@
                                         <label class="block text-sm font-medium text-gray-700 mb-1">Joylashuv (Kj)</label>
                                         <select name="location_type" onchange="calculateModalEverything()"
                                                 class="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500">
-                                            <option value="metro_radius_200m_outside" data-coef="0.6">Metro 200m radiusidan tashqari (0.6)</option>
+                                            <option value="metro_radius_200m_outside" data-coef="0.6">Metro stansiyasidan chiqish joyidan obyekt chegarasigacha 200 metr radius oralig‘i va markaziy qatnov ko‘chalaridan boshqa hududlarda joylashgan bino-inshootlardan (0.6)</option>
                                             <option value="other_locations" data-coef="1.0">Boshqa joylar (1.0)</option>
                                         </select>
                                     </div>
@@ -809,24 +807,22 @@ const zoneData = {
 // Coefficient configuration
 const coefficients = {
     construction_type: {
-        1: 1.0,    // Yangi qurilish
-        2: 1.0,    // Rekonstruksiya
-        3: 0.0,    // Ekspertiza talab etilmaydigan
-        4: 0.0     // Hajmni o'zgartirmagan
+        1: 1.0,    // Yangi qurilish (renovatsiya va (yoki) rivojlanish).
+        2: 0.85,    // Obyektni rekonstruksiya qilish
+
     },
     object_type: {
-        1: 0.5,    // Ijtimoiy infratuzilma
-        2: 0.5,    // Davlat ulushi 50%+
-        3: 0.5,    // Ishlab chiqarish
-        4: 0.5,    // Omborxonalar
-        5: 1.0     // Boshqa obyektlar
+        1: 0.8,    // Ijtimoiy xususiy obyektlar (nodavlat maktab va maktabgacha ta’lim muassasalari, xususiy tibbiyot muassasalari va boshqalar)
+        2: 0.5,    // Davlat ulushi 50 (ellik) foizdan ortiq bo‘lgan davlat va (yoki) munitsipal mulk negizida davlat va (yoki) mulk ishtirokchisi tomonidan, shu jumladan, hamkorlikda butun mulkiy kompleks miqyosida amalga oshiriladigan investitsiya loyihalari doirasida qurilish (rekonstruksiya qilish) obyektlariga.
+        3: 0.5,    // Sanoat maqsadlarida foydalaniladigan binolarni (ishlab chiqarish binolari, omborxonalar, sanoat-sinov laboratoriyalari binolari va shu kabilar) qurishga har bir qavati uchun 3 (uch) metr balandlikdan oshmagan o‘lchamda.
+        4: 1.0     // Boshqa obyektlar
     },
     territorial_zone: {
-        1: 1.40,   // 1-zona
-        2: 1.25,   // 2-zona
-        3: 1.00,   // 3-zona
-        4: 0.75,   // 4-zona
-        5: 0.50    // 5-zona
+        1: 2,   // 1-zona
+        2: 1.80,   // 2-zona
+        3: 1.53,   // 3-zona
+        4: 1.34,   // 4-zona
+        5: 1.23    // 5-zona
     },
     location: {
         'metro_radius_200m_outside': 0.6,
