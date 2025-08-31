@@ -465,7 +465,7 @@
                     <p class="text-sm text-gray-600 mt-1">Obyekt ma'lumotlarini kiriting, zona avtomatik aniqlanadi va shartnoma summasi hisoblanadi</p>
                 </div>
                 <div class="px-6 py-4">
-                    <div class="grid grid-cols-3 gap-6">
+                    <div class="grid grid-cols-2 gap-6">
                         <!-- Chap ustun - Asosiy ma'lumotlar -->
                         <div class="space-y-4">
                             <h4 class="font-semibold text-gray-900 border-b pb-2 flex items-center">
@@ -636,33 +636,7 @@
                             </div>
                         </div>
 
-                        <!-- O'rta ustun - Xarita -->
-                        <div class="space-y-4">
-                            <h4 class="font-semibold text-gray-900 border-b pb-2 flex items-center">
-                                <i data-feather="map" class="w-4 h-4 mr-2"></i>
-                                Xarita va zona aniqlash
-                            </h4>
-
-                            <div>
-                                <div id="objectMap" style="height: 600px; width: 100%;" class="border rounded-lg"></div>
-                                <div id="zoneInfo" class="mt-2 p-3 border-l-4 rounded hidden">
-                                    <div class="flex items-center justify-between">
-                                        <div>
-                                            <p class="font-semibold text-gray-900">Aniqlangan zona:</p>
-                                            <p id="detectedZone" class="text-lg font-bold"></p>
-                                        </div>
-                                        <div class="text-right">
-                                            <p class="text-sm text-gray-600">Koeffitsient:</p>
-                                            <p id="zoneCoefficient" class="text-lg font-bold"></p>
-                                        </div>
-                                    </div>
-                                </div>
-                                <div class="mt-2 text-xs text-gray-500 text-center">
-                                    Xaritadan bosing yoki koordinatalar kiriting
-                                </div>
-                            </div>
-                        </div>
-
+           
                         <!-- O'ng ustun - Shartnoma hisoblash -->
                         <div class="space-y-4">
                             <h4 class="font-semibold text-gray-900 border-b pb-2 flex items-center">
@@ -766,6 +740,34 @@
                                 </table>
                             </div>
                         </div>
+
+                                     <!-- O'rta ustun - Xarita -->
+                        <div class="space-y-4 col-span-2">
+                            <h4 class="font-semibold text-gray-900 border-b pb-2 flex items-center">
+                                <i data-feather="map" class="w-4 h-4 mr-2"></i>
+                                Xarita va zona aniqlash
+                            </h4>
+
+                            <div>
+                                <div id="objectMap" style="height: 600px; width: 100%;" class="border rounded-lg"></div>
+                                <div id="zoneInfo" class="mt-2 p-3 border-l-4 rounded hidden">
+                                    <div class="flex items-center justify-between">
+                                        <div>
+                                            <p class="font-semibold text-gray-900">Aniqlangan zona:</p>
+                                            <p id="detectedZone" class="text-lg font-bold"></p>
+                                        </div>
+                                        <div class="text-right">
+                                            <p class="text-sm text-gray-600">Koeffitsient:</p>
+                                            <p id="zoneCoefficient" class="text-lg font-bold"></p>
+                                        </div>
+                                    </div>
+                                </div>
+                                <div class="mt-2 text-xs text-gray-500 text-center">
+                                    Xaritadan bosing yoki koordinatalar kiriting
+                                </div>
+                            </div>
+                        </div>
+
                     </div>
                 </div>
                 <div class="px-6 py-4 border-t border-gray-200 flex justify-between">
