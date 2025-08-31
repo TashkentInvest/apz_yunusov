@@ -40,8 +40,8 @@ Route::prefix('contracts')->group(function () {
     Route::delete('/{contract}', [ContractController::class, 'destroy'])->name('contracts.destroy');
 
     // AJAX routes for creating subjects and objects
-    Route::post('/create-subject', [ContractController::class, 'createSubject']);
-    Route::post('/create-object', [ContractController::class, 'createObject']);
+    Route::post('/create-subject', [ContractController::class, 'createSubject'])->name('createSubject');
+    Route::post('/create-object', [ContractController::class, 'createObject'])->name('createObject');
 
     // Additional AJAX endpoints
     Route::get('/objects-by-subject/{subject}', [ContractController::class, 'getObjectsBySubject']);
