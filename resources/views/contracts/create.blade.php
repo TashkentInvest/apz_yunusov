@@ -25,13 +25,13 @@
             <i data-feather="x" class="w-5 h-5"></i>
         </button>
     </div>
-    
+
     <div class="p-4 space-y-6 h-full overflow-y-auto">
         <!-- Legal Documents -->
         <div>
             <h3 class="text-sm font-semibold text-gray-900 mb-3">Qonuniy hujjatlar</h3>
             <div class="space-y-3">
-                <a href="https://lex.uz/ru/docs/-6993957" target="_blank" 
+                <a href="https://lex.uz/ru/docs/-6993957" target="_blank"
                    class="block p-3 rounded-lg border border-gray-200 hover:border-gray-300 hover:bg-gray-50 transition-all">
                     <div class="flex items-start">
                         <i data-feather="file-text" class="w-4 h-4 mt-0.5 mr-3 text-blue-600 flex-shrink-0"></i>
@@ -42,7 +42,7 @@
                         </div>
                     </div>
                 </a>
-                
+
                 <a href="https://lex.uz/uz/docs/-6851920" target="_blank"
                    class="block p-3 rounded-lg border border-gray-200 hover:border-gray-300 hover:bg-gray-50 transition-all">
                     <div class="flex items-start">
@@ -171,27 +171,27 @@
             </div>
         </div>
 
-        <!-- Buyurtmachi -->
+        <!-- Mulk egasi -->
         <div class="bg-white rounded-xl shadow-sm border border-gray-200 p-6">
             <div class="flex justify-between items-center mb-6">
-                <h3 class="text-lg font-semibold text-gray-900">Buyurtmachi</h3>
+                <h3 class="text-lg font-semibold text-gray-900">Mulk egasi</h3>
                 <button type="button" onclick="openSubjectModal()"
                         class="px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors">
                     <i data-feather="plus" class="w-4 h-4 mr-2 inline"></i>
-                    Yangi buyurtmachi
+                    Yangi Mulkegasi
                 </button>
             </div>
 
             <div class="grid grid-cols-1 gap-6">
                 <div>
-                    <label class="block text-sm font-medium text-gray-700 mb-1">Buyurtmachi *</label>
+                    <label class="block text-sm font-medium text-gray-700 mb-1">Mulk egasi *</label>
                     <div class="relative">
-                        <input type="text" id="subjectSearch" placeholder="Buyurtmachi qidirish..."
+                        <input type="text" id="subjectSearch" placeholder="Mulk egasi qidirish..."
                                class="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
                                onkeyup="searchSubjects()" autocomplete="off">
                         <select name="subject_id" required id="subjectSelect" style="display: none;"
                                 class="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500">
-                            <option value="">Buyurtmachini tanlang</option>
+                            <option value="">Mulk egasini tanlang</option>
                             @foreach($subjects as $subject)
                                 <option value="{{ $subject->id }}" {{ old('subject_id') == $subject->id ? 'selected' : '' }}
                                         data-text="{{ $subject->display_name }} ({{ $subject->identifier }})">
@@ -437,7 +437,7 @@
     </form>
 </div>
 
-<!-- Buyurtmachi yaratish modali -->
+<!-- Mulk egasi yaratish modali -->
 <div id="subjectModal" class="hidden fixed inset-0 z-50 overflow-y-auto">
     <div class="flex items-center justify-center min-h-screen px-4">
         <div class="fixed inset-0 bg-gray-500 bg-opacity-75 transition-opacity"></div>
@@ -446,7 +446,7 @@
 <form id="subjectModalForm">
                 @csrf
                 <div class="px-6 py-4 border-b border-gray-200">
-                    <h3 class="text-lg font-semibold text-gray-900">Yangi buyurtmachi yaratish</h3>
+                    <h3 class="text-lg font-semibold text-gray-900">Yangi Mulk egasi yaratish</h3>
                 </div>
                 <div class="px-6 py-4 max-h-96 overflow-y-auto">
                     <!-- Shaxs turi tanlash -->
@@ -577,7 +577,7 @@
                             <h4 class="text-lg font-semibold text-gray-900 mb-4 pb-2 border-b border-gray-200">
                                 1. Asosiy ma'lumotlar
                             </h4>
-                            
+
                             <div class="space-y-4">
                                 <div>
                                     <label class="block text-sm font-medium text-gray-700 mb-2">Tuman *</label>
@@ -614,7 +614,7 @@
                                     </div>
                                     <div>
                                         <label class="block text-sm font-medium text-gray-700 mb-2">Koordinatalar</label>
-                                        <input type="text" name="geolocation" id="coordinatesInput" 
+                                        <input type="text" name="geolocation" id="coordinatesInput"
                                                placeholder="41.2995, 69.2401" readonly
                                                class="w-full px-3 py-2 border border-gray-300 rounded-lg bg-gray-50">
                                     </div>
@@ -627,7 +627,7 @@
                             <h4 class="text-lg font-semibold text-gray-900 mb-4 pb-2 border-b border-gray-200">
                                 2. Qurilish hajmlari (m³)
                             </h4>
-                            
+
                             <div class="space-y-4">
                                 <div>
                                     <label class="block text-sm font-medium text-gray-700 mb-2">Umumiy hajm (Hb) *</label>
@@ -675,7 +675,7 @@
                             <h4 class="text-lg font-semibold text-gray-900 mb-4 pb-2 border-b border-gray-200">
                                 3. Koeffitsientlar
                             </h4>
-                            
+
                             <div class="space-y-4">
                                 <div>
                                     <label class="block text-sm font-medium text-gray-700 mb-2">Qurilish turi (Kt)</label>
@@ -755,10 +755,10 @@
                             <h4 class="text-lg font-semibold text-gray-900 mb-2">Xarita va zona aniqlash</h4>
                             <p class="text-sm text-gray-600">Xaritada obyekt joylashuvini belgilang</p>
                         </div>
-                        
+
                         <div class="flex-1 p-6">
                             <div id="objectMap" class="w-full h-full rounded-lg border border-gray-200"></div>
-                            
+
                             <div id="zoneInfo" class="mt-4 p-4 border-l-4 rounded-lg hidden">
                                 <div class="flex items-center justify-between">
                                     <div>
@@ -771,7 +771,7 @@
                                     </div>
                                 </div>
                             </div>
-                            
+
                             <div class="mt-4 text-center text-sm text-gray-500">
                                 Xaritadan obyekt joylashuvini tanlang
                             </div>
@@ -868,61 +868,61 @@ async function loadZoneKML() {
     try {
         console.log('Loading zone KML...');
         const response = await fetch('/zone.kml');
-        
+
         if (!response.ok) {
             throw new Error(`KML file not found: ${response.status}`);
         }
-        
+
         const kmlText = await response.text();
         const parser = new DOMParser();
         const kmlDoc = parser.parseFromString(kmlText, 'text/xml');
-        
+
         // Check for parsing errors
         const parserErrors = kmlDoc.getElementsByTagName('parsererror');
         if (parserErrors.length > 0) {
             throw new Error('KML parsing error');
         }
-        
+
         // Parse KML placemarks
         const placemarks = kmlDoc.querySelectorAll('Placemark');
         console.log(`Found ${placemarks.length} placemarks in KML`);
-        
+
         placemarks.forEach((placemark, index) => {
             try {
                 // Get zone name from ExtendedData
                 const schemaData = placemark.querySelector('SchemaData');
                 let zoneName = '';
-                
+
                 if (schemaData) {
                     const soniData = schemaData.querySelector('SimpleData[name="SONI"]');
                     if (soniData) {
                         zoneName = soniData.textContent.trim();
                     }
                 }
-                
+
                 console.log(`Processing placemark ${index + 1}, zone name: "${zoneName}"`);
-                
+
                 // Extract zone ID from name (e.g., "ЗОНА-1" -> "1")
                 const zoneMatch = zoneName.match(/(?:ZONA|ЗОНА)[_-]?(\d+)/i);
                 if (!zoneMatch) {
                     console.warn(`Could not extract zone ID from: "${zoneName}"`);
                     return;
                 }
-                
+
                 const zoneId = zoneMatch[1];
                 console.log(`Extracted zone ID: ${zoneId}`);
-                
+
                 // Process coordinates from MultiGeometry > Polygon
                 const multiGeometry = placemark.querySelector('MultiGeometry');
-                const polygons = multiGeometry ? 
-                    multiGeometry.querySelectorAll('Polygon') : 
+                const polygons = multiGeometry ?
+                    multiGeometry.querySelectorAll('Polygon') :
                     placemark.querySelectorAll('Polygon');
-                
+
                 if (polygons.length === 0) {
                     console.warn(`No polygons found for zone ${zoneId}`);
                     return;
                 }
-                
+
                 polygons.forEach((polygon, polyIndex) => {
                     // Get outer boundary coordinates
                     const outerRing = polygon.querySelector('outerBoundaryIs LinearRing coordinates');
@@ -930,9 +930,9 @@ async function loadZoneKML() {
                         console.warn(`No outer boundary found for polygon ${polyIndex} in zone ${zoneId}`);
                         return;
                     }
-                    
+
                     const coordinatesText = outerRing.textContent.trim();
-                    
+
                     if (coordinatesText) {
                         // Parse coordinates (KML format: lng,lat,alt lng,lat,alt ...)
                         const coords = coordinatesText.split(/[\s,]+/)
@@ -942,7 +942,7 @@ async function loadZoneKML() {
                                 if (index % 2 === 0 && index + 1 < arr.length) {
                                     const lng = parseFloat(curr);
                                     const lat = parseFloat(arr[index + 1]);
-                                    
+
                                     if (!isNaN(lat) && !isNaN(lng)) {
                                         // Check if coordinates are in valid range for Tashkent
                                         if (lat > 40 && lat < 42 && lng > 68 && lng < 71) {
@@ -952,9 +952,9 @@ async function loadZoneKML() {
                                 }
                                 return acc;
                             }, []);
-                        
+
                         console.log(`Parsed ${coords.length} coordinate pairs for zone ${zoneId}, polygon ${polyIndex}`);
-                        
+
                         if (coords.length > 2) { // Need at least 3 points for a polygon
                             if (!zoneBoundaries[zoneId]) {
                                 zoneBoundaries[zoneId] = [];
@@ -966,22 +966,22 @@ async function loadZoneKML() {
                         }
                     }
                 });
-                
+
             } catch (error) {
                 console.error(`Error processing placemark ${index + 1}:`, error);
             }
         });
-        
+
         kmlLoaded = true;
         const zoneKeys = Object.keys(zoneBoundaries);
         console.log('KML zones loaded successfully:', zoneKeys);
         console.log('Zone boundaries data:', zoneBoundaries);
-        
+
         if (zoneKeys.length === 0) {
             console.warn('No zones were successfully parsed from KML');
             kmlLoaded = false;
         }
-        
+
     } catch (error) {
         console.error('Error loading KML zones:', error);
         kmlLoaded = false;
@@ -1002,16 +1002,16 @@ function initializeMap() {
 
             // Initialize zones layer group
             currentZones = L.layerGroup().addTo(objectMap);
-            
+
             // Load KML and add zones to map
             loadZoneKML().then(() => {
                 if (kmlLoaded && Object.keys(zoneBoundaries).length > 0) {
                     console.log('Adding zone polygons to map...');
-                    
+
                     Object.keys(zoneBoundaries).forEach(zoneId => {
                         const zoneInfo = zoneData[zoneId];
                         const polygons = zoneBoundaries[zoneId];
-                        
+
                         if (zoneInfo && polygons) {
                             // 🔑 create pane for this zone (if not already)
                             const paneName = `zone${zoneId}`;
@@ -1031,7 +1031,7 @@ function initializeMap() {
                                         weight: 2,
                                         opacity: 0.8
                                     }).bindPopup(`${zoneInfo.name} (K=${zoneInfo.coefficient})`);
-                                    
+
                                     currentZones.addLayer(polygon);
                                     console.log(`Added polygon ${index + 1} for zone ${zoneId}`);
                                 } catch (error) {
@@ -1040,7 +1040,7 @@ function initializeMap() {
                             });
                         }
                     });
-                    
+
                     // Fit map to show all zones
                     if (currentZones.getLayers().length > 0) {
                         const group = new L.featureGroup(currentZones.getLayers());
@@ -1079,7 +1079,7 @@ function initializeMap() {
 // Zone detection by coordinates using KML polygon boundaries
 function detectZoneByCoordinates(lat, lng) {
     let detectedZone = null;
-    
+
     // If KML is loaded, use actual zone boundaries
     if (kmlLoaded && Object.keys(zoneBoundaries).length > 0) {
         for (const [zoneId, polygons] of Object.entries(zoneBoundaries)) {
@@ -1092,7 +1092,7 @@ function detectZoneByCoordinates(lat, lng) {
             if (detectedZone) break;
         }
     }
-    
+
     // Fallback for coordinates within Tashkent area but not in any specific zone
     if (!detectedZone && lat > 41.15 && lat < 41.45 && lng > 69.1 && lng < 69.5) {
         if (!kmlLoaded) {
@@ -1105,16 +1105,16 @@ function detectZoneByCoordinates(lat, lng) {
     if (detectedZone && zoneData[detectedZone]) {
         const zone = zoneData[detectedZone];
         showZoneInfo(detectedZone, zone.name, zone.coefficient);
-        
+
         // Auto select zone in dropdown and trigger calculations
         const zoneSelect = document.getElementById('modalTerritorialZone');
         if (zoneSelect) {
             zoneSelect.value = detectedZone;
-            
+
             // ⚠️ KEY FIX: Trigger the change event to update calculations
             const changeEvent = new Event('change', { bubbles: true });
             zoneSelect.dispatchEvent(changeEvent);
-            
+
             // Also manually trigger calculation to ensure it runs
             calculateModalEverything();
         }
@@ -1129,16 +1129,16 @@ function detectZoneByCoordinates(lat, lng) {
 function isPointInPolygon(point, polygon) {
     const [x, y] = point;
     let inside = false;
-    
+
     for (let i = 0, j = polygon.length - 1; i < polygon.length; j = i++) {
         const [xi, yi] = polygon[i];
         const [xj, yj] = polygon[j];
-        
+
         if (((yi > y) !== (yj > y)) && (x < (xj - xi) * (y - yi) / (yj - yi) + xi)) {
             inside = !inside;
         }
     }
-    
+
     return inside;
 }
 
@@ -1146,15 +1146,15 @@ function isPointInPolygon(point, polygon) {
 function showZoneInfo(zoneId, zoneName, coefficient) {
     const zoneInfo = document.getElementById('zoneInfo');
     if (!zoneInfo) return;
-    
+
     const zoneColor = zoneData[zoneId]?.color || '#6b7280';
     zoneInfo.style.borderColor = zoneColor;
     zoneInfo.style.backgroundColor = zoneColor + '20';
     zoneInfo.classList.remove('hidden');
-    
+
     const detectedZoneEl = document.getElementById('detectedZone');
     const zoneCoefficientEl = document.getElementById('zoneCoefficient');
-    
+
     if (detectedZoneEl) detectedZoneEl.textContent = zoneName;
     if (zoneCoefficientEl) zoneCoefficientEl.textContent = coefficient;
 }
@@ -1177,22 +1177,22 @@ function handleObjectFormSubmission() {
         // Get the selected subject ID from main form
         const subjectSelect = document.querySelector('select[name="subject_id"]');
         if (!subjectSelect || !subjectSelect.value) {
-            showNotification('Avval buyurtmachini tanlang', 'error');
+            showNotification('Avval Mulk egasini tanlang', 'error');
             return;
         }
 
         const formData = new FormData(this);
         // Add subject_id to the form data
         formData.append('subject_id', subjectSelect.value);
-        
+
         const submitButton = this.querySelector('button[type="submit"]');
         toggleLoading(submitButton, true);
 
         try {
-            const csrfToken = document.querySelector('meta[name="csrf-token"]')?.content || 
+            const csrfToken = document.querySelector('meta[name="csrf-token"]')?.content ||
                             document.querySelector('input[name="_token"]')?.value;
-            
-            // ✅ Fixed URL - use the correct route path  
+
+            // ✅ Fixed URL - use the correct route path
             const response = await fetch('/contracts/create-object', {
                 method: 'POST',
                 headers: {
@@ -1207,10 +1207,10 @@ function handleObjectFormSubmission() {
             if (result.success) {
                 const objectSelect = document.getElementById('objectSelect');
                 const objectSearch = document.getElementById('objectSearch');
-                
+
                 if (objectSelect) {
                     const newOption = new Option(result.object.text, result.object.id, true, true);
-                    
+
                     // Set data attributes for calculation
                     newOption.dataset.volume = result.object.construction_volume;
                     newOption.dataset.abovePermit = result.object.above_permit_volume;
@@ -1221,11 +1221,11 @@ function handleObjectFormSubmission() {
                     newOption.dataset.objectType = result.object.object_type_id;
                     newOption.dataset.zone = result.object.territorial_zone_id;
                     newOption.dataset.location = result.object.location_type;
-                    
+
                     objectSelect.add(newOption);
                     objectSelect.value = result.object.id;
                 }
-                
+
                 if (objectSearch) {
                     objectSearch.value = result.object.text;
                 }
@@ -1249,9 +1249,9 @@ function searchSubjects() {
     const searchInput = document.getElementById('subjectSearch');
     const dropdown = document.getElementById('subjectDropdown');
     const select = document.getElementById('subjectSelect');
-    
+
     if (!searchInput || !dropdown || !select) return;
-    
+
     const searchTerm = searchInput.value.toLowerCase();
 
     if (searchTerm.length < 2) {
@@ -1273,9 +1273,9 @@ function searchObjects() {
     const searchInput = document.getElementById('objectSearch');
     const dropdown = document.getElementById('objectDropdown');
     const select = document.getElementById('objectSelect');
-    
+
     if (!searchInput || !dropdown || !select) return;
-    
+
     const searchTerm = searchInput.value.toLowerCase();
 
     if (searchTerm.length < 2) {
@@ -1295,7 +1295,7 @@ function searchObjects() {
 
 function displaySearchResults(results, dropdown, type) {
     if (!dropdown) return;
-    
+
     dropdown.innerHTML = '';
 
     if (results.length === 0) {
@@ -1320,7 +1320,7 @@ function selectSearchResult(option, type) {
         const searchInput = document.getElementById('subjectSearch');
         const select = document.getElementById('subjectSelect');
         const dropdown = document.getElementById('subjectDropdown');
-        
+
         if (searchInput) searchInput.value = option.textContent;
         if (select) select.value = option.value;
         if (dropdown) dropdown.classList.add('hidden');
@@ -1328,7 +1328,7 @@ function selectSearchResult(option, type) {
         const searchInput = document.getElementById('objectSearch');
         const select = document.getElementById('objectSelect');
         const dropdown = document.getElementById('objectDropdown');
-        
+
         if (searchInput) searchInput.value = option.textContent;
         if (select) select.value = option.value;
         if (dropdown) dropdown.classList.add('hidden');
@@ -1349,7 +1349,7 @@ function calculateTotal() {
     const selectedOption = baseAmountSelect.options[baseAmountSelect.selectedIndex];
     const baseAmount = selectedOption ? parseFloat(selectedOption.dataset.amount) : 0;
     const volume = parseFloat(volumeInput.value) || 0;
-    
+
     let calculatedBh = 0;
     if (calculatedBhInput) {
         calculatedBh = parseFloat(calculatedBhInput.value) || 0;
@@ -1377,7 +1377,7 @@ function calculateTotal() {
 function updateObjectVolume() {
     const objectSelect = document.querySelector('select[name="object_id"]');
     if (!objectSelect) return;
-    
+
     const selectedOption = objectSelect.options[objectSelect.selectedIndex];
 
     if (selectedOption && selectedOption.dataset.volume) {
@@ -1422,7 +1422,7 @@ function updateObjectVolume() {
         const kt = coefficients.construction_type[constructionType] || 1.0;
         const ko = coefficients.object_type[objectType] || 1.0;
         const kz = coefficients.territorial_zone[zone] || 1.0;
-        
+
         // Fix Kj coefficient calculation
         let kj = 1.0;
         if (location === 'metro_radius_200m_outside') {
@@ -1451,7 +1451,7 @@ function updateObjectVolume() {
         // Calculate Bh with coefficient
         const baseAmountSelect = document.querySelector('select[name="base_amount_id"]');
         const calculatedBhInput = document.querySelector('input[name="calculated_bh"]');
-        
+
         if (baseAmountSelect && calculatedBhInput) {
             const selectedBaseOption = baseAmountSelect.options[baseAmountSelect.selectedIndex];
             const baseAmount = selectedBaseOption ? parseFloat(selectedBaseOption.dataset.amount) : 0;
@@ -1497,7 +1497,7 @@ function calculateModalCoefficients() {
         parseFloat(objectType.options[objectType.selectedIndex].dataset.coef) : 1.0;
     const kz = territorialZone && territorialZone.selectedIndex > 0 ?
         parseFloat(territorialZone.options[territorialZone.selectedIndex].dataset.coef) : 1.0;
-    
+
     // Fix Kj coefficient calculation in modal
     let kj = 1.0;
     if (locationType && locationType.selectedIndex > 0) {
@@ -1556,19 +1556,19 @@ function calculateCompletionDate() {
     const contractDateInput = document.querySelector('input[name="contract_date"]');
     const yearsInput = document.querySelector('input[name="construction_period_years"]');
     const completionDateInput = document.querySelector('input[name="completion_date"]');
-    
+
     if (contractDateInput && yearsInput && completionDateInput) {
         const contractDate = new Date(contractDateInput.value);
         const years = parseInt(yearsInput.value) || 2;
-        
+
         if (contractDate instanceof Date && !isNaN(contractDate)) {
             const completionDate = new Date(contractDate);
             completionDate.setFullYear(completionDate.getFullYear() + years);
-            
+
             const year = completionDate.getFullYear();
             const month = String(completionDate.getMonth() + 1).padStart(2, '0');
             const day = String(completionDate.getDate()).padStart(2, '0');
-            
+
             completionDateInput.value = `${year}-${month}-${day}`;
         }
     }
@@ -1577,9 +1577,9 @@ function calculateCompletionDate() {
 function calculatePaymentSchedule() {
     const paymentTypeSelect = document.querySelector('select[name="payment_type"]');
     const totalAmountDisplay = document.getElementById('total_amount_display');
-    
+
     if (!paymentTypeSelect || !totalAmountDisplay) return;
-    
+
     const paymentType = paymentTypeSelect.value;
     const totalAmountText = totalAmountDisplay.textContent;
     const totalAmount = parseFloat(totalAmountText.replace(/[^\d]/g, '')) || 0;
@@ -1588,7 +1588,7 @@ function calculatePaymentSchedule() {
 
     const initialPercentInput = document.querySelector('input[name="initial_payment_percent"]');
     const yearsInput = document.querySelector('input[name="construction_period_years"]');
-    
+
     const initialPercent = initialPercentInput ? parseInt(initialPercentInput.value) || 20 : 20;
     const years = yearsInput ? parseInt(yearsInput.value) || 2 : 2;
     const quarters = years * 4;
@@ -1656,7 +1656,7 @@ function calculatePaymentSchedule() {
 function togglePaymentFields() {
     const paymentTypeSelect = document.querySelector('select[name="payment_type"]');
     if (!paymentTypeSelect) return;
-    
+
     const paymentType = paymentTypeSelect.value;
     const initialPaymentField = document.getElementById('initial_payment_field');
     const constructionPeriodField = document.getElementById('construction_period_field');
@@ -1680,7 +1680,7 @@ function togglePaymentFields() {
 function toggleSidebar() {
     const sidebar = document.getElementById('documentationSidebar');
     const overlay = document.getElementById('sidebarOverlay');
-    
+
     if (sidebar && overlay) {
         sidebar.classList.toggle('translate-x-full');
         overlay.classList.toggle('hidden');
@@ -1699,12 +1699,12 @@ function openSubjectModal() {
 function closeSubjectModal() {
     const modal = document.getElementById('subjectModal');
     const form = document.getElementById('subjectModalForm');
-    
+
     if (modal) {
         modal.classList.add('hidden');
         document.body.style.overflow = 'auto';
     }
-    
+
     if (form) {
         form.reset();
         toggleEntityFields();
@@ -1714,7 +1714,7 @@ function closeSubjectModal() {
 function toggleEntityFields() {
     const legalEntityRadio = document.querySelector('input[name="is_legal_entity"]:checked');
     if (!legalEntityRadio) return;
-    
+
     const isLegalEntity = legalEntityRadio.value === '1';
     const legalFields = document.getElementById('legalEntityFields');
     const physicalFields = document.getElementById('physicalPersonFields');
@@ -1762,7 +1762,7 @@ function toggleEntityFields() {
 function openObjectModal() {
     const subjectSelect = document.querySelector('select[name="subject_id"]');
     if (!subjectSelect || !subjectSelect.value) {
-        showNotification('Avval buyurtmachini tanlang', 'warning');
+        showNotification('Avval Mulk egasini tanlang', 'warning');
         return;
     }
 
@@ -1785,16 +1785,16 @@ function closeObjectModal() {
     const modal = document.getElementById('objectModal');
     const form = document.getElementById('objectModalForm');
     const zoneInfo = document.getElementById('zoneInfo');
-    
+
     if (modal) {
         modal.classList.add('hidden');
         document.body.style.overflow = 'auto';
     }
-    
+
     if (form) {
         form.reset();
     }
-    
+
     if (zoneInfo) {
         zoneInfo.classList.add('hidden');
     }
@@ -1823,7 +1823,7 @@ function handleSubjectFormSubmission() {
         toggleLoading(submitButton, true);
 
         try {
-            const csrfToken = document.querySelector('meta[name="csrf-token"]')?.content || 
+            const csrfToken = document.querySelector('meta[name="csrf-token"]')?.content ||
                             document.querySelector('input[name="_token"]')?.value;
 
             // ✅ Fixed URL - use the correct route path
@@ -1841,13 +1841,13 @@ function handleSubjectFormSubmission() {
             if (result.success) {
                 const subjectSelect = document.getElementById('subjectSelect');
                 const subjectSearch = document.getElementById('subjectSearch');
-                
+
                 if (subjectSelect) {
                     const newOption = new Option(result.subject.text, result.subject.id, true, true);
                     subjectSelect.add(newOption);
                     subjectSelect.value = result.subject.id;
                 }
-                
+
                 if (subjectSearch) {
                     subjectSearch.value = result.subject.text;
                 }
@@ -1878,7 +1878,7 @@ function handleContractFormSubmission() {
         toggleLoading(submitButton, true);
 
         try {
-            const csrfToken = document.querySelector('meta[name="csrf-token"]')?.content || 
+            const csrfToken = document.querySelector('meta[name="csrf-token"]')?.content ||
                             document.querySelector('input[name="_token"]')?.value;
 
             const response = await fetch(this.action, {
@@ -1919,13 +1919,13 @@ function formatNumber(num) {
 
 function toggleLoading(button, loading) {
     if (!button) return;
-    
+
     if (loading) {
         button.disabled = true;
         button.innerHTML = '<svg class="animate-spin -ml-1 mr-3 h-5 w-5 text-white inline" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24"><circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle><path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path></svg>Kutilmoqda...';
     } else {
         button.disabled = false;
-        
+
         if (button.closest('#subjectModalForm') || button.closest('#objectModalForm')) {
             button.innerHTML = 'Yaratish';
         } else if (button.closest('#contractForm')) {
@@ -1948,7 +1948,7 @@ function showNotification(message, type = 'info') {
         'warning': 'bg-yellow-600 text-white',
         'info': 'bg-blue-600 text-white'
     };
-    
+
     notification.className = `fixed top-4 right-4 z-50 p-4 rounded-lg shadow-lg max-w-sm transform transition-all duration-300 translate-x-full opacity-0 ${typeClasses[type] || typeClasses['info']}`;
 
     notification.innerHTML = `
@@ -2003,11 +2003,11 @@ function setupEventListeners() {
     // Payment inputs change
     const initialPercentInput = document.querySelector('input[name="initial_payment_percent"]');
     const constructionYearsInput = document.querySelector('input[name="construction_period_years"]');
-    
+
     if (initialPercentInput) {
         initialPercentInput.addEventListener('input', calculatePaymentSchedule);
     }
-    
+
     if (constructionYearsInput) {
         constructionYearsInput.addEventListener('input', () => {
             calculateCompletionDate();
@@ -2029,7 +2029,7 @@ function setupEventListeners() {
         if (subjectDropdown && !e.target.closest('#subjectSearch') && !e.target.closest('#subjectDropdown')) {
             subjectDropdown.classList.add('hidden');
         }
-        
+
         if (objectDropdown && !e.target.closest('#objectSearch') && !e.target.closest('#objectDropdown')) {
             objectDropdown.classList.add('hidden');
         }
@@ -2048,12 +2048,12 @@ function initializeApplication() {
         handleSubjectFormSubmission();
         handleObjectFormSubmission();
         handleContractFormSubmission();
-        
+
         // Initialize feather icons
         if (typeof feather !== 'undefined') {
             feather.replace();
         }
-        
+
         console.log('Application initialized successfully');
     } catch (error) {
         console.error('Error initializing application:', error);
@@ -2077,4 +2077,4 @@ window.addEventListener('unhandledrejection', function(e) {
 
 console.log('Contract creation system loaded successfully');
 </script>
-@endpush   
+@endpush
