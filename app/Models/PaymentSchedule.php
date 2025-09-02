@@ -23,14 +23,6 @@ class PaymentSchedule extends Model
         'is_active' => 'boolean',
     ];
 
-    public function contract(): BelongsTo
-    {
-        return $this->belongsTo(Contract::class);
-    }
-    public function amendment(): BelongsTo
-    {
-        return $this->belongsTo(ContractAmendment::class, 'amendment_id');
-    }
 
     public function actualPayments(): HasMany
     {
@@ -40,22 +32,7 @@ class PaymentSchedule extends Model
     }
 
     // CORRECTED: Fix the paid_amount accessor to return actual amount, not percentage
-    public function getPaidAmountAttribute(): float
-    {
-        // Get actual payments for this specific quarter and year
-        $paidAmount = ActualPayment::where('contract_id', $this->contract_id)
-            ->where('year', $this->year)
-            ->where('quarter', $this->quarter)
-            ->sum('amount');
 
-        return (float) $paidAmount;
-    }
-
-    // CORRECTED: Fix the remaining_amount accessor
-    public function getRemainingAmountAttribute(): float
-    {
-        return max(0, $this->quarter_amount - $this->paid_amount);
-    }
 
     // Check if payment is overdue
     public function getIsOverdueAttribute(): bool
@@ -86,12 +63,7 @@ class PaymentSchedule extends Model
     }
 
     // Get payment percentage
-    public function getPaymentPercentAttribute(): float
-    {
-        if ($this->quarter_amount <= 0) return 0;
 
-        return min(100, ($this->paid_amount / $this->quarter_amount) * 100);
-    }
 
     // Scope for active schedules
     public function scopeActive($query)
@@ -140,5 +112,42 @@ class PaymentSchedule extends Model
             ->endOfMonth();
 
         return max(0, now()->diffInDays($quarterEndDate));
+    }
+
+
+//
+
+ public function contract()
+    {
+        return $this->belongsTo(Contract::class);
+    }
+
+    public function amendment()
+    {
+        return $this->belongsTo(ContractAmendment::class, 'amendment_id');
+    }
+
+    public function getQuarterNameAttribute()
+    {
+        return $this->quarter . ' квартал ' . $this->year;
+    }
+
+    // Get paid amount for this quarter
+    public function getPaidAmountAttribute()
+    {
+        return $this->contract->actualPayments()
+            ->where('year', $this->year)
+            ->where('quarter', $this->quarter)
+            ->sum('amount');
+    }
+
+    public function getRemainingAmountAttribute()
+    {
+        return $this->quarter_amount - $this->paid_amount;
+    }
+
+    public function getPaymentPercentAttribute()
+    {
+        return $this->quarter_amount > 0 ? ($this->paid_amount / $this->quarter_amount) * 100 : 0;
     }
 }

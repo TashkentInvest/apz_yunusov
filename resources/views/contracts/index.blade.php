@@ -159,11 +159,11 @@
                             <td class="px-6 py-4 text-sm text-gray-900">
                                 {{ ($contracts->currentPage() - 1) * $contracts->perPage() + $loop->iteration }}
                             </td>
-                            
+
                             <!-- Contract Number -->
                             <td class="px-6 py-4">
                                 <div class="text-sm font-medium text-gray-900">
-                                    <a href="{{ route('contracts.show', $contract) }}" 
+                                    <a href="{{ route('contracts.show', $contract) }}"
                                        class="text-blue-600 hover:text-blue-800">
                                         {{ $contract->contract_number }}
                                     </a>
@@ -172,7 +172,7 @@
                                     ID: {{ $contract->id }}
                                 </div>
                             </td>
-                            
+
                             <!-- Subject/Customer -->
                             <td class="px-6 py-4">
                                 <div class="text-sm font-medium text-gray-900">
@@ -182,12 +182,12 @@
                                     {{ $contract->subject->is_legal_entity ? 'ИНН: ' . $contract->subject->inn : 'ПИНФЛ: ' . $contract->subject->pinfl }}
                                 </div>
                             </td>
-                            
+
                             <!-- District -->
                             <td class="px-6 py-4 text-sm text-gray-900">
                                 {{ $contract->object->district->name_ru ?? 'Не указан' }}
                             </td>
-                            
+
                             <!-- Contract Amount -->
                             <td class="px-6 py-4">
                                 <div class="text-sm font-medium text-gray-900">
@@ -198,7 +198,7 @@
                                     {{ number_format($contract->total_amount / 1000000, 1) }} млн
                                 </div>
                             </td>
-                            
+
                             <!-- Payment Progress -->
                             <td class="px-6 py-4">
                                 <div class="text-sm font-medium text-gray-900">
@@ -212,7 +212,7 @@
                                     {{ number_format($contract->payment_percent, 1) }}%
                                 </div>
                             </td>
-                            
+
                             <!-- Status -->
                             <td class="px-6 py-4">
                                 <span class="inline-flex px-2 py-1 text-xs font-semibold rounded-full"
@@ -220,12 +220,12 @@
                                     {{ $contract->status->name_ru ?? 'Не указан' }}
                                 </span>
                             </td>
-                            
+
                             <!-- Contract Date -->
                             <td class="px-6 py-4 text-sm text-gray-900">
                                 {{ $contract->contract_date ? $contract->contract_date->format('d.m.Y') : 'Не указана' }}
                             </td>
-                            
+
                             <!-- Actions -->
                             <td class="px-6 py-4 text-right">
                                 <div class="flex items-center justify-end space-x-2">
@@ -233,7 +233,7 @@
                                        class="text-gray-400 hover:text-gray-600" title="Просмотр">
                                         <i data-feather="eye" class="w-4 h-4"></i>
                                     </a>
-                                    <a href="{{ route('contracts.edit', $contract) }}"
+                                    <a href="{{ route('contracts.payment_update', $contract) }}"
                                        class="text-gray-400 hover:text-blue-600" title="Редактировать">
                                         <i data-feather="edit-2" class="w-4 h-4"></i>
                                     </a>

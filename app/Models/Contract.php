@@ -59,15 +59,7 @@ class Contract extends Model
         return $this->belongsTo(BaseCalculationAmount::class, 'base_amount_id');
     }
 
-    public function paymentSchedules(): HasMany
-    {
-        return $this->hasMany(PaymentSchedule::class);
-    }
 
-    public function actualPayments(): HasMany
-    {
-        return $this->hasMany(ActualPayment::class);
-    }
 
     public function amendments(): HasMany
     {
@@ -97,4 +89,30 @@ class Contract extends Model
     {
         return $this->quarters_count > 0 ? $this->remaining_amount / $this->quarters_count : 0;
     }
+
+//----------------
+
+public function paymentSchedules()
+{
+    return $this->hasMany(PaymentSchedule::class)->orderBy('year')->orderBy('quarter');
+}
+
+public function actualPayments()
+{
+    return $this->hasMany(ActualPayment::class)->orderBy('payment_date');
+}
+
+public function getPaymentSummaryAttribute()
+{
+    $planTotal = $this->paymentSchedules->sum('quarter_amount');
+    $factTotal = $this->actualPayments->sum('amount');
+    $debt = $planTotal - $factTotal;
+
+    return [
+        'plan_total' => $planTotal,
+        'fact_total' => $factTotal,
+        'debt' => $debt,
+        'payment_percent' => $planTotal > 0 ? ($factTotal / $planTotal) * 100 : 0
+    ];
+}
 }

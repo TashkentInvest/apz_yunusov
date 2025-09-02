@@ -2,6 +2,7 @@
 
 namespace App\Models;
 
+use Carbon\Carbon;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
 
@@ -19,8 +20,37 @@ class ActualPayment extends Model
         'amount' => 'decimal:2'
     ];
 
-    public function contract()
+
+
+//
+
+ public function contract()
     {
         return $this->belongsTo(Contract::class);
+    }
+
+    public function creator()
+    {
+        return $this->belongsTo(User::class, 'created_by');
+    }
+
+    public static function calculateQuarterFromDate($date)
+    {
+        $month = Carbon::parse($date)->month;
+        return ceil($month / 3);
+    }
+
+    public function getQuarterNameAttribute()
+    {
+        return $this->quarter . ' квартал ' . $this->year;
+    }
+
+    // Automatically set year and quarter when payment_date is set
+    public function setPaymentDateAttribute($value)
+    {
+        $this->attributes['payment_date'] = $value;
+        $date = Carbon::parse($value);
+        $this->attributes['year'] = $date->year;
+        $this->attributes['quarter'] = self::calculateQuarterFromDate($value);
     }
 }

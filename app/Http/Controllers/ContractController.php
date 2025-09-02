@@ -2,6 +2,7 @@
 
 namespace App\Http\Controllers;
 
+use App\Models\ActualPayment;
 use App\Models\Contract;
 use App\Models\Subject;
 use App\Models\Objectt;
@@ -15,6 +16,7 @@ use App\Models\TerritorialZone;
 use App\Models\PermitType;
 use App\Models\IssuingAuthority;
 use App\Models\OrgForm;
+use App\Models\PaymentSchedule;
 use App\Services\CoefficientCalculatorService;
 use Carbon\Carbon;
 use Illuminate\Http\Request;
@@ -865,5 +867,183 @@ public function createAmendment(Request $request, Contract $contract)
             return response()->json(['success' => false, 'message' => 'Ошибка: ' . $e->getMessage()]);
         }
     }
+
+
+
+
+
+
+//-----------------------------
+public function payment_update(Contract $contract)
+{
+    $contract->load([
+        'subject',
+        'object.district',
+        'paymentSchedules' => function($query) {
+            $query->where('is_active', true)->orderBy('year')->orderBy('quarter');
+        },
+        'actualPayments' => function($query) {
+            $query->orderBy('payment_date', 'desc');
+        }
+    ]);
+
+    // Calculate payment summary by quarters
+    $paymentSummary = [];
+    $years = $contract->paymentSchedules->pluck('year')->unique()->sort()->values();
+
+    foreach ($years as $year) {
+        $yearData = [];
+        for ($quarter = 1; $quarter <= 4; $quarter++) {
+            $planPayment = $contract->paymentSchedules
+                ->where('year', $year)
+                ->where('quarter', $quarter)
+                ->first();
+
+            $factPayments = $contract->actualPayments
+                ->where('year', $year)
+                ->where('quarter', $quarter);
+
+            $factTotal = $factPayments->sum('amount');
+            $planAmount = $planPayment ? $planPayment->quarter_amount : 0;
+
+            $yearData[$quarter] = [
+                'plan' => $planPayment,
+                'plan_amount' => $planAmount,
+                'fact_total' => $factTotal,
+                'debt' => $planAmount - $factTotal,
+                'fact_payments' => $factPayments,
+                'payment_percent' => $planAmount > 0 ? ($factTotal / $planAmount) * 100 : 0
+            ];
+        }
+        $paymentSummary[$year] = $yearData;
+    }
+
+    return view('contracts.payment_update', compact('contract', 'paymentSummary'));
+}
+
+public function storePlanPayment(Request $request, Contract $contract)
+{
+    $request->validate([
+        'year' => 'required|integer|min:2020|max:2050',
+        'quarter' => 'required|integer|min:1|max:4',
+        'amount' => 'required|numeric|min:0'
+    ]);
+
+    try {
+        $planPayment = PaymentSchedule::updateOrCreate(
+            [
+                'contract_id' => $contract->id,
+                'year' => $request->year,
+                'quarter' => $request->quarter,
+                'amendment_id' => null, // For manual entries
+                'is_active' => true
+            ],
+            [
+                'quarter_amount' => $request->amount
+            ]
+        );
+
+        return response()->json([
+            'success' => true,
+            'message' => 'Плановый платеж успешно сохранен',
+            'data' => $planPayment
+        ]);
+    } catch (\Exception $e) {
+        return response()->json([
+            'success' => false,
+            'message' => 'Ошибка при сохранении планового платежа: ' . $e->getMessage()
+        ], 500);
+    }
+}
+
+public function storeFactPayment(Request $request, Contract $contract)
+{
+    $request->validate([
+        'payment_date' => 'required|date',
+        'amount' => 'required|numeric|min:0',
+        'payment_number' => 'nullable|string|max:50',
+        'notes' => 'nullable|string'
+    ]);
+
+    try {
+        $paymentDate = Carbon::parse($request->payment_date);
+        $year = $paymentDate->year;
+        $quarter = ActualPayment::calculateQuarterFromDate($request->payment_date);
+
+        $factPayment = ActualPayment::create([
+            'contract_id' => $contract->id,
+            'payment_date' => $request->payment_date,
+            'year' => $year,
+            'quarter' => $quarter,
+            'amount' => $request->amount,
+            'payment_number' => $request->payment_number,
+            'notes' => $request->notes,
+            'created_by' => auth()->id()
+        ]);
+
+        return response()->json([
+            'success' => true,
+            'message' => 'Фактический платеж успешно добавлен',
+            'data' => $factPayment
+        ]);
+    } catch (\Exception $e) {
+        return response()->json([
+            'success' => false,
+            'message' => 'Ошибка при добавлении фактического платежа: ' . $e->getMessage()
+        ], 500);
+    }
+}
+
+public function deletePlanPayment($id)
+{
+    try {
+        $planPayment = PaymentSchedule::findOrFail($id);
+
+        // Check if this is a manual payment schedule entry (not from amendment)
+        if ($planPayment->amendment_id !== null) {
+            return response()->json([
+                'success' => false,
+                'message' => 'Нельзя удалить автоматически созданный график платежей'
+            ], 403);
+        }
+
+        $planPayment->delete();
+
+        return response()->json([
+            'success' => true,
+            'message' => 'Плановый платеж успешно удален'
+        ]);
+    } catch (\Exception $e) {
+        return response()->json([
+            'success' => false,
+            'message' => 'Ошибка при удалении планового платежа: ' . $e->getMessage()
+        ], 500);
+    }
+}
+
+public function deleteFactPayment($id)
+{
+    try {
+        $factPayment = ActualPayment::findOrFail($id);
+        $factPayment->delete();
+
+        return response()->json([
+            'success' => true,
+            'message' => 'Фактический платеж успешно удален'
+        ]);
+    } catch (\Exception $e) {
+        return response()->json([
+            'success' => false,
+            'message' => 'Ошибка при удалении фактического платежа: ' . $e->getMessage()
+        ], 500);
+    }
+}
+
+
+
+
+
+
+
 
 }
