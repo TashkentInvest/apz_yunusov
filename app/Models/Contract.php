@@ -39,20 +39,6 @@ class Contract extends Model
         'is_active' => 'boolean'
     ];
 
-    public function subject(): BelongsTo
-    {
-        return $this->belongsTo(Subject::class);
-    }
-
-    public function object(): BelongsTo
-    {
-        return $this->belongsTo(Objectt::class, 'object_id');
-    }
-
-    public function status(): BelongsTo
-    {
-        return $this->belongsTo(ContractStatus::class, 'status_id');
-    }
 
     public function baseAmount(): BelongsTo
     {
@@ -92,27 +78,49 @@ class Contract extends Model
 
 //----------------
 
-public function paymentSchedules()
-{
-    return $this->hasMany(PaymentSchedule::class)->orderBy('year')->orderBy('quarter');
-}
 
-public function actualPayments()
-{
-    return $this->hasMany(ActualPayment::class)->orderBy('payment_date');
-}
 
-public function getPaymentSummaryAttribute()
-{
-    $planTotal = $this->paymentSchedules->sum('quarter_amount');
-    $factTotal = $this->actualPayments->sum('amount');
-    $debt = $planTotal - $factTotal;
+//====================
 
-    return [
-        'plan_total' => $planTotal,
-        'fact_total' => $factTotal,
-        'debt' => $debt,
-        'payment_percent' => $planTotal > 0 ? ($factTotal / $planTotal) * 100 : 0
-    ];
-}
+ // Existing relationships
+    public function subject()
+    {
+        return $this->belongsTo(Subject::class);
+    }
+
+    public function object()
+    {
+        return $this->belongsTo(Objectt::class, 'object_id');
+    }
+
+    public function status()
+    {
+        return $this->belongsTo(ContractStatus::class, 'status_id');
+    }
+
+    // NEW: Add payment relationships
+    public function paymentSchedules()
+    {
+        return $this->hasMany(PaymentSchedule::class)->where('is_active', true)->orderBy('year')->orderBy('quarter');
+    }
+
+    public function actualPayments()
+    {
+        return $this->hasMany(ActualPayment::class)->orderBy('payment_date', 'desc');
+    }
+
+    // NEW: Payment summary calculation
+    public function getPaymentSummaryAttribute()
+    {
+        $planTotal = $this->paymentSchedules->sum('quarter_amount');
+        $factTotal = $this->actualPayments->sum('amount');
+        $debt = $planTotal - $factTotal;
+
+        return [
+            'plan_total' => $planTotal,
+            'fact_total' => $factTotal,
+            'debt' => $debt,
+            'payment_percent' => $planTotal > 0 ? ($factTotal / $planTotal) * 100 : 0
+        ];
+    }
 }

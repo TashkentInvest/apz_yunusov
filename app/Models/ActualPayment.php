@@ -24,7 +24,12 @@ class ActualPayment extends Model
 
 //
 
- public function contract()
+
+
+//===
+
+
+public function contract()
     {
         return $this->belongsTo(Contract::class);
     }
@@ -45,7 +50,6 @@ class ActualPayment extends Model
         return $this->quarter . ' квартал ' . $this->year;
     }
 
-    // Automatically set year and quarter when payment_date is set
     public function setPaymentDateAttribute($value)
     {
         $this->attributes['payment_date'] = $value;

@@ -115,9 +115,13 @@ class PaymentSchedule extends Model
     }
 
 
-//
 
- public function contract()
+
+
+//===================
+
+
+  public function contract()
     {
         return $this->belongsTo(Contract::class);
     }
@@ -132,7 +136,6 @@ class PaymentSchedule extends Model
         return $this->quarter . ' квартал ' . $this->year;
     }
 
-    // Get paid amount for this quarter
     public function getPaidAmountAttribute()
     {
         return $this->contract->actualPayments()
