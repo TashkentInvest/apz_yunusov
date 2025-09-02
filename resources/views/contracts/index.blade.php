@@ -432,7 +432,7 @@ document.getElementById('addPaymentForm').addEventListener('submit', async funct
     toggleLoading(submitButton, true);
 
     try {
-        const response = await fetch('{{ route("payments.store") }}', {
+        const response = await fetch('{{ route("contracts.payments.store") }}', {
             method: 'POST',
             headers: {
                 'X-CSRF-TOKEN': document.querySelector('meta[name="csrf-token"]').content

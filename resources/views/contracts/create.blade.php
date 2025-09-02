@@ -758,8 +758,8 @@
 <script>
 // Laravel routes
 window.appRoutes = {
-    createSubject: "{{ route('createSubject') }}",
-    createObject: "{{ route('createObject') }}",
+    createSubject: "{{ route('contracts.createSubject') }}",
+    createObject: "{{ route('contracts.createObject') }}",
     contractStore: "{{ route('contracts.store') }}"
 };
 </script>

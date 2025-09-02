@@ -131,7 +131,7 @@
                     <i data-feather="search" class="w-4 h-4 mr-2 inline"></i>
                     Поиск
                 </button>
-                <a href="{{ route('payments.index') }}"
+                <a href="{{ route('contracts.payments.index') }}"
                    class="px-4 py-2 bg-gray-100 text-gray-700 rounded-lg hover:bg-gray-200 transition-colors">
                     <i data-feather="x" class="w-4 h-4 mr-2 inline"></i>
                     Сброс
@@ -421,7 +421,7 @@ document.getElementById('addPaymentForm').addEventListener('submit', async funct
     toggleLoading(submitButton, true);
 
     try {
-        const response = await fetch('{{ route("payments.store") }}', {
+        const response = await fetch('{{ route("contracts.payments.store") }}', {
             method: 'POST',
             headers: {
                 'X-CSRF-TOKEN': document.querySelector('meta[name="csrf-token"]').content

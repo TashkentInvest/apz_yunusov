@@ -877,17 +877,12 @@ public function createAmendment(Request $request, Contract $contract)
 
 
 // Add these methods to your ContractController
-
-
-
-
-
-    public function payment_update(Contract $contract)
+ public function payment_update(Contract $contract)
     {
         $contract->load([
             'subject',
             'object.district',
-            'status', // Load contract status
+            'status',
             'paymentSchedules' => function($query) {
                 $query->where('is_active', true)->orderBy('year')->orderBy('quarter');
             },
@@ -896,7 +891,11 @@ public function createAmendment(Request $request, Contract $contract)
             }
         ]);
 
-        // Calculate payment summary by quarters
+        // Calculate payment breakdown
+        $initialPaymentAmount = ($contract->total_amount * $contract->initial_payment_percent) / 100;
+        $remainingAmount = $contract->total_amount - $initialPaymentAmount;
+
+        // Get payment summary by quarters
         $paymentSummary = [];
         $hasPaymentData = false;
 
@@ -957,9 +956,138 @@ public function createAmendment(Request $request, Contract $contract)
             $paymentSummary[$currentYear] = $yearData;
         }
 
-        return view('contracts.payment_update', compact('contract', 'paymentSummary', 'hasPaymentData'));
+        return view('contracts.payment_update', compact(
+            'contract',
+            'paymentSummary',
+            'hasPaymentData',
+            'initialPaymentAmount',
+            'remainingAmount'
+        ));
     }
 
+    /**
+     * Update contract basic information
+     */
+    public function updateContractInfo(Request $request, Contract $contract)
+    {
+        $request->validate([
+            'contract_number' => 'required|string|max:50|unique:contracts,contract_number,' . $contract->id,
+            'contract_date' => 'required|date',
+            'total_amount' => 'required|numeric|min:0',
+            'initial_payment_percent' => 'required|integer|min:0|max:100',
+            'construction_period_years' => 'required|integer|min:1|max:10',
+            'status_id' => 'required|exists:contract_statuses,id'
+        ]);
+
+        try {
+            DB::beginTransaction();
+
+            $contract->update([
+                'contract_number' => $request->contract_number,
+                'contract_date' => $request->contract_date,
+                'total_amount' => $request->total_amount,
+                'initial_payment_percent' => $request->initial_payment_percent,
+                'construction_period_years' => $request->construction_period_years,
+                'status_id' => $request->status_id
+            ]);
+
+            DB::commit();
+
+            return response()->json([
+                'success' => true,
+                'message' => 'Шартнома маълумотлари муваффақиятли янгиланди',
+                'contract' => $contract->fresh()
+            ]);
+
+        } catch (\Exception $e) {
+            DB::rollBack();
+            return response()->json([
+                'success' => false,
+                'message' => 'Хатолик юз берди: ' . $e->getMessage()
+            ], 500);
+        }
+    }
+
+    /**
+     * Auto-generate payment schedule: $plan_sum - n% = $r, then $r / quarter_num
+     */
+    public function generateAutoPaymentSchedule(Request $request, Contract $contract)
+    {
+        $request->validate([
+            'total_quarters' => 'required|integer|min:1|max:20', // 16 means 4 years
+            'start_year' => 'required|integer|min:2020|max:2050'
+        ]);
+
+        try {
+            DB::beginTransaction();
+
+            $totalQuarters = $request->total_quarters;
+            $startYear = $request->start_year;
+
+            // Calculate: $plan_sum - n% = $r
+            $planSum = $contract->total_amount;
+            $initialPercent = $contract->initial_payment_percent;
+            $initialAmount = ($planSum * $initialPercent) / 100;
+            $remainingAmount = $planSum - $initialAmount; // This is $r
+
+            // Calculate: $r / quarter_num
+            $quarterAmount = $remainingAmount / $totalQuarters;
+
+            // Delete existing schedules
+            PaymentSchedule::where('contract_id', $contract->id)
+                ->where('amendment_id', null)
+                ->delete();
+
+            // Generate quarters
+            $currentYear = $startYear;
+            $currentQuarter = 1;
+
+            for ($i = 0; $i < $totalQuarters; $i++) {
+                PaymentSchedule::create([
+                    'contract_id' => $contract->id,
+                    'year' => $currentYear,
+                    'quarter' => $currentQuarter,
+                    'quarter_amount' => $quarterAmount,
+                    'custom_percent' => ($quarterAmount / $remainingAmount) * 100,
+                    'amendment_id' => null,
+                    'is_active' => true
+                ]);
+
+                // Move to next quarter
+                $currentQuarter++;
+                if ($currentQuarter > 4) {
+                    $currentQuarter = 1;
+                    $currentYear++;
+                }
+            }
+
+            DB::commit();
+
+            return response()->json([
+                'success' => true,
+                'message' => "{$totalQuarters} чорак учун автоматик график тузилди",
+                'calculation' => [
+                    'plan_sum' => $planSum,
+                    'initial_percent' => $initialPercent,
+                    'initial_amount' => $initialAmount,
+                    'remaining_amount' => $remainingAmount,
+                    'total_quarters' => $totalQuarters,
+                    'quarter_amount' => $quarterAmount
+                ]
+            ]);
+
+        } catch (\Exception $e) {
+            DB::rollBack();
+            return response()->json([
+                'success' => false,
+                'message' => 'График тузишда хатолик: ' . $e->getMessage()
+            ], 500);
+        }
+    }
+
+    /**
+     * Manual quarter plan creation
+     */
     public function storePlanPayment(Request $request, Contract $contract)
     {
         $request->validate([
@@ -984,17 +1112,20 @@ public function createAmendment(Request $request, Contract $contract)
 
             return response()->json([
                 'success' => true,
-                'message' => 'Плановый платеж успешно сохранен',
+                'message' => 'План тўлов муваффақиятли сақланди',
                 'data' => $planPayment
             ]);
         } catch (\Exception $e) {
             return response()->json([
                 'success' => false,
-                'message' => 'Ошибка при сохранении планового платежа: ' . $e->getMessage()
+                'message' => 'Хатолик: ' . $e->getMessage()
             ], 500);
         }
     }
 
+    /**
+     * Store actual payment with proper quarter calculation
+     */
     public function storeFactPayment(Request $request, Contract $contract)
     {
         $request->validate([
@@ -1009,6 +1140,17 @@ public function createAmendment(Request $request, Contract $contract)
             $year = $paymentDate->year;
             $quarter = ActualPayment::calculateQuarterFromDate($request->payment_date);
 
+            // Validate payment doesn't exceed contract total
+            $totalPaid = $contract->actualPayments()->sum('amount');
+            $newTotal = $totalPaid + $request->amount;
+
+            if ($newTotal > $contract->total_amount) {
+                return response()->json([
+                    'success' => false,
+                    'message' => 'Тўлов суммаси шартнома суммасидан ошиб кетмоқда'
+                ], 400);
+            }
+
             $factPayment = ActualPayment::create([
                 'contract_id' => $contract->id,
                 'payment_date' => $request->payment_date,
@@ -1022,42 +1164,114 @@ public function createAmendment(Request $request, Contract $contract)
 
             return response()->json([
                 'success' => true,
-                'message' => 'Фактический платеж успешно добавлен',
+                'message' => 'Тўлов муваффақиятли қўшилди',
                 'data' => $factPayment
             ]);
         } catch (\Exception $e) {
             return response()->json([
                 'success' => false,
-                'message' => 'Ошибка при добавлении фактического платежа: ' . $e->getMessage()
+                'message' => 'Хатолик: ' . $e->getMessage()
             ], 500);
         }
     }
-    public function deletePlanPayment($id)
-        {
-            try {
-                $planPayment = PaymentSchedule::findOrFail($id);
 
-                if ($planPayment->amendment_id !== null) {
-                    return response()->json([
-                        'success' => false,
-                        'message' => 'Нельзя удалить автоматически созданный график платежей'
-                    ], 403);
-                }
+    /**
+     * Calculate payment plan preview
+     */
+    public function calculatePaymentPlan(Request $request, Contract $contract)
+    {
+        $request->validate([
+            'total_quarters' => 'required|integer|min:1|max:20',
+            'initial_percent' => 'nullable|integer|min:0|max:100'
+        ]);
 
-                $planPayment->delete();
+        $totalQuarters = $request->total_quarters;
+        $initialPercent = $request->initial_percent ?? $contract->initial_payment_percent;
+        $planSum = $contract->total_amount;
 
-                return response()->json([
-                    'success' => true,
-                    'message' => 'Плановый платеж успешно удален'
-                ]);
-            } catch (\Exception $e) {
-                return response()->json([
-                    'success' => false,
-                    'message' => 'Ошибка при удалении планового платежа: ' . $e->getMessage()
-                ], 500);
+        // Formula: $plan_sum - n% = $r
+        $initialAmount = ($planSum * $initialPercent) / 100;
+        $remainingAmount = $planSum - $initialAmount;
+
+        // Formula: $r / quarter_num
+        $quarterAmount = $remainingAmount / $totalQuarters;
+
+        $years = ceil($totalQuarters / 4);
+        $quarterlyBreakdown = [];
+
+        $currentYear = date('Y');
+        $currentQuarter = 1;
+
+        for ($i = 0; $i < $totalQuarters; $i++) {
+            $quarterlyBreakdown[] = [
+                'sequence' => $i + 1,
+                'year' => $currentYear,
+                'quarter' => $currentQuarter,
+                'quarter_name' => "{$currentQuarter}-чорак {$currentYear}",
+                'amount' => $quarterAmount,
+                'formatted_amount' => number_format($quarterAmount / 1000000, 2) . 'М'
+            ];
+
+            $currentQuarter++;
+            if ($currentQuarter > 4) {
+                $currentQuarter = 1;
+                $currentYear++;
             }
+        }
+
+        return response()->json([
+            'success' => true,
+            'calculation' => [
+                'plan_sum' => $planSum,
+                'initial_percent' => $initialPercent,
+                'initial_amount' => $initialAmount,
+                'remaining_amount' => $remainingAmount,
+                'total_quarters' => $totalQuarters,
+                'quarter_amount' => $quarterAmount,
+                'years_span' => $years
+            ],
+            'quarterly_breakdown' => $quarterlyBreakdown,
+            'formatted' => [
+                'plan_sum' => number_format($planSum / 1000000, 2) . 'М',
+                'initial_amount' => number_format($initialAmount / 1000000, 2) . 'М',
+                'remaining_amount' => number_format($remainingAmount / 1000000, 2) . 'М',
+                'quarter_amount' => number_format($quarterAmount / 1000000, 2) . 'М'
+            ]
+        ]);
     }
 
+    /**
+     * Delete payment schedule
+     */
+    public function deletePlanPayment($id)
+    {
+        try {
+            $planPayment = PaymentSchedule::findOrFail($id);
+
+            if ($planPayment->amendment_id !== null) {
+                return response()->json([
+                    'success' => false,
+                    'message' => 'Автоматик тузилган графикни ўчириб бўлмайди'
+                ], 403);
+            }
+
+            $planPayment->delete();
+
+            return response()->json([
+                'success' => true,
+                'message' => 'План тўлов ўчирилди'
+            ]);
+        } catch (\Exception $e) {
+            return response()->json([
+                'success' => false,
+                'message' => 'Хатолик: ' . $e->getMessage()
+            ], 500);
+        }
+    }
+
+    /**
+     * Delete actual payment
+     */
     public function deleteFactPayment($id)
     {
         try {
@@ -1066,15 +1280,631 @@ public function createAmendment(Request $request, Contract $contract)
 
             return response()->json([
                 'success' => true,
-                'message' => 'Фактический платеж успешно удален'
+                'message' => 'Тўлов ўчирилди'
             ]);
         } catch (\Exception $e) {
             return response()->json([
                 'success' => false,
-                'message' => 'Ошибка при удалении фактического платежа: ' . $e->getMessage()
+                'message' => 'Хатолик: ' . $e->getMessage()
             ], 500);
         }
     }
 
+    /**
+     * Get contract statistics
+     */
+    public function getContractStatistics(Contract $contract)
+    {
+        $initialAmount = ($contract->total_amount * $contract->initial_payment_percent) / 100;
+        $remainingAmount = $contract->total_amount - $initialAmount;
 
+        $plannedTotal = $contract->paymentSchedules()->where('is_active', true)->sum('quarter_amount');
+        $paidTotal = $contract->actualPayments()->sum('amount');
+
+        $totalDebt = $contract->total_amount - $paidTotal;
+        $scheduleDebt = $plannedTotal - $paidTotal;
+
+        return response()->json([
+            'contract_info' => [
+                'total_amount' => $contract->total_amount,
+                'initial_percent' => $contract->initial_payment_percent,
+                'initial_amount' => $initialAmount,
+                'remaining_amount' => $remainingAmount
+            ],
+            'payment_status' => [
+                'planned_total' => $plannedTotal,
+                'paid_total' => $paidTotal,
+                'total_debt' => $totalDebt,
+                'schedule_debt' => $scheduleDebt,
+                'payment_progress' => $contract->total_amount > 0 ? ($paidTotal / $contract->total_amount) * 100 : 0,
+                'schedule_progress' => $plannedTotal > 0 ? ($paidTotal / $plannedTotal) * 100 : 0
+            ],
+            'formatted' => [
+                'total_amount' => number_format($contract->total_amount / 1000000, 2) . 'М',
+                'initial_amount' => number_format($initialAmount / 1000000, 2) . 'М',
+                'remaining_amount' => number_format($remainingAmount / 1000000, 2) . 'М',
+                'planned_total' => number_format($plannedTotal / 1000000, 2) . 'М',
+                'paid_total' => number_format($paidTotal / 1000000, 2) . 'М',
+                'total_debt' => number_format($totalDebt / 1000000, 2) . 'М'
+            ]
+        ]);
+    }
+//21111111111111111111111111
+
+
+ /**
+     * Handle quarterly distribution when only 1 or 2 quarters are selected
+     */
+    public function createQuarterlySchedule(Request $request, Contract $contract)
+    {
+        $request->validate([
+            'year' => 'required|integer|min:2020|max:2050',
+            'total_amount' => 'required|numeric|min:0',
+            'distribution_type' => 'required|in:equal,custom',
+            'quarters_count' => 'required|integer|min:1|max:4',
+            'q1_percent' => 'nullable|numeric|min:0|max:100',
+            'q2_percent' => 'nullable|numeric|min:0|max:100',
+            'q3_percent' => 'nullable|numeric|min:0|max:100',
+            'q4_percent' => 'nullable|numeric|min:0|max:100',
+        ]);
+
+        try {
+            DB::beginTransaction();
+
+            $year = $request->year;
+            $totalAmount = $request->total_amount;
+            $quartersCount = $request->quarters_count;
+            $distributionType = $request->distribution_type;
+
+            // Validate that total amount doesn't exceed remaining contract amount
+            $initialPaymentAmount = ($contract->total_amount * $contract->initial_payment_percent) / 100;
+            $remainingAmount = $contract->total_amount - $initialPaymentAmount;
+
+            if ($totalAmount > $remainingAmount) {
+                throw new \Exception("Жами сумма қолган сумма {$remainingAmount} дан ошмаслиги керак");
+            }
+
+            // Delete existing schedule for this year
+            PaymentSchedule::where('contract_id', $contract->id)
+                ->where('year', $year)
+                ->where('amendment_id', null)
+                ->delete();
+
+            if ($distributionType === 'equal') {
+                // Equal distribution across selected quarters
+                $quarterAmount = $totalAmount / $quartersCount;
+
+                for ($quarter = 1; $quarter <= $quartersCount; $quarter++) {
+                    PaymentSchedule::create([
+                        'contract_id' => $contract->id,
+                        'year' => $year,
+                        'quarter' => $quarter,
+                        'quarter_amount' => $quarterAmount,
+                        'custom_percent' => 100 / $quartersCount,
+                        'amendment_id' => null,
+                        'is_active' => true
+                    ]);
+                }
+            } else {
+                // Custom percentage distribution
+                $percentages = [
+                    1 => $request->q1_percent ?? 0,
+                    2 => $request->q2_percent ?? 0,
+                    3 => $request->q3_percent ?? 0,
+                    4 => $request->q4_percent ?? 0,
+                ];
+
+                $totalPercent = array_sum($percentages);
+
+                if (abs($totalPercent - 100) > 0.1) {
+                    throw new \Exception('Фоизлар йиғиндиси 100% бўлиши керак');
+                }
+
+                for ($quarter = 1; $quarter <= 4; $quarter++) {
+                    $percent = $percentages[$quarter];
+                    if ($percent > 0) {
+                        $quarterAmount = ($totalAmount * $percent) / 100;
+
+                        PaymentSchedule::create([
+                            'contract_id' => $contract->id,
+                            'year' => $year,
+                            'quarter' => $quarter,
+                            'quarter_amount' => $quarterAmount,
+                            'custom_percent' => $percent,
+                            'amendment_id' => null,
+                            'is_active' => true
+                        ]);
+                    }
+                }
+            }
+
+            DB::commit();
+
+            $message = $quartersCount == 1
+                ? "1 чорак учун график тузилди"
+                : ($quartersCount == 2
+                    ? "2 чорак учун график тузилди"
+                    : "{$quartersCount} чорак учун график тузилди");
+
+            return response()->json([
+                'success' => true,
+                'message' => $message,
+                'quarters_created' => $quartersCount,
+                'total_amount' => $totalAmount
+            ]);
+
+        } catch (\Exception $e) {
+            DB::rollBack();
+            return response()->json([
+                'success' => false,
+                'message' => 'График тузишда хатолик: ' . $e->getMessage()
+            ], 500);
+        }
+    }
+
+    /**
+     * Get contract payment summary with initial payment calculations
+     */
+    public function getContractPaymentSummary(Contract $contract)
+    {
+        // Calculate initial payment based on contract percentage
+        $initialPaymentAmount = ($contract->total_amount * $contract->initial_payment_percent) / 100;
+        $remainingAmount = $contract->total_amount - $initialPaymentAmount;
+
+        // Get all planned payments
+        $plannedTotal = $contract->paymentSchedules()
+            ->where('is_active', true)
+            ->sum('quarter_amount');
+
+        // Get all actual payments
+        $actualTotal = $contract->actualPayments()->sum('amount');
+
+        // Calculate debts
+        $totalDebt = $contract->total_amount - $actualTotal;
+        $remainingDebt = $remainingAmount - ($actualTotal - $initialPaymentAmount);
+
+        // Calculate payment percentages
+        $overallPaymentPercent = $contract->total_amount > 0 ? ($actualTotal / $contract->total_amount) * 100 : 0;
+        $remainingPaymentPercent = $remainingAmount > 0 ? (($actualTotal - $initialPaymentAmount) / $remainingAmount) * 100 : 0;
+
+        return response()->json([
+            'contract_total' => $contract->total_amount,
+            'initial_payment_percent' => $contract->initial_payment_percent,
+            'initial_payment_amount' => $initialPaymentAmount,
+            'remaining_amount' => $remainingAmount,
+            'planned_total' => $plannedTotal,
+            'actual_total' => $actualTotal,
+            'total_debt' => $totalDebt,
+            'remaining_debt' => max(0, $remainingDebt),
+            'overall_payment_percent' => $overallPaymentPercent,
+            'remaining_payment_percent' => max(0, $remainingPaymentPercent),
+            'is_fully_paid' => $totalDebt <= 0,
+            'initial_payment_made' => $actualTotal >= $initialPaymentAmount
+        ]);
+    }
+
+    /**
+     * Calculate remaining amount after initial payment
+     */
+    public function calculateRemainingAmount(Request $request, Contract $contract)
+    {
+        $initialPaymentPercent = $request->input('initial_payment_percent', $contract->initial_payment_percent);
+        $contractTotal = $request->input('contract_total', $contract->total_amount);
+
+        $initialPaymentAmount = ($contractTotal * $initialPaymentPercent) / 100;
+        $remainingAmount = $contractTotal - $initialPaymentAmount;
+
+        return response()->json([
+            'contract_total' => $contractTotal,
+            'initial_payment_percent' => $initialPaymentPercent,
+            'initial_payment_amount' => $initialPaymentAmount,
+            'remaining_amount' => $remainingAmount,
+            'formatted' => [
+                'contract_total' => number_format($contractTotal / 1000000, 1) . 'М',
+                'initial_payment' => number_format($initialPaymentAmount / 1000000, 1) . 'М',
+                'remaining' => number_format($remainingAmount / 1000000, 1) . 'М'
+            ]
+        ]);
+    }
+
+    /**
+     * Validate payment distribution before saving
+     */
+    public function validatePaymentDistribution(Request $request, Contract $contract)
+    {
+        $year = $request->input('year');
+        $totalAmount = $request->input('total_amount');
+        $quartersCount = $request->input('quarters_count');
+        $percentages = [
+            1 => $request->input('q1_percent', 0),
+            2 => $request->input('q2_percent', 0),
+            3 => $request->input('q3_percent', 0),
+            4 => $request->input('q4_percent', 0)
+        ];
+
+        $errors = [];
+        $warnings = [];
+
+        // Validate total amount
+        $remainingAmount = $contract->remaining_amount;
+        if ($totalAmount > $remainingAmount) {
+            $errors[] = "Жами сумма қолган сумма ({$remainingAmount}) дан ошмаслиги керак";
+        }
+
+        // Validate percentages for custom distribution
+        if ($request->input('distribution_type') === 'custom') {
+            $totalPercent = array_sum($percentages);
+            if (abs($totalPercent - 100) > 0.1) {
+                $errors[] = "Фоизлар йиғиндиси 100% бўлиши керак (ҳозир {$totalPercent}%)";
+            }
+        }
+
+        // Check for existing payments in the year
+        $existingPayments = $contract->actualPayments()
+            ->where('year', $year)
+            ->sum('amount');
+
+        if ($existingPayments > 0) {
+            $warnings[] = "{$year} йилда {$existingPayments} сум тўлов бор. Янги график мавжуд тўловларга таъсир қилмайди.";
+        }
+
+        // Check quarters count logic
+        if ($quartersCount < 4) {
+            $warnings[] = "Сиз {$quartersCount} чорак танладингиз. Қолган чораклар бўш қолади.";
+        }
+
+        return response()->json([
+            'valid' => empty($errors),
+            'errors' => $errors,
+            'warnings' => $warnings,
+            'summary' => [
+                'total_amount' => $totalAmount,
+                'quarters_count' => $quartersCount,
+                'per_quarter_equal' => $totalAmount / $quartersCount,
+                'existing_payments' => $existingPayments
+            ]
+        ]);
+    }
+
+    /**
+     * Get upcoming payment reminders
+     */
+    public function getUpcomingPayments()
+    {
+        $currentDate = now();
+        $currentYear = $currentDate->year;
+        $currentQuarter = ceil($currentDate->month / 3);
+
+        $upcomingPayments = PaymentSchedule::join('contracts', 'payment_schedules.contract_id', '=', 'contracts.id')
+            ->where('payment_schedules.is_active', true)
+            ->where(function ($query) use ($currentYear, $currentQuarter) {
+                $query->where('payment_schedules.year', '>', $currentYear)
+                      ->orWhere(function ($q) use ($currentYear, $currentQuarter) {
+                          $q->where('payment_schedules.year', $currentYear)
+                            ->where('payment_schedules.quarter', '>=', $currentQuarter);
+                      });
+            })
+            ->select('payment_schedules.*', 'contracts.contract_number', 'contracts.total_amount')
+            ->orderBy('payment_schedules.year')
+            ->orderBy('payment_schedules.quarter')
+            ->get();
+
+        $upcomingPaymentsData = [];
+
+        foreach ($upcomingPayments as $payment) {
+            $actualPaid = ActualPayment::where('contract_id', $payment->contract_id)
+                ->where('year', $payment->year)
+                ->where('quarter', $payment->quarter)
+                ->sum('amount');
+
+            if ($actualPaid < $payment->quarter_amount) {
+                $upcomingPaymentsData[] = [
+                    'contract_id' => $payment->contract_id,
+                    'contract_number' => $payment->contract_number,
+                    'year' => $payment->year,
+                    'quarter' => $payment->quarter,
+                    'quarter_name' => $payment->quarter . '-чорак ' . $payment->year,
+                    'due_amount' => $payment->quarter_amount - $actualPaid,
+                    'plan_amount' => $payment->quarter_amount,
+                    'paid_amount' => $actualPaid,
+                    'payment_percent' => $payment->quarter_amount > 0 ? ($actualPaid / $payment->quarter_amount) * 100 : 0,
+                    'is_overdue' => ($payment->year < $currentYear) ||
+                                   ($payment->year == $currentYear && $payment->quarter < $currentQuarter),
+                    'days_until_due' => $this->calculateDaysUntilQuarterEnd($payment->year, $payment->quarter)
+                ];
+            }
+        }
+
+        return response()->json([
+            'success' => true,
+            'upcoming_payments' => $upcomingPaymentsData,
+            'total_due' => collect($upcomingPaymentsData)->sum('due_amount'),
+            'overdue_count' => collect($upcomingPaymentsData)->where('is_overdue', true)->count()
+        ]);
+    }
+
+    /**
+     * Calculate days until quarter end
+     */
+    private function calculateDaysUntilQuarterEnd($year, $quarter)
+    {
+        $endMonth = $quarter * 3;
+        $quarterEnd = Carbon::create($year, $endMonth, 1)->endOfMonth();
+        $today = Carbon::now();
+
+        return $quarterEnd->diffInDays($today, false); // negative if overdue
+    }
+
+    /**
+     * Get payment analytics for reporting
+     */
+    public function getPaymentAnalytics()
+    {
+        $currentYear = date('Y');
+
+        $analytics = [
+            'total_contracts' => Contract::active()->count(),
+            'contracts_with_schedule' => Contract::whereHas('paymentSchedules')->count(),
+            'contracts_with_payments' => Contract::whereHas('actualPayments')->count(),
+
+            'current_year_stats' => [
+                'total_planned' => PaymentSchedule::where('year', $currentYear)
+                    ->where('is_active', true)
+                    ->sum('quarter_amount'),
+                'total_paid' => ActualPayment::where('year', $currentYear)
+                    ->sum('amount'),
+                'quarters_completed' => $this->getCompletedQuartersCount($currentYear)
+            ],
+
+            'payment_distribution' => $this->getPaymentDistributionByQuarter($currentYear),
+            'debt_analysis' => $this->getDebtAnalysis(),
+            'top_debtors' => $this->getTopDebtors(10)
+        ];
+
+        return response()->json($analytics);
+    }
+
+    /**
+     * Get payment distribution by quarter for current year
+     */
+    private function getPaymentDistributionByQuarter($year)
+    {
+        $distribution = [];
+
+        for ($quarter = 1; $quarter <= 4; $quarter++) {
+            $planned = PaymentSchedule::where('year', $year)
+                ->where('quarter', $quarter)
+                ->where('is_active', true)
+                ->sum('quarter_amount');
+
+            $actual = ActualPayment::where('year', $year)
+                ->where('quarter', $quarter)
+                ->sum('amount');
+
+            $distribution[$quarter] = [
+                'quarter' => $quarter,
+                'quarter_name' => $quarter . '-чорак',
+                'planned' => $planned,
+                'actual' => $actual,
+                'completion_percent' => $planned > 0 ? ($actual / $planned) * 100 : 0,
+                'debt' => $planned - $actual
+            ];
+        }
+
+        return $distribution;
+    }
+
+    /**
+     * Get debt analysis across all contracts
+     */
+    private function getDebtAnalysis()
+    {
+        $contracts = Contract::active()
+            ->with(['actualPayments', 'paymentSchedules'])
+            ->get();
+
+        $totalDebt = 0;
+        $contractsWithDebt = 0;
+        $debtByQuarter = [];
+
+        foreach ($contracts as $contract) {
+            $contractDebt = $contract->total_amount - $contract->actualPayments->sum('amount');
+
+            if ($contractDebt > 0) {
+                $totalDebt += $contractDebt;
+                $contractsWithDebt++;
+            }
+        }
+
+        return [
+            'total_debt' => $totalDebt,
+            'contracts_with_debt' => $contractsWithDebt,
+            'average_debt_per_contract' => $contractsWithDebt > 0 ? $totalDebt / $contractsWithDebt : 0,
+            'debt_percentage' => $contracts->sum('total_amount') > 0
+                ? ($totalDebt / $contracts->sum('total_amount')) * 100
+                : 0
+        ];
+    }
+
+    /**
+     * Get top debtors
+     */
+    private function getTopDebtors($limit = 10)
+    {
+        return Contract::active()
+            ->with(['subject', 'actualPayments'])
+            ->get()
+            ->map(function ($contract) {
+                $debt = $contract->total_amount - $contract->actualPayments->sum('amount');
+                return [
+                    'contract_id' => $contract->id,
+                    'contract_number' => $contract->contract_number,
+                    'subject_name' => $contract->subject->is_legal_entity
+                        ? $contract->subject->company_name
+                        : 'Жисмоний шахс',
+                    'total_amount' => $contract->total_amount,
+                    'paid_amount' => $contract->actualPayments->sum('amount'),
+                    'debt' => $debt,
+                    'debt_percent' => $contract->total_amount > 0 ? ($debt / $contract->total_amount) * 100 : 0
+                ];
+            })
+            ->where('debt', '>', 0)
+            ->sortByDesc('debt')
+            ->take($limit)
+            ->values();
+    }
+
+    /**
+     * Get completed quarters count for current year
+     */
+    private function getCompletedQuartersCount($year)
+    {
+        $currentQuarter = ceil(date('n') / 3);
+        $currentYear = date('Y');
+
+        if ($year < $currentYear) {
+            return 4; // All quarters completed for past years
+        } elseif ($year == $currentYear) {
+            return $currentQuarter - 1; // Current quarter not complete yet
+        } else {
+            return 0; // Future year
+        }
+    }
+
+    /**
+     * Export payment schedule to Excel
+     */
+    public function exportPaymentSchedule(Contract $contract)
+    {
+        $schedules = $contract->paymentSchedules()
+            ->where('is_active', true)
+            ->orderBy('year')
+            ->orderBy('quarter')
+            ->get();
+
+        $filename = "payment_schedule_{$contract->contract_number}_" . date('Y-m-d') . ".xlsx";
+
+        return Excel::download(new PaymentScheduleExport($schedules), $filename);
+    }
+
+    /**
+     * Export actual payments to Excel
+     */
+    public function exportActualPayments(Contract $contract)
+    {
+        $payments = $contract->actualPayments()
+            ->orderBy('payment_date', 'desc')
+            ->get();
+
+        $filename = "actual_payments_{$contract->contract_number}_" . date('Y-m-d') . ".xlsx";
+
+        return Excel::download(new ActualPaymentsExport($payments), $filename);
+    }
+
+    /**
+     * Generate comprehensive payment report
+     */
+    public function generatePaymentReport(Contract $contract)
+    {
+        $report = [
+            'contract_info' => [
+                'number' => $contract->contract_number,
+                'date' => $contract->contract_date->format('d.m.Y'),
+                'total_amount' => $contract->total_amount,
+                'subject_name' => $contract->subject->is_legal_entity
+                    ? $contract->subject->company_name
+                    : 'Жисмоний шахс',
+                'status' => $contract->status->name_ru
+            ],
+
+            'payment_breakdown' => [
+                'initial_payment_percent' => $contract->initial_payment_percent,
+                'initial_payment_amount' => $contract->initial_payment_amount,
+                'remaining_amount' => $contract->remaining_amount
+            ],
+
+            'schedule_summary' => $this->getScheduleSummary($contract),
+            'payment_summary' => $this->getPaymentSummaryByYear($contract),
+            'debt_analysis' => $this->getContractDebtAnalysis($contract),
+            'payment_history' => $this->getPaymentHistory($contract)
+        ];
+
+        return response()->json([
+            'success' => true,
+            'report' => $report
+        ]);
+    }
+
+    /**
+     * Helper methods for reporting
+     */
+    private function getScheduleSummary(Contract $contract)
+    {
+        $schedules = $contract->paymentSchedules()
+            ->where('is_active', true)
+            ->orderBy('year')
+            ->orderBy('quarter')
+            ->get();
+
+        return [
+            'total_planned' => $schedules->sum('quarter_amount'),
+            'quarters_planned' => $schedules->count(),
+            'years_covered' => $schedules->pluck('year')->unique()->count(),
+            'average_quarter_amount' => $schedules->count() > 0 ? $schedules->avg('quarter_amount') : 0
+        ];
+    }
+
+    private function getPaymentSummaryByYear(Contract $contract)
+    {
+        $years = $contract->actualPayments()
+            ->distinct('year')
+            ->orderBy('year')
+            ->pluck('year');
+
+        $summary = [];
+
+        foreach ($years as $year) {
+            $yearPayments = $contract->actualPayments()->where('year', $year)->get();
+
+            $summary[$year] = [
+                'total_paid' => $yearPayments->sum('amount'),
+                'payment_count' => $yearPayments->count(),
+                'quarters_with_payments' => $yearPayments->pluck('quarter')->unique()->count(),
+                'average_payment' => $yearPayments->count() > 0 ? $yearPayments->avg('amount') : 0
+            ];
+        }
+
+        return $summary;
+    }
+
+    private function getContractDebtAnalysis(Contract $contract)
+    {
+        $totalPaid = $contract->actualPayments->sum('amount');
+        $totalPlanned = $contract->paymentSchedules()->where('is_active', true)->sum('quarter_amount');
+
+        return [
+            'total_debt' => $contract->total_amount - $totalPaid,
+            'planned_debt' => $totalPlanned - $totalPaid,
+            'payment_completion' => $contract->total_amount > 0 ? ($totalPaid / $contract->total_amount) * 100 : 0,
+            'schedule_completion' => $totalPlanned > 0 ? ($totalPaid / $totalPlanned) * 100 : 0
+        ];
+    }
+
+    private function getPaymentHistory(Contract $contract)
+    {
+        return $contract->actualPayments()
+            ->orderBy('payment_date', 'desc')
+            ->take(10)
+            ->get()
+            ->map(function ($payment) {
+                return [
+                    'id' => $payment->id,
+                    'date' => $payment->payment_date->format('d.m.Y'),
+                    'amount' => $payment->amount,
+                    'quarter_name' => $payment->quarter . '-чорак ' . $payment->year,
+                    'payment_number' => $payment->payment_number,
+                    'notes' => $payment->notes
+                ];
+            });
+    }
 }

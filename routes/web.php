@@ -30,34 +30,82 @@ Route::get('/dashboard/chart-data', [DashboardController::class, 'getChartDataAj
 Route::get('/dashboard/export', [DashboardController::class, 'export'])->name('dashboard.export');
 Route::get('/dashboard/district/{district}', [DashboardController::class, 'districtDetails'])->name('dashboard.district');
 // Contracts Management
-Route::prefix('contracts')->group(function () {
-    Route::get('/', [ContractController::class, 'index'])->name('contracts.index');
-    Route::get('/create', [ContractController::class, 'create'])->name('contracts.create');
-    Route::post('/store', [ContractController::class, 'store'])->name('contracts.store');
-    Route::get('/{contract}', [ContractController::class, 'show'])->name('contracts.show');
-    Route::get('/{contract}/edit', [ContractController::class, 'edit'])->name('contracts.edit');
-    Route::put('/{contract}', [ContractController::class, 'update'])->name('contracts.update');
-    Route::delete('/{contract}', [ContractController::class, 'destroy'])->name('contracts.destroy');
-        Route::post('/detect-zone', [ContractController::class, 'getZoneByCoordinates'])->name('detect-zone');
+Route::prefix('contracts')->name('contracts.')->group(function () {
+    // Main contract routes
+    Route::get('/', [ContractController::class, 'index'])->name('index');
+    Route::get('/create', [ContractController::class, 'create'])->name('create');
+    Route::post('/store', [ContractController::class, 'store'])->name('store');
+    Route::get('/{contract}', [ContractController::class, 'show'])->name('show');
+    Route::get('/{contract}/edit', [ContractController::class, 'edit'])->name('edit');
+    Route::put('/{contract}', [ContractController::class, 'update'])->name('update');
+    Route::delete('/{contract}', [ContractController::class, 'destroy'])->name('destroy');
 
-    Route::post('/{contract}/amendments', [ContractController::class, 'createAmendment'])->name('contracts.amendments.store');
+    // Zone detection
+    Route::post('/detect-zone', [ContractController::class, 'getZoneByCoordinates'])->name('detect-zone');
+
+    // Contract amendments
+    Route::post('/{contract}/amendments', [ContractController::class, 'createAmendment'])->name('amendments.store');
 
     // AJAX routes for creating subjects and objects
     Route::post('/create-subject', [ContractController::class, 'createSubject'])->name('createSubject');
     Route::post('/create-object', [ContractController::class, 'createObject'])->name('createObject');
-
-    // Additional AJAX endpoints
     Route::get('/objects-by-subject/{subject}', [ContractController::class, 'getObjectsBySubject']);
     Route::post('/calculate-coefficients', [ContractController::class, 'calculateCoefficients']);
     Route::post('/validate-volumes', [ContractController::class, 'validateObjectVolumes']);
 
+    // Payment Management Routes
+    Route::prefix('{contract}')->group(function () {
+        // Payment update page
+        Route::get('/payment-update', [ContractController::class, 'payment_update'])->name('payment_update');
 
-// Add this route to your existing contracts route group
-Route::get('/{contract}/payment-update', [ContractController::class, 'payment_update'])->name('contracts.payment_update');
-Route::post('/{contract}/store-plan-payment', [ContractController::class, 'storePlanPayment'])->name('contracts.store_plan_payment');
-Route::post('/{contract}/store-fact-payment', [ContractController::class, 'storeFactPayment'])->name('contracts.store_fact_payment');
-Route::delete('/plan-payment/{id}', [ContractController::class, 'deletePlanPayment'])->name('contracts.delete_plan_payment');
-Route::delete('/fact-payment/{id}', [ContractController::class, 'deleteFactPayment'])->name('contracts.delete_fact_payment');
+        // Payment summary and analytics
+        Route::get('/payment-summary', [ContractController::class, 'getContractPaymentSummary'])->name('payment_summary');
+        Route::get('/quarterly-breakdown', [ContractController::class, 'getQuarterlyBreakdown'])->name('quarterly_breakdown');
+        Route::get('/next-payment-due', [ContractController::class, 'getNextPaymentDue'])->name('next_payment_due');
+
+        // Payment schedule management
+        Route::post('/quarterly-schedule', [ContractController::class, 'createQuarterlySchedule'])->name('create_quarterly_schedule');
+        Route::post('/store-plan-payment', [ContractController::class, 'storePlanPayment'])->name('store_plan_payment');
+        Route::put('/plan-payment/{id}', [ContractController::class, 'updatePlanPayment'])->name('update_plan_payment');
+        Route::delete('/plan-payment/{id}', [ContractController::class, 'deletePlanPayment'])->name('delete_plan_payment');
+
+        // Actual payments management
+        Route::post('/store-fact-payment', [ContractController::class, 'storeFactPayment'])->name('store_fact_payment');
+        Route::put('/fact-payment/{id}', [ContractController::class, 'editPayment'])->name('edit_fact_payment');
+        Route::delete('/fact-payment/{id}', [ContractController::class, 'deleteFactPayment'])->name('delete_fact_payment');
+
+        // Payment validation and calculations
+        Route::post('/validate-payment-distribution', [ContractController::class, 'validatePaymentDistribution'])->name('validate_payment_distribution');
+        Route::post('/calculate-remaining-amount', [ContractController::class, 'calculateRemainingAmount'])->name('calculate_remaining_amount');
+
+        // Payment reports and exports
+        Route::get('/payment-report', [ContractController::class, 'generatePaymentReport'])->name('payment_report');
+        Route::get('/export-payment-schedule', [ContractController::class, 'exportPaymentSchedule'])->name('export_payment_schedule');
+        Route::get('/export-actual-payments', [ContractController::class, 'exportActualPayments'])->name('export_actual_payments');
+    });
+
+    // Bulk payment operations (outside of specific contract context)
+    Route::prefix('payments')->name('payments.')->group(function () {
+
+         Route::get('/', [PaymentController::class, 'index'])->name('index');
+        Route::post('/', [PaymentController::class, 'store'])->name('store');
+        Route::put('/schedule/{contract}', [PaymentController::class, 'updateSchedule'])->name('schedule.update');
+
+
+        Route::post('/bulk-create', [ContractController::class, 'bulkCreatePayments'])->name('bulk_create');
+        Route::post('/bulk-update', [ContractController::class, 'bulkUpdatePayments'])->name('bulk_update');
+        Route::delete('/bulk-delete', [ContractController::class, 'bulkDeletePayments'])->name('bulk_delete');
+
+        // Payment analytics across all contracts
+        Route::get('/analytics', [ContractController::class, 'getPaymentAnalytics'])->name('analytics');
+        Route::get('/overdue-payments', [ContractController::class, 'getOverduePayments'])->name('overdue');
+        Route::get('/upcoming-payments', [ContractController::class, 'getUpcomingPayments'])->name('upcoming');
+        Route::get('/payment-statistics', [ContractController::class, 'getPaymentStatistics'])->name('statistics');
+    });
+
+    // Additional utility routes
+    Route::get('/quarter-from-date/{date}', [ContractController::class, 'getQuarterFromDate'])->name('quarter_from_date');
+    Route::get('/validate-payment-date', [ContractController::class, 'validatePaymentDate'])->name('validate_payment_date');
 });
 
 // Route::prefix('contracts')->group(function () {
@@ -81,11 +129,7 @@ Route::delete('/fact-payment/{id}', [ContractController::class, 'deleteFactPayme
 
 
 // Payments Management
-Route::prefix('payments')->name('payments.')->group(function () {
-    Route::get('/', [PaymentController::class, 'index'])->name('index');
-    Route::post('/', [PaymentController::class, 'store'])->name('store');
-    Route::put('/schedule/{contract}', [PaymentController::class, 'updateSchedule'])->name('schedule.update');
-});
+
 
 // Objects Management
 Route::prefix('objects')->group(function () {
