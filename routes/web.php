@@ -50,6 +50,14 @@ Route::prefix('contracts')->group(function () {
     Route::get('/objects-by-subject/{subject}', [ContractController::class, 'getObjectsBySubject']);
     Route::post('/calculate-coefficients', [ContractController::class, 'calculateCoefficients']);
     Route::post('/validate-volumes', [ContractController::class, 'validateObjectVolumes']);
+
+
+// Add this route to your existing contracts route group
+Route::get('/{contract}/payment-update', [ContractController::class, 'payment_update'])->name('contracts.payment_update');
+Route::post('/{contract}/store-plan-payment', [ContractController::class, 'storePlanPayment'])->name('contracts.store_plan_payment');
+Route::post('/{contract}/store-fact-payment', [ContractController::class, 'storeFactPayment'])->name('contracts.store_fact_payment');
+Route::delete('/plan-payment/{id}', [ContractController::class, 'deletePlanPayment'])->name('contracts.delete_plan_payment');
+Route::delete('/fact-payment/{id}', [ContractController::class, 'deleteFactPayment'])->name('contracts.delete_fact_payment');
 });
 
 // Route::prefix('contracts')->group(function () {
