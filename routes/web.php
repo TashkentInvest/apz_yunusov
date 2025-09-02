@@ -40,6 +40,7 @@ Route::prefix('contracts')->group(function () {
     Route::delete('/{contract}', [ContractController::class, 'destroy'])->name('contracts.destroy');
         Route::post('/detect-zone', [ContractController::class, 'getZoneByCoordinates'])->name('detect-zone');
 
+    Route::post('/{contract}/amendments', [ContractController::class, 'createAmendment'])->name('contracts.amendments.store');
 
     // AJAX routes for creating subjects and objects
     Route::post('/create-subject', [ContractController::class, 'createSubject'])->name('createSubject');
@@ -59,7 +60,7 @@ Route::prefix('contracts')->group(function () {
 //     Route::get('/{contract}/edit', [ContractController::class, 'edit'])->name('contracts.edit');
 //     Route::put('/{contract}', [ContractController::class, 'update'])->name('contracts.update');
 //     Route::delete('/{contract}', [ContractController::class, 'destroy'])->name('contracts.destroy');
-    
+
 //     // Zone detection endpoint
 //     Route::post('/detect-zone', [ContractController::class, 'getZoneByCoordinates'])->name('detect-zone');
 

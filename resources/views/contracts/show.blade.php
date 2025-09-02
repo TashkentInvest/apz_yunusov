@@ -186,7 +186,7 @@
                         </td>
                         <td class="px-6 py-4">
                             <div class="w-full bg-gray-200 rounded-full h-2">
-                                <div class="bg-blue-600 h-2 rounded-full transition-all" 
+                                <div class="bg-blue-600 h-2 rounded-full transition-all"
                                      style="width: {{ min(100, $schedule->payment_percent) }}%"></div>
                             </div>
                             <div class="text-xs text-gray-500 mt-1">
@@ -258,7 +258,7 @@
                                 $totalPaid = $contract->paymentSchedules->sum('paid_amount');
                                 $overallProgress = $totalPlanned > 0 ? ($totalPaid / $totalPlanned) * 100 : 0;
                             @endphp
-                            <div class="bg-blue-600 h-2 rounded-full transition-all" 
+                            <div class="bg-blue-600 h-2 rounded-full transition-all"
                                  style="width: {{ min(100, $overallProgress) }}%"></div>
                         </div>
                         <span class="text-xs font-medium text-gray-700">

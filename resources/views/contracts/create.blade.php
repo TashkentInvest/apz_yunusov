@@ -78,23 +78,23 @@
             <div class="space-y-2">
                 <div class="flex justify-between items-center p-2 bg-gray-50 rounded text-sm">
                     <span class="font-medium">1-zona</span>
-                    <span class="font-semibold">2.00</span>
+                    <span class="font-semibold">1.40</span>
                 </div>
                 <div class="flex justify-between items-center p-2 bg-gray-50 rounded text-sm">
                     <span class="font-medium">2-zona</span>
-                    <span class="font-semibold">1.80</span>
+                    <span class="font-semibold">1.25</span>
                 </div>
                 <div class="flex justify-between items-center p-2 bg-gray-50 rounded text-sm">
                     <span class="font-medium">3-zona</span>
-                    <span class="font-semibold">1.53</span>
+                    <span class="font-semibold">1.00</span>
                 </div>
                 <div class="flex justify-between items-center p-2 bg-gray-50 rounded text-sm">
                     <span class="font-medium">4-zona</span>
-                    <span class="font-semibold">1.34</span>
+                    <span class="font-semibold">0.75</span>
                 </div>
                 <div class="flex justify-between items-center p-2 bg-gray-50 rounded text-sm">
                     <span class="font-medium">5-zona</span>
-                    <span class="font-semibold">1.23</span>
+                    <span class="font-semibold">0.50</span>
                 </div>
             </div>
         </div>
@@ -258,169 +258,6 @@
             </div>
         </div>
 
-        <!-- Hisoblash summasi -->
-        <div class="bg-white rounded-xl shadow-sm border border-gray-200 p-6">
-            <h3 class="text-lg font-semibold text-gray-900 mb-6">Shartnoma summasi hisoblash</h3>
-
-            <!-- Obyekt hajmlari -->
-            <div class="grid grid-cols-2 md:grid-cols-5 gap-4 mb-6 p-4 bg-gray-50 rounded-lg">
-                <div class="text-center">
-                    <p class="text-sm text-gray-600 mb-1">Umumiy hajm (Hb)</p>
-                    <p id="display_hb" class="text-lg font-semibold text-gray-900">0 m³</p>
-                </div>
-                <div class="text-center">
-                    <p class="text-sm text-gray-600 mb-1">Ruxsatdan yuqori (Hyu)</p>
-                    <p id="display_hyu" class="text-lg font-semibold text-gray-900">0 m³</p>
-                </div>
-                <div class="text-center">
-                    <p class="text-sm text-gray-600 mb-1">Avtoturargoh (Ha)</p>
-                    <p id="display_ha" class="text-lg font-semibold text-gray-700">0 m³</p>
-                </div>
-                <div class="text-center">
-                    <p class="text-sm text-gray-600 mb-1">Texnik (Ht)</p>
-                    <p id="display_ht" class="text-lg font-semibold text-gray-700">0 m³</p>
-                </div>
-                <div class="text-center">
-                    <p class="text-sm text-gray-600 mb-1">Umumiy foyd. (Hu)</p>
-                    <p id="display_hu" class="text-lg font-semibold text-gray-700">0 m³</p>
-                </div>
-            </div>
-
-            <!-- Hisoblash hajmi va koeffitsientlar -->
-            <div class="grid grid-cols-2 md:grid-cols-6 gap-4 mb-6 p-4 bg-blue-50 rounded-lg">
-                <div class="text-center">
-                    <p class="text-sm text-gray-700 mb-1">Hisoblash hajmi</p>
-                    <p id="display_calculated_volume" class="text-lg font-bold text-blue-700">0 m³</p>
-                    <p class="text-xs text-gray-600 mt-1">(Hb + Hyu) - (Ha + Ht + Hu)</p>
-                </div>
-                <div class="text-center">
-                    <p class="text-sm text-gray-700 mb-1">Kt</p>
-                    <p id="display_kt" class="text-lg font-bold text-gray-900">1.0</p>
-                </div>
-                <div class="text-center">
-                    <p class="text-sm text-gray-700 mb-1">Ko</p>
-                    <p id="display_ko" class="text-lg font-bold text-gray-900">1.0</p>
-                </div>
-                <div class="text-center">
-                    <p class="text-sm text-gray-700 mb-1">Kz</p>
-                    <p id="display_kz" class="text-lg font-bold text-gray-900">1.0</p>
-                </div>
-                <div class="text-center">
-                    <p class="text-sm text-gray-700 mb-1">Kj</p>
-                    <p id="display_kj" class="text-lg font-bold text-gray-900">1.0</p>
-                </div>
-                <div class="text-center">
-                    <p class="text-sm text-gray-700 mb-1">Jami koef.</p>
-                    <p id="display_total_coef" class="text-lg font-bold text-blue-700">1.0</p>
-                </div>
-            </div>
-
-            <div class="grid grid-cols-1 md:grid-cols-3 gap-6">
-                <div>
-                    <label class="block text-sm font-medium text-gray-700 mb-1">Bazaviy hisoblash miqdori (Bh) *</label>
-                    <select name="base_amount_id" required onchange="calculateTotal()"
-                            class="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500">
-                        <option value="">Bazaviy miqdorni tanlang</option>
-                        @foreach($baseAmounts as $baseAmount)
-                            <option value="{{ $baseAmount->id }}" data-amount="{{ $baseAmount->amount }}" {{ old('base_amount_id') == $baseAmount->id ? 'selected' : '' }}>
-                                {{ number_format($baseAmount->amount) }} so'm ({{ $baseAmount->effective_from->format('d.m.Y') }})
-                            </option>
-                        @endforeach
-                    </select>
-                    @error('base_amount_id')
-                        <p class="text-red-600 text-sm mt-1">{{ $message }}</p>
-                    @enderror
-                </div>
-
-                <div>
-                    <label class="block text-sm font-medium text-gray-700 mb-1">Hisoblash hajmi (m³) *</label>
-                    <input type="number" name="contract_volume" step="0.01" value="{{ old('contract_volume') }}" required readonly
-                           class="w-full px-3 py-2 border border-gray-300 rounded-lg bg-gray-100">
-                    @error('contract_volume')
-                        <p class="text-red-600 text-sm mt-1">{{ $message }}</p>
-                    @enderror
-                </div>
-
-                <div>
-                    <label class="block text-sm font-medium text-gray-700 mb-1">Hisobga olinadigan Bh *</label>
-                    <input type="number" name="calculated_bh" step="0.01" value="{{ old('calculated_bh') }}" required readonly
-                           class="w-full px-3 py-2 border border-gray-300 rounded-lg bg-gray-100">
-                    @error('calculated_bh')
-                        <p class="text-red-600 text-sm mt-1">{{ $message }}</p>
-                    @enderror
-                </div>
-            </div>
-
-            <div class="mt-6 p-6 bg-gradient-to-r from-blue-600 to-blue-700 text-white rounded-xl">
-                <div class="text-center">
-                    <p class="text-sm opacity-90 mb-2">Shartnoma umumiy summasi (Ti):</p>
-                    <p id="total_amount_display" class="text-3xl font-bold mb-2">0 so'm</p>
-                    <p id="formula_display" class="text-sm opacity-80"></p>
-                </div>
-            </div>
-        </div>
-
-        <!-- To'lov shartlari -->
-        <div class="bg-white rounded-xl shadow-sm border border-gray-200 p-6">
-            <h3 class="text-lg font-semibold text-gray-900 mb-6">To'lov shartlari</h3>
-
-            <div class="grid grid-cols-1 md:grid-cols-3 gap-6 mb-6">
-                <div>
-                    <label class="block text-sm font-medium text-gray-700 mb-1">To'lov turi *</label>
-                    <select name="payment_type" required onchange="togglePaymentFields(); calculatePaymentSchedule()"
-                            class="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500">
-                        <option value="full" {{ old('payment_type') == 'full' ? 'selected' : '' }}>To'liq to'lov</option>
-                        <option value="installment" {{ old('payment_type', 'installment') == 'installment' ? 'selected' : '' }}>Bo'lib to'lash</option>
-                    </select>
-                </div>
-
-                <div id="initial_payment_field">
-                    <label class="block text-sm font-medium text-gray-700 mb-1">Boshlang'ich to'lov (%)</label>
-                    <input type="number" name="initial_payment_percent" min="0" max="100" value="{{ old('initial_payment_percent', 20) }}"
-                           onchange="calculatePaymentSchedule()"
-                           class="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500">
-                </div>
-
-                <div id="construction_period_field">
-                    <label class="block text-sm font-medium text-gray-700 mb-1">Qurilish muddati (yil) *</label>
-                    <input type="number" name="construction_period_years" min="1" max="10" value="{{ old('construction_period_years', 2) }}" required
-                           onchange="calculateCompletionDate(); calculatePaymentSchedule()"
-                           class="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500">
-                </div>
-            </div>
-
-            <!-- To'lov jadvali -->
-            <div id="payment_schedule_display" class="mt-6 p-4 bg-gray-50 rounded-xl">
-                <h4 class="font-semibold text-gray-900 mb-4">To'lov jadvali</h4>
-                <div class="grid grid-cols-1 md:grid-cols-3 gap-4 mb-4">
-                    <div class="text-center p-3 bg-white rounded-lg border">
-                        <p class="text-sm text-gray-600 mb-1">Boshlang'ich to'lov</p>
-                        <p id="initial_payment_amount" class="text-lg font-bold text-green-700">0 so'm</p>
-                    </div>
-                    <div class="text-center p-3 bg-white rounded-lg border">
-                        <p class="text-sm text-gray-600 mb-1">Qolgan summa</p>
-                        <p id="remaining_amount" class="text-lg font-bold text-blue-700">0 so'm</p>
-                    </div>
-                    <div class="text-center p-3 bg-white rounded-lg border">
-                        <p class="text-sm text-gray-600 mb-1">Choraklik to'lov</p>
-                        <p id="quarterly_payment" class="text-lg font-bold text-gray-700">0 so'm</p>
-                    </div>
-                </div>
-                <div id="quarters_table" class="overflow-x-auto">
-                    <table class="min-w-full bg-white border border-gray-200 rounded-lg">
-                        <thead class="bg-gray-50">
-                            <tr>
-                                <th class="px-4 py-3 border-b text-left text-xs font-medium text-gray-500 uppercase">Yil</th>
-                                <th class="px-4 py-3 border-b text-left text-xs font-medium text-gray-500 uppercase">Chorak</th>
-                                <th class="px-4 py-3 border-b text-right text-xs font-medium text-gray-500 uppercase">To'lov summasi</th>
-                            </tr>
-                        </thead>
-                        <tbody id="quarters_tbody" class="divide-y divide-gray-200">
-                        </tbody>
-                    </table>
-                </div>
-            </div>
-        </div>
 
         <!-- Tugmalar -->
         <div class="flex justify-end space-x-4">
@@ -442,8 +279,7 @@
     <div class="flex items-center justify-center min-h-screen px-4">
         <div class="fixed inset-0 bg-gray-500 bg-opacity-75 transition-opacity"></div>
         <div class="inline-block bg-white rounded-xl shadow-xl transform transition-all sm:max-w-4xl sm:w-full">
-
-<form id="subjectModalForm">
+            <form id="subjectModalForm">
                 @csrf
                 <div class="px-6 py-4 border-b border-gray-200">
                     <h3 class="text-lg font-semibold text-gray-900">Yangi Mulk egasi yaratish</h3>
@@ -561,28 +397,27 @@
 <div id="objectModal" class="hidden fixed inset-0 z-50 overflow-y-auto">
     <div class="flex items-center justify-center min-h-screen px-4">
         <div class="fixed inset-0 bg-gray-500 bg-opacity-75"></div>
-        <div class="inline-block bg-white rounded-xl shadow-xl transform transition-all max-w-7xl w-full max-h-[95vh] overflow-hidden">
+        <div class="inline-block bg-white rounded-xl shadow-xl transform transition-all max-w-6xl w-full max-h-[90vh] overflow-hidden">
             <form id="objectModalForm">
                 @csrf
                 <div class="px-6 py-4 border-b border-gray-200 bg-gradient-to-r from-blue-600 to-blue-700">
-                    <h3 class="text-xl font-bold text-white">Yangi obyekt yaratish va shartnoma hisoblash</h3>
-                    <p class="text-sm text-blue-100 mt-1">Obyekt ma'lumotlarini to'ldiring va shartnoma summasi avtomatik hisoblanadi</p>
+                    <h3 class="text-xl font-bold text-white">Yangi obyekt yaratish</h3>
+                    <p class="text-sm text-blue-100 mt-1">Obyekt ma'lumotlarini to'ldiring</p>
                 </div>
 
-                <div class="flex h-[calc(95vh-200px)]">
-                    <!-- Chap panel - Asosiy ma'lumotlar -->
-                    <div class="w-2/5 border-r border-gray-200 p-6 overflow-y-auto">
-                        <!-- 1. Asosiy ma'lumotlar -->
+                <div class="flex h-[calc(90vh-200px)]">
+                    <!-- Chap panel - Form -->
+                    <div class="w-1/2 border-r border-gray-200 p-6 overflow-y-auto">
+                        <!-- Asosiy ma'lumotlar -->
                         <div class="mb-8">
                             <h4 class="text-lg font-semibold text-gray-900 mb-4 pb-2 border-b border-gray-200">
                                 <i data-feather="map-pin" class="w-5 h-5 inline mr-2 text-blue-600"></i>
-                                1. Asosiy ma'lumotlar
+                                Asosiy ma'lumotlar
                             </h4>
-
                             <div class="space-y-4">
                                 <div>
                                     <label class="block text-sm font-medium text-gray-700 mb-2">Tuman *</label>
-                                    <select name="district_id" required onchange="updateDistrictInfo()"
+                                    <select name="district_id" required
                                             class="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500">
                                         <option value="">Tumanni tanlang</option>
                                         <option value="01">Учтепинский</option>
@@ -599,14 +434,12 @@
                                         <option value="12">Янгихаётский</option>
                                     </select>
                                 </div>
-
                                 <div>
-                                    <label class="block text-sm font-medium text-gray-700 mb-2">Obyekt manzili *</label>
+                                    <label class="block text-sm font-medium text-gray-700 mb-2">Manzil *</label>
                                     <textarea name="address" rows="3" required
                                               class="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
                                               placeholder="To'liq manzilni kiriting"></textarea>
                                 </div>
-
                                 <div class="grid grid-cols-2 gap-4">
                                     <div>
                                         <label class="block text-sm font-medium text-gray-700 mb-2">Kadastr raqami</label>
@@ -623,257 +456,262 @@
                             </div>
                         </div>
 
-                        <!-- 2. Qurilish hajmlari -->
+                        <!-- Qurilish hajmlari -->
                         <div class="mb-8">
                             <h4 class="text-lg font-semibold text-gray-900 mb-4 pb-2 border-b border-gray-200">
                                 <i data-feather="home" class="w-5 h-5 inline mr-2 text-green-600"></i>
-                                2. Qurilish hajmlari (m³)
+                                Qurilish hajmlari (m³)
                             </h4>
-
                             <div class="space-y-4">
                                 <div>
                                     <label class="block text-sm font-medium text-gray-700 mb-2">Umumiy hajm (Hb) *</label>
                                     <input type="number" name="construction_volume" step="0.01" required
-                                           onchange="calculateModalEverything()" id="modal_hb"
                                            class="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500">
                                 </div>
                                 <div>
                                     <label class="block text-sm font-medium text-gray-700 mb-2">Ruxsat etilganidan yuqori (Hyu)</label>
                                     <input type="number" name="above_permit_volume" step="0.01" value="0"
-                                           onchange="calculateModalEverything()" id="modal_hyu"
                                            class="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500">
                                 </div>
                                 <div>
                                     <label class="block text-sm font-medium text-gray-700 mb-2">Avtoturargoh (Ha)</label>
                                     <input type="number" name="parking_volume" step="0.01" value="0"
-                                           onchange="calculateModalEverything()" id="modal_ha"
                                            class="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500">
                                 </div>
                                 <div>
                                     <label class="block text-sm font-medium text-gray-700 mb-2">Texnik xonalar (Ht)</label>
                                     <input type="number" name="technical_rooms_volume" step="0.01" value="0"
-                                           onchange="calculateModalEverything()" id="modal_ht"
                                            class="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500">
                                 </div>
                                 <div>
                                     <label class="block text-sm font-medium text-gray-700 mb-2">Umumiy foydalanish (Hu)</label>
                                     <input type="number" name="common_area_volume" step="0.01" value="0"
-                                           onchange="calculateModalEverything()" id="modal_hu"
                                            class="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500">
-                                </div>
-                            </div>
-
-                            <div class="mt-4 p-4 bg-blue-50 rounded-lg border border-blue-200">
-                                <div class="text-center">
-                                    <p class="text-sm font-medium text-gray-700 mb-1">Hisoblash hajmi</p>
-                                    <p class="text-2xl font-bold text-blue-700" id="calculated_volume_modal">0.00 m³</p>
-                                    <p class="text-xs text-gray-600 mt-1">(Hb + Hyu) - (Ha + Ht + Hu)</p>
                                 </div>
                             </div>
                         </div>
 
-                        <!-- 3. Koeffitsientlar -->
+                        <!-- Koeffitsientlar -->
                         <div class="mb-8">
                             <h4 class="text-lg font-semibold text-gray-900 mb-4 pb-2 border-b border-gray-200">
                                 <i data-feather="settings" class="w-5 h-5 inline mr-2 text-purple-600"></i>
-                                3. Koeffitsientlar
+                                Koeffitsientlar
                             </h4>
-
                             <div class="space-y-4">
                                 <div>
                                     <label class="block text-sm font-medium text-gray-700 mb-2">Qurilish turi (Kt)</label>
-                                    <select name="construction_type_id" onchange="calculateModalEverything()"
+                                    <select name="construction_type_id"
                                             class="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500">
                                         <option value="">Tanlang</option>
-                                        <option value="1" data-coef="1.0">Yangi qurilish (1.0)</option>
-                                        <option value="2" data-coef="0.85">Rekonstruksiya (0.85)</option>
+                                        <option value="1">Yangi kapital qurilish (1.0)</option>
+                                        <option value="2">Obyektni rekonstruksiya qilish (1.0)</option>
+                                        <option value="3">Ekspertiza talab etilmaydigan rekonstruksiya (0.0)</option>
+                                        <option value="4">Hajm o'zgarmaydigan rekonstruksiya (0.0)</option>
                                     </select>
                                 </div>
-
                                 <div>
                                     <label class="block text-sm font-medium text-gray-700 mb-2">Obyekt turi (Ko)</label>
-                                    <select name="object_type_id" onchange="calculateModalEverything()"
+                                    <select name="object_type_id"
                                             class="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500">
                                         <option value="">Tanlang</option>
-                                        <option value="1" data-coef="0.8">Ijtimoiy obyektlar (0.8)</option>
-                                        <option value="2" data-coef="0.5">Davlat investitsiyalari (0.5)</option>
-                                        <option value="3" data-coef="0.5">Sanoat binolari (0.5)</option>
-                                        <option value="4" data-coef="1.0">Boshqa obyektlar (1.0)</option>
+                                        <option value="1">Ijtimoiy infratuzilma va turizm obyektlari (0.5)</option>
+                                        <option value="2">Davlat ulushi 50% dan ortiq (0.5)</option>
+                                        <option value="3">Ishlab chiqarish korxonalari (0.5)</option>
+                                        <option value="4">Omborxonalar (0.5)</option>
+                                        <option value="5">Boshqa obyektlar (1.0)</option>
                                     </select>
                                 </div>
-
                                 <div>
                                     <label class="block text-sm font-medium text-gray-700 mb-2">Hududiy zona (Kz)</label>
-                                    <select name="territorial_zone_id" id="modalTerritorialZone" onchange="calculateModalEverything()"
+                                    <select name="territorial_zone_id" id="modalTerritorialZone"
                                             class="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500">
                                         <option value="">Avtomatik aniqlanadi</option>
-                                        <option value="1" data-coef="2">1-zona (2.0)</option>
-                                        <option value="2" data-coef="1.80">2-zona (1.80)</option>
-                                        <option value="3" data-coef="1.53">3-zona (1.53)</option>
-                                        <option value="4" data-coef="1.34">4-zona (1.34)</option>
-                                        <option value="5" data-coef="1.23">5-zona (1.23)</option>
+                                        <option value="1">1-zona (1.40)</option>
+                                        <option value="2">2-zona (1.25)</option>
+                                        <option value="3">3-zona (1.00)</option>
+                                        <option value="4">4-zona (0.75)</option>
+                                        <option value="5">5-zona (0.50)</option>
                                     </select>
                                 </div>
-
                                 <div>
                                     <label class="block text-sm font-medium text-gray-700 mb-2">Joylashuv (Kj)</label>
-                                    <select name="location_type" onchange="calculateModalEverything()"
+                                    <select name="location_type"
                                             class="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500">
-                                        <option value="other_locations" data-coef="1.0">Oddiy joylashuv (1.0)</option>
-                                        <option value="metro_radius_200m_outside" data-coef="0.6">Metro stantsiyasi yaqinida (0.6)</option>
+                                        <option value="other_locations">Oddiy joylashuv (1.0)</option>
+                                        <option value="metro_radius_200m_outside">Metro stantsiyasi yaqinida (0.6)</option>
                                     </select>
-                                </div>
-                            </div>
-
-                            <div class="mt-4 p-3 bg-gray-50 rounded-lg border">
-                                <div class="grid grid-cols-2 gap-3 text-sm">
-                                    <div class="flex justify-between">
-                                        <span class="text-gray-600">Kt:</span>
-                                        <span id="modal_kt" class="font-semibold">1.00</span>
-                                    </div>
-                                    <div class="flex justify-between">
-                                        <span class="text-gray-600">Ko:</span>
-                                        <span id="modal_ko" class="font-semibold">1.00</span>
-                                    </div>
-                                    <div class="flex justify-between">
-                                        <span class="text-gray-600">Kz:</span>
-                                        <span id="modal_kz" class="font-semibold">1.00</span>
-                                    </div>
-                                    <div class="flex justify-between">
-                                        <span class="text-gray-600">Kj:</span>
-                                        <span id="modal_kj" class="font-semibold">1.00</span>
-                                    </div>
-                                </div>
-                                <div class="text-center mt-3 pt-3 border-t border-gray-200">
-                                    <span class="text-gray-700 font-medium">Jami koeffitsient:</span>
-                                    <span id="modal_total_coef" class="font-bold text-blue-700 ml-2">1.00</span>
                                 </div>
                             </div>
                         </div>
 
-                        <!-- 4. Shartnoma summasi hisoblash -->
-                        <div class="mb-8">
-                            <h4 class="text-lg font-semibold text-gray-900 mb-4 pb-2 border-b border-gray-200">
-                                <i data-feather="dollar-sign" class="w-5 h-5 inline mr-2 text-yellow-600"></i>
-                                4. Shartnoma summasi hisoblash
-                            </h4>
 
-                            <div class="space-y-4">
-                                <div>
-                                    <label class="block text-sm font-medium text-gray-700 mb-2">Bazaviy hisoblash miqdori (Bh) *</label>
-                                    <select name="base_amount_id" required onchange="calculateModalEverything()" id="modal_base_amount"
-                                            class="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500">
-                                        <option value="">Bazaviy miqdorni tanlang</option>
-                                        @foreach($baseAmounts as $baseAmount)
-                                            <option value="{{ $baseAmount->id }}" data-amount="{{ $baseAmount->amount }}">
-                                                {{ number_format($baseAmount->amount) }} so'm ({{ $baseAmount->effective_from->format('d.m.Y') }})
-                                            </option>
-                                        @endforeach
-                                    </select>
-                                </div>
+     <!-- Hisoblash summasi -->
+<div class="bg-white rounded-lg shadow border border-gray-300 p-6">
+    <h3 class="text-xl font-semibold text-gray-900 mb-8 pb-3 border-b border-gray-200">Shartnoma summasi hisoblash</h3>
 
-                                <div class="grid grid-cols-2 gap-4">
-                                    <div>
-                                        <label class="block text-sm font-medium text-gray-700 mb-2">Hisoblash hajmi (m³)</label>
-                                        <input type="number" name="contract_volume" step="0.01" readonly id="modal_contract_volume"
-                                               class="w-full px-3 py-2 border border-gray-300 rounded-lg bg-gray-100">
-                                    </div>
-                                    <div>
-                                        <label class="block text-sm font-medium text-gray-700 mb-2">Hisobga olinadigan Bh</label>
-                                        <input type="number" name="calculated_bh" step="0.01" readonly id="modal_calculated_bh"
-                                               class="w-full px-3 py-2 border border-gray-300 rounded-lg bg-gray-100">
-                                    </div>
-                                </div>
-                            </div>
+    <!-- Obyekt hajmlari ko'rsatkich -->
+    <div class="mb-8">
+        <h4 class="text-lg font-medium text-gray-800 mb-4">Obyekt hajmlari</h4>
+        <div class="grid grid-cols-2 md:grid-cols-5 gap-4 p-5 bg-gray-50 rounded border border-gray-200">
+            <div class="text-center">
+                <label class="block text-sm font-medium text-gray-600 mb-2">Umumiy hajm (Hb)</label>
+                <div id="display_hb" class="text-lg font-semibold text-gray-900 bg-white rounded px-3 py-2 border">0 m³</div>
+            </div>
+            <div class="text-center">
+                <label class="block text-sm font-medium text-gray-600 mb-2">Ruxsatdan yuqori (Hyu)</label>
+                <div id="display_hyu" class="text-lg font-semibold text-gray-900 bg-white rounded px-3 py-2 border">0 m³</div>
+            </div>
+            <div class="text-center">
+                <label class="block text-sm font-medium text-gray-600 mb-2">Avtoturargoh (Ha)</label>
+                <div id="display_ha" class="text-lg font-semibold text-gray-700 bg-white rounded px-3 py-2 border">0 m³</div>
+            </div>
+            <div class="text-center">
+                <label class="block text-sm font-medium text-gray-600 mb-2">Texnik xonalar (Ht)</label>
+                <div id="display_ht" class="text-lg font-semibold text-gray-700 bg-white rounded px-3 py-2 border">0 m³</div>
+            </div>
+            <div class="text-center">
+                <label class="block text-sm font-medium text-gray-600 mb-2">Umumiy foydalanish (Hu)</label>
+                <div id="display_hu" class="text-lg font-semibold text-gray-700 bg-white rounded px-3 py-2 border">0 m³</div>
+            </div>
+        </div>
+    </div>
 
-                            <div class="mt-6 p-6 bg-gradient-to-r from-green-600 to-green-700 text-white rounded-xl">
-                                <div class="text-center">
-                                    <p class="text-sm opacity-90 mb-2">Shartnoma umumiy summasi (Ti):</p>
-                                    <p id="modal_total_amount_display" class="text-3xl font-bold mb-2">0 so'm</p>
-                                    <p id="modal_formula_display" class="text-sm opacity-80">Ti = Hisobga olinadigan Bh × Hisoblash hajmi</p>
-                                </div>
-                            </div>
-                        </div>
+    <!-- Hisoblash hajmi va koeffitsientlar -->
+    <div class="mb-8">
+        <h4 class="text-lg font-medium text-gray-800 mb-4">Hisoblash hajmi va koeffitsientlar</h4>
+        <div class="grid grid-cols-2 md:grid-cols-6 gap-4 p-5 bg-gray-100 rounded border border-gray-200">
+            <div class="text-center">
+                <label class="block text-sm font-medium text-gray-700 mb-2">Hisoblash hajmi</label>
+                <div id="display_calculated_volume" class="text-lg font-bold text-gray-900 bg-white rounded px-3 py-2 border">0 m³</div>
+                <p class="text-xs text-gray-600 mt-1">(Hb + Hyu) - (Ha + Ht + Hu)</p>
+            </div>
+            <div class="text-center">
+                <label class="block text-sm font-medium text-gray-700 mb-2">Qurilish turi (Kt)</label>
+                <div id="display_kt" class="text-lg font-bold text-gray-900 bg-white rounded px-3 py-2 border">1.0</div>
+            </div>
+            <div class="text-center">
+                <label class="block text-sm font-medium text-gray-700 mb-2">Obyekt turi (Ko)</label>
+                <div id="display_ko" class="text-lg font-bold text-gray-900 bg-white rounded px-3 py-2 border">1.0</div>
+            </div>
+            <div class="text-center">
+                <label class="block text-sm font-medium text-gray-700 mb-2">Hududiy zona (Kz)</label>
+                <div id="display_kz" class="text-lg font-bold text-gray-900 bg-white rounded px-3 py-2 border">1.0</div>
+            </div>
+            <div class="text-center">
+                <label class="block text-sm font-medium text-gray-700 mb-2">Joylashuv (Kj)</label>
+                <div id="display_kj" class="text-lg font-bold text-gray-900 bg-white rounded px-3 py-2 border">1.0</div>
+            </div>
+            <div class="text-center">
+                <label class="block text-sm font-medium text-gray-700 mb-2">Jami koeffitsient</label>
+                <div id="display_total_coef" class="text-lg font-bold text-gray-900 bg-white rounded px-3 py-2 border border-gray-400">1.0</div>
+            </div>
+        </div>
+    </div>
 
-                        <!-- 5. To'lov shartlari -->
-                        <div class="mb-8">
-                            <h4 class="text-lg font-semibold text-gray-900 mb-4 pb-2 border-b border-gray-200">
-                                <i data-feather="credit-card" class="w-5 h-5 inline mr-2 text-indigo-600"></i>
-                                5. To'lov shartlari
-                            </h4>
+    <!-- Asosiy hisoblash maydonlari -->
+    <div class="mb-8">
+        <h4 class="text-lg font-medium text-gray-800 mb-4">Asosiy hisoblash</h4>
+        <div class="grid grid-cols-1 md:grid-cols-3 gap-6">
+            <div>
+                <label class="block text-sm font-medium text-gray-700 mb-2">Bazaviy hisoblash miqdori (Bh) *</label>
+                <select name="base_amount_id" required onchange="calculateTotal()"
+                        class="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500">
+                    <option value="">Bazaviy miqdorni tanlang</option>
+                    @foreach($baseAmounts as $baseAmount)
+                        <option value="{{ $baseAmount->id }}" data-amount="{{ $baseAmount->amount }}" {{ old('base_amount_id') == $baseAmount->id ? 'selected' : '' }}>
+                            {{ number_format($baseAmount->amount) }} so'm ({{ $baseAmount->effective_from->format('d.m.Y') }})
+                        </option>
+                    @endforeach
+                </select>
+                @error('base_amount_id')
+                    <p class="text-red-600 text-sm mt-1">{{ $message }}</p>
+                @enderror
+            </div>
 
-                            <div class="grid grid-cols-1 gap-4 mb-4">
-                                <div>
-                                    <label class="block text-sm font-medium text-gray-700 mb-2">To'lov turi *</label>
-                                    <select name="payment_type" onchange="toggleModalPaymentFields(); calculateModalPaymentSchedule()" id="modal_payment_type"
-                                            class="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500">
-                                        <option value="installment">Bo'lib to'lash</option>
-                                        <option value="full">To'liq to'lov</option>
-                                    </select>
-                                </div>
+            <div>
+                <label class="block text-sm font-medium text-gray-700 mb-2">Hisoblash hajmi (m³) *</label>
+                <input type="number" name="contract_volume" step="0.01" value="{{ old('contract_volume') }}" required readonly
+                       class="w-full px-3 py-2 border border-gray-300 rounded-lg bg-gray-100 text-gray-700">
+                @error('contract_volume')
+                    <p class="text-red-600 text-sm mt-1">{{ $message }}</p>
+                @enderror
+                <p class="text-xs text-gray-500 mt-1">Obyekt tanlangandan keyin avtomatik to'ldiriladi</p>
+            </div>
 
-                                <div id="modal_initial_payment_field">
-                                    <label class="block text-sm font-medium text-gray-700 mb-2">Boshlang'ich to'lov (%)</label>
-                                    <input type="number" name="initial_payment_percent" min="0" max="100" value="20" id="modal_initial_payment_percent"
-                                           onchange="calculateModalPaymentSchedule()"
-                                           class="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500">
-                                </div>
+            <div>
+                <label class="block text-sm font-medium text-gray-700 mb-2">Hisobga olinadigan Bh *</label>
+                <input type="number" name="calculated_bh" step="0.01" value="{{ old('calculated_bh') }}" required readonly
+                       class="w-full px-3 py-2 border border-gray-300 rounded-lg bg-gray-100 text-gray-700">
+                @error('calculated_bh')
+                    <p class="text-red-600 text-sm mt-1">{{ $message }}</p>
+                @enderror
+                <p class="text-xs text-gray-500 mt-1">Bh × (Kt × Ko × Kz × Kj)</p>
+            </div>
+        </div>
+    </div>
 
-                                <div id="modal_construction_period_field">
-                                    <label class="block text-sm font-medium text-gray-700 mb-2">Qurilish muddati (yil) *</label>
-                                    <input type="number" name="construction_period_years" min="1" max="10" value="2" required id="modal_construction_period_years"
-                                           onchange="calculateModalPaymentSchedule()"
-                                           class="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500">
-                                </div>
-                            </div>
+    <!-- Formula va natija -->
+    <div class="mb-6">
+        <div class="bg-gray-50 border border-gray-300 rounded-lg p-6">
+            <div class="text-center">
+                <h4 class="text-lg font-medium text-gray-800 mb-4">Hisoblash formulasi</h4>
+                <div class="bg-white border border-gray-200 rounded p-4 mb-4">
+                    <p class="text-lg font-mono text-gray-800">Ti = Hisobga olinadigan Bh × Hisoblash hajmi</p>
+                </div>
+                <div id="formula_display" class="text-sm text-gray-600 mb-4">
+                    Ti = Hisobga olinadigan Bh × Hisoblash hajmi
+                </div>
+            </div>
+        </div>
+    </div>
 
-                            <!-- To'lov jadvali -->
-                            <div id="modal_payment_schedule_display" class="mt-4 p-4 bg-gray-50 rounded-xl border">
-                                <h5 class="font-semibold text-gray-900 mb-4">To'lov jadvali</h5>
-                                <div class="grid grid-cols-1 md:grid-cols-3 gap-4 mb-4">
-                                    <div class="text-center p-3 bg-white rounded-lg border">
-                                        <p class="text-sm text-gray-600 mb-1">Boshlang'ich to'lov</p>
-                                        <p id="modal_initial_payment_amount" class="text-lg font-bold text-green-700">0 so'm</p>
-                                    </div>
-                                    <div class="text-center p-3 bg-white rounded-lg border">
-                                        <p class="text-sm text-gray-600 mb-1">Qolgan summa</p>
-                                        <p id="modal_remaining_amount" class="text-lg font-bold text-blue-700">0 so'm</p>
-                                    </div>
-                                    <div class="text-center p-3 bg-white rounded-lg border">
-                                        <p class="text-sm text-gray-600 mb-1">Choraklik to'lov</p>
-                                        <p id="modal_quarterly_payment" class="text-lg font-bold text-gray-700">0 so'm</p>
-                                    </div>
-                                </div>
-                                <div id="modal_quarters_table" class="overflow-x-auto">
-                                    <table class="min-w-full bg-white border border-gray-200 rounded-lg text-sm">
-                                        <thead class="bg-gray-50">
-                                            <tr>
-                                                <th class="px-3 py-2 border-b text-left text-xs font-medium text-gray-500 uppercase">Yil</th>
-                                                <th class="px-3 py-2 border-b text-left text-xs font-medium text-gray-500 uppercase">Chorak</th>
-                                                <th class="px-3 py-2 border-b text-right text-xs font-medium text-gray-500 uppercase">To'lov summasi</th>
-                                            </tr>
-                                        </thead>
-                                        <tbody id="modal_quarters_tbody" class="divide-y divide-gray-200">
-                                        </tbody>
-                                    </table>
-                                </div>
-                            </div>
-                        </div>
-                    </div>
+    <!-- Yakuniy summa -->
+    <div class="bg-gray-800 text-white rounded-lg p-6 text-center">
+        <h4 class="text-lg font-medium mb-3">Shartnoma umumiy summasi</h4>
+        <div id="total_amount_display" class="text-4xl font-bold mb-2">0 so'm</div>
+        <p class="text-sm opacity-80">(Barcha soliq va yig'imlarni o'z ichiga oladi)</p>
+    </div>
+
+    <!-- Hisoblash tushuntirishi -->
+    <div class="mt-6 p-4 bg-gray-50 border border-gray-200 rounded-lg">
+        <h5 class="font-medium text-gray-800 mb-3">Hisoblash tushuntirishi:</h5>
+        <div class="grid grid-cols-1 md:grid-cols-2 gap-4 text-sm text-gray-700">
+            <div>
+                <p class="mb-2"><strong>1. Hisoblash hajmi:</strong></p>
+                <p class="mb-4">Umumiy hajm + Ruxsatdan yuqori hajm - (Avtoturargoh + Texnik xonalar + Umumiy foydalanish)</p>
+
+                <p class="mb-2"><strong>2. Koeffitsientlar:</strong></p>
+                <ul class="list-disc list-inside space-y-1 ml-2">
+                    <li>Kt - Qurilish turi koeffitsienti</li>
+                    <li>Ko - Obyekt turi koeffitsienti</li>
+                    <li>Kz - Hududiy zona koeffitsienti</li>
+                    <li>Kj - Joylashuv koeffitsienti</li>
+                </ul>
+            </div>
+            <div>
+                <p class="mb-2"><strong>3. Yakuniy hisoblash:</strong></p>
+                <p class="mb-4">Bazaviy miqdor × Jami koeffitsient × Hisoblash hajmi</p>
+
+                <p class="mb-2"><strong>4. Natija:</strong></p>
+                <p>Olingan summa shartnoma bo'yicha to'lanishi kerak bo'lgan umumiy miqdordir.</p>
+            </div>
+        </div>
+    </div>
+</div>
+
+    </div>
 
                     <!-- O'ng panel - Xarita -->
-                    <div class="w-3/5 flex flex-col">
+                    <div class="w-1/2 flex flex-col">
                         <div class="p-6 border-b border-gray-200 bg-gray-50">
                             <h4 class="text-lg font-semibold text-gray-900 mb-2">
                                 <i data-feather="map" class="w-5 h-5 inline mr-2 text-red-600"></i>
                                 Xarita va zona aniqlash
                             </h4>
-                            <p class="text-sm text-gray-600">Xaritada obyekt joylashuvini belgilang. Zona avtomatik aniqlanadi.</p>
+                            <p class="text-sm text-gray-600">Xaritada obyekt joylashuvini belgilang</p>
                         </div>
-
                         <div class="flex-1 p-6">
                             <div id="objectMap" class="w-full h-full rounded-lg border-2 border-gray-200"></div>
-
                             <div id="zoneInfo" class="mt-4 p-4 border-l-4 rounded-lg hidden">
                                 <div class="flex items-center justify-between">
                                     <div>
@@ -886,7 +724,6 @@
                                     </div>
                                 </div>
                             </div>
-
                             <div class="mt-4 text-center text-sm text-gray-500 bg-blue-50 p-3 rounded-lg">
                                 <i data-feather="mouse-pointer" class="w-4 h-4 inline mr-1"></i>
                                 Xaritadan obyekt joylashuvini tanlang
@@ -896,31 +733,17 @@
                 </div>
 
                 <!-- Modal tugmalari -->
-                <div class="px-6 py-4 border-t border-gray-200 bg-gradient-to-r from-gray-50 to-gray-100 flex justify-between items-center">
-                    <div class="text-sm">
-                        <div class="flex items-center space-x-4">
-                            <div>
-                                <span class="text-gray-600">Shartnoma summasi:</span>
-                                <span id="modal_summary_amount" class="font-bold text-green-700 text-lg ml-1">0 so'm</span>
-                            </div>
-                            <div class="border-l border-gray-300 pl-4">
-                                <span class="text-gray-600">Boshlang'ich to'lov:</span>
-                                <span id="modal_summary_initial" class="font-semibold text-blue-700 ml-1">0 so'm</span>
-                            </div>
-                        </div>
-                    </div>
-                    <div class="flex space-x-3">
-                        <button type="button" onclick="closeObjectModal()"
-                                class="px-6 py-2 bg-gray-100 text-gray-700 rounded-lg hover:bg-gray-200 transition-colors">
-                            <i data-feather="x" class="w-4 h-4 mr-2 inline"></i>
-                            Bekor qilish
-                        </button>
-                        <button type="submit"
-                                class="px-6 py-2 bg-green-600 text-white rounded-lg hover:bg-green-700 transition-colors">
-                            <i data-feather="plus" class="w-4 h-4 mr-2 inline"></i>
-                            Obyekt va shartnoma yaratish
-                        </button>
-                    </div>
+                <div class="px-6 py-4 border-t border-gray-200 bg-gradient-to-r from-gray-50 to-gray-100 flex justify-end space-x-3">
+                    <button type="button" onclick="closeObjectModal()"
+                            class="px-6 py-2 bg-gray-100 text-gray-700 rounded-lg hover:bg-gray-200 transition-colors">
+                        <i data-feather="x" class="w-4 h-4 mr-2 inline"></i>
+                        Bekor qilish
+                    </button>
+                    <button type="submit"
+                            class="px-6 py-2 bg-green-600 text-white rounded-lg hover:bg-green-700 transition-colors">
+                        <i data-feather="plus" class="w-4 h-4 mr-2 inline"></i>
+                        Obyekt yaratish
+                    </button>
                 </div>
             </form>
         </div>
@@ -932,27 +755,29 @@
 @endsection
 
 @push('scripts')
-
 <script>
-    // Make Laravel routes available to JavaScript
-    window.appRoutes = {
-        createSubject: "{{ route('createSubject') }}",
-        createObject: "{{ route('createObject') }}",
-        contractStore: "{{ route('contracts.store') }}"
-    };
+// Laravel routes
+window.appRoutes = {
+    createSubject: "{{ route('createSubject') }}",
+    createObject: "{{ route('createObject') }}",
+    contractStore: "{{ route('contracts.store') }}"
+};
 </script>
+
 <!-- Leaflet JS -->
 <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
 
 <script>
-// Global variables
+// =======================
+// GLOBAL VARIABLES
+// =======================
 let objectMap = null;
 let mapMarker = null;
 let currentZones = null;
 let zoneBoundaries = {};
 let kmlLoaded = false;
 
-// Updated zone data with correct coefficients from your requirements
+// Zone data with correct coefficients
 const zoneData = {
     '1': { name: 'ЗОНА-1', coefficient: 1.40, color: '#dc2626' },
     '2': { name: 'ЗОНА-2', coefficient: 1.25, color: '#ea580c' },
@@ -961,7 +786,7 @@ const zoneData = {
     '5': { name: 'ЗОНА-5', coefficient: 0.50, color: '#0891b2' }
 };
 
-// Updated coefficient configuration based on your requirements
+// Coefficient configuration
 const coefficients = {
     construction_type: {
         1: 1.0,    // Yangi kapital qurilish
@@ -984,17 +809,17 @@ const coefficients = {
         5: 0.50    // 5-zona
     },
     location: {
-        'metro_radius_200m_outside': 0.6,  // Metro yaqinidagi boshqa hududlar
-        'other_locations': 1.0             // Boshqa obyektlar
+        'metro_radius_200m_outside': 0.6,
+        'other_locations': 1.0
     }
 };
 
-// Enhanced KML parser to handle your data structure
+// =======================
+// KML LOADING FUNCTIONS
+// =======================
 async function loadZoneKML() {
     try {
-        console.log('Loading zone KML...');
         const response = await fetch('/zone.kml');
-
         if (!response.ok) {
             throw new Error(`KML file not found: ${response.status}`);
         }
@@ -1003,19 +828,10 @@ async function loadZoneKML() {
         const parser = new DOMParser();
         const kmlDoc = parser.parseFromString(kmlText, 'text/xml');
 
-        // Check for parsing errors
-        const parserErrors = kmlDoc.getElementsByTagName('parsererror');
-        if (parserErrors.length > 0) {
-            throw new Error('KML parsing error');
-        }
-
-        // Parse KML placemarks
         const placemarks = kmlDoc.querySelectorAll('Placemark');
-        console.log(`Found ${placemarks.length} placemarks in KML`);
 
         placemarks.forEach((placemark, index) => {
             try {
-                // Get zone name from ExtendedData
                 const schemaData = placemark.querySelector('SchemaData');
                 let zoneName = '';
 
@@ -1026,96 +842,61 @@ async function loadZoneKML() {
                     }
                 }
 
-                console.log(`Processing placemark ${index + 1}, zone name: "${zoneName}"`);
-
-                // Extract zone ID from name (e.g., "ЗОНА-1" -> "1")
                 const zoneMatch = zoneName.match(/(?:ZONA|ЗОНА)[_-]?(\d+)/i);
-                if (!zoneMatch) {
-                    console.warn(`Could not extract zone ID from: "${zoneName}"`);
-                    return;
-                }
+                if (!zoneMatch) return;
 
                 const zoneId = zoneMatch[1];
-                console.log(`Extracted zone ID: ${zoneId}`);
-
-                // Process coordinates from MultiGeometry > Polygon
                 const multiGeometry = placemark.querySelector('MultiGeometry');
                 const polygons = multiGeometry ?
                     multiGeometry.querySelectorAll('Polygon') :
                     placemark.querySelectorAll('Polygon');
 
-                if (polygons.length === 0) {
-                    console.warn(`No polygons found for zone ${zoneId}`);
-                    return;
-                }
+                if (polygons.length === 0) return;
 
-                polygons.forEach((polygon, polyIndex) => {
-                    // Get outer boundary coordinates
+                polygons.forEach((polygon) => {
                     const outerRing = polygon.querySelector('outerBoundaryIs LinearRing coordinates');
-                    if (!outerRing) {
-                        console.warn(`No outer boundary found for polygon ${polyIndex} in zone ${zoneId}`);
-                        return;
-                    }
+                    if (!outerRing) return;
 
                     const coordinatesText = outerRing.textContent.trim();
-
                     if (coordinatesText) {
-                        // Parse coordinates (KML format: lng,lat,alt lng,lat,alt ...)
                         const coords = coordinatesText.split(/[\s,]+/)
                             .filter(coord => coord.trim() && !isNaN(parseFloat(coord)))
                             .reduce((acc, curr, index, arr) => {
-                                // Group by pairs (lng, lat) - skip altitude if present
                                 if (index % 2 === 0 && index + 1 < arr.length) {
                                     const lng = parseFloat(curr);
                                     const lat = parseFloat(arr[index + 1]);
-
-                                    if (!isNaN(lat) && !isNaN(lng)) {
-                                        // Check if coordinates are in valid range for Tashkent
-                                        if (lat > 40 && lat < 42 && lng > 68 && lng < 71) {
-                                            acc.push([lat, lng]);
-                                        }
+                                    if (!isNaN(lat) && !isNaN(lng) && lat > 40 && lat < 42 && lng > 68 && lng < 71) {
+                                        acc.push([lat, lng]);
                                     }
                                 }
                                 return acc;
                             }, []);
 
-                        console.log(`Parsed ${coords.length} coordinate pairs for zone ${zoneId}, polygon ${polyIndex}`);
-
-                        if (coords.length > 2) { // Need at least 3 points for a polygon
+                        if (coords.length > 2) {
                             if (!zoneBoundaries[zoneId]) {
                                 zoneBoundaries[zoneId] = [];
                             }
                             zoneBoundaries[zoneId].push(coords);
-                            console.log(`Added ${coords.length} coordinates for zone ${zoneId}`);
-                        } else {
-                            console.warn(`Not enough coordinates for zone ${zoneId}: ${coords.length}`);
                         }
                     }
                 });
-
             } catch (error) {
                 console.error(`Error processing placemark ${index + 1}:`, error);
             }
         });
 
         kmlLoaded = true;
-        const zoneKeys = Object.keys(zoneBoundaries);
-        console.log('KML zones loaded successfully:', zoneKeys);
-        console.log('Zone boundaries data:', zoneBoundaries);
-
-        if (zoneKeys.length === 0) {
-            console.warn('No zones were successfully parsed from KML');
-            kmlLoaded = false;
-        }
-
+        console.log('Zone boundaries loaded successfully:', Object.keys(zoneBoundaries));
     } catch (error) {
         console.error('Error loading KML zones:', error);
         kmlLoaded = false;
-        showNotification('Zona xaritasi yuklanmadi. Manual tanlash talab qilinadi.', 'warning');
+        showNotification('Zona xaritasi yuklanmadi. Manual tanlash mumkin.', 'warning');
     }
 }
 
-// Initialize map with KML zone layers
+// =======================
+// MAP FUNCTIONS
+// =======================
 function initializeMap() {
     if (!objectMap && typeof L !== 'undefined') {
         try {
@@ -1126,31 +907,26 @@ function initializeMap() {
                 maxZoom: 18
             }).addTo(objectMap);
 
-            // Initialize zones layer group
             currentZones = L.layerGroup().addTo(objectMap);
 
             // Load KML and add zones to map
             loadZoneKML().then(() => {
                 if (kmlLoaded && Object.keys(zoneBoundaries).length > 0) {
-                    console.log('Adding zone polygons to map...');
-
                     Object.keys(zoneBoundaries).forEach(zoneId => {
                         const zoneInfo = zoneData[zoneId];
                         const polygons = zoneBoundaries[zoneId];
 
                         if (zoneInfo && polygons) {
-                            // 🔑 create pane for this zone (if not already)
-                            const paneName = `zone${zoneId}`;
+const paneName = `zone${zoneId}`;
                             if (!objectMap.getPane(paneName)) {
                                 objectMap.createPane(paneName);
-                                // smaller zoneId => higher priority
                                 objectMap.getPane(paneName).style.zIndex = 6000 - parseInt(zoneId, 10);
                             }
 
-                            polygons.forEach((coords, index) => {
+                            polygons.forEach((coords) => {
                                 try {
                                     const polygon = L.polygon(coords, {
-                                        pane: paneName,  // 👈 assign polygon to its pane
+                                        pane: paneName,
                                         color: zoneInfo.color,
                                         fillColor: zoneInfo.color,
                                         fillOpacity: 0.3,
@@ -1159,7 +935,6 @@ function initializeMap() {
                                     }).bindPopup(`${zoneInfo.name} (K=${zoneInfo.coefficient})`);
 
                                     currentZones.addLayer(polygon);
-                                    console.log(`Added polygon ${index + 1} for zone ${zoneId}`);
                                 } catch (error) {
                                     console.error(`Error creating polygon for zone ${zoneId}:`, error);
                                 }
@@ -1167,14 +942,10 @@ function initializeMap() {
                         }
                     });
 
-                    // Fit map to show all zones
                     if (currentZones.getLayers().length > 0) {
                         const group = new L.featureGroup(currentZones.getLayers());
                         objectMap.fitBounds(group.getBounds().pad(0.1));
-                        console.log('Zone polygons added to map successfully');
                     }
-                } else {
-                    console.warn('No zones to display on map');
                 }
             });
 
@@ -1190,7 +961,6 @@ function initializeMap() {
                     coordsInput.value = e.latlng.lat.toFixed(6) + ', ' + e.latlng.lng.toFixed(6);
                 }
 
-                // Detect zone
                 detectZoneByCoordinates(e.latlng.lat, e.latlng.lng);
             });
 
@@ -1204,7 +974,6 @@ function initializeMap() {
 function detectZoneByCoordinates(lat, lng) {
     let detectedZone = null;
 
-    // If KML is loaded, use actual zone boundaries
     if (kmlLoaded && Object.keys(zoneBoundaries).length > 0) {
         for (const [zoneId, polygons] of Object.entries(zoneBoundaries)) {
             for (const polygon of polygons) {
@@ -1217,35 +986,23 @@ function detectZoneByCoordinates(lat, lng) {
         }
     }
 
-    // Fallback for coordinates within Tashkent area but not in any specific zone
     if (!detectedZone && lat > 41.15 && lat < 41.45 && lng > 69.1 && lng < 69.5) {
-        if (!kmlLoaded) {
-            showNotification('Zona ma\'lumotlari yuklanmagan. Qo\'lda tanlang.', 'warning');
-        }
         detectedZone = '3'; // Default zone for Tashkent
     }
 
-    // Show detected zone info and update calculations
     if (detectedZone && zoneData[detectedZone]) {
         const zone = zoneData[detectedZone];
         showZoneInfo(detectedZone, zone.name, zone.coefficient);
 
-        // Auto select zone in dropdown and trigger calculations
         const zoneSelect = document.getElementById('modalTerritorialZone');
         if (zoneSelect) {
             zoneSelect.value = detectedZone;
-
-            // Trigger calculation immediately
-            calculateModalEverything();
         }
     } else {
         hideZoneInfo();
-        if (lat && lng) {
-            showNotification('Bu koordinatalar uchun zona aniqlanmadi. Qo\'lda tanlang.', 'warning');
-        }
     }
 }
-// Point in polygon algorithm (Ray casting algorithm)
+
 function isPointInPolygon(point, polygon) {
     const [x, y] = point;
     let inside = false;
@@ -1262,7 +1019,6 @@ function isPointInPolygon(point, polygon) {
     return inside;
 }
 
-// Show/hide zone info
 function showZoneInfo(zoneId, zoneName, coefficient) {
     const zoneInfo = document.getElementById('zoneInfo');
     if (!zoneInfo) return;
@@ -1286,115 +1042,9 @@ function hideZoneInfo() {
     }
 }
 
-// Fixed object modal form submission to include subject_id
-function handleObjectFormSubmission() {
-    const form = document.getElementById('objectModalForm');
-    if (!form) return;
-
-    form.addEventListener('submit', async function(e) {
-        e.preventDefault();
-
-        // Get the selected subject ID from main form
-        const subjectSelect = document.querySelector('select[name="subject_id"]');
-        if (!subjectSelect || !subjectSelect.value) {
-            showNotification('Avval Mulk egasini tanlang', 'error');
-            return;
-        }
-
-        // Validate required fields
-        const requiredFields = [
-            { name: 'district_id', label: 'Tuman' },
-            { name: 'address', label: 'Manzil' },
-            { name: 'construction_volume', label: 'Umumiy hajm' },
-            { name: 'base_amount_id', label: 'Bazaviy miqdor' }
-        ];
-
-        let isValid = true;
-        for (const field of requiredFields) {
-            const input = form.querySelector(`[name="${field.name}"]`);
-            if (!input || !input.value.trim()) {
-                showNotification(`${field.label} kiritilishi shart`, 'error');
-                isValid = false;
-                break;
-            }
-        }
-
-        if (!isValid) return;
-
-        const formData = new FormData(this);
-
-        // Add subject_id to the form data
-        formData.append('subject_id', subjectSelect.value);
-
-        // Add calculated values
-        const contractVolume = document.getElementById('modal_contract_volume')?.value;
-        const calculatedBh = document.getElementById('modal_calculated_bh')?.value;
-        const totalAmount = document.getElementById('modal_total_amount_display')?.textContent.replace(/[^\d]/g, '');
-
-        if (contractVolume) formData.append('final_contract_volume', contractVolume);
-        if (calculatedBh) formData.append('final_calculated_bh', calculatedBh);
-        if (totalAmount) formData.append('final_total_amount', totalAmount);
-
-        const submitButton = this.querySelector('button[type="submit"]');
-        toggleLoading(submitButton, true);
-
-        try {
-            const csrfToken = document.querySelector('meta[name="csrf-token"]')?.content ||
-                            document.querySelector('input[name="_token"]')?.value;
-
-            const response = await fetch('/contracts/create-object', {
-                method: 'POST',
-                headers: {
-                    'X-CSRF-TOKEN': csrfToken,
-                    'X-Requested-With': 'XMLHttpRequest'
-                },
-                body: formData
-            });
-
-            const result = await response.json();
-
-            if (result.success) {
-                const objectSelect = document.getElementById('objectSelect');
-                const objectSearch = document.getElementById('objectSearch');
-
-                if (objectSelect) {
-                    const newOption = new Option(result.object.text, result.object.id, true, true);
-
-                    // Set data attributes for calculation
-                    newOption.dataset.volume = result.object.construction_volume;
-                    newOption.dataset.abovePermit = result.object.above_permit_volume;
-                    newOption.dataset.parking = result.object.parking_volume;
-                    newOption.dataset.technical = result.object.technical_rooms_volume;
-                    newOption.dataset.common = result.object.common_area_volume;
-                    newOption.dataset.constructionType = result.object.construction_type_id;
-                    newOption.dataset.objectType = result.object.object_type_id;
-                    newOption.dataset.zone = result.object.territorial_zone_id;
-                    newOption.dataset.location = result.object.location_type;
-
-                    objectSelect.add(newOption);
-                    objectSelect.value = result.object.id;
-                }
-
-                if (objectSearch) {
-                    objectSearch.value = result.object.text;
-                }
-
-                closeObjectModal();
-                updateObjectVolume();
-                showNotification(result.message, 'success');
-            } else {
-                throw new Error(result.message || 'Obyekt yaratishda xato');
-            }
-        } catch (error) {
-            console.error('Error:', error);
-            showNotification(error.message, 'error');
-        } finally {
-            toggleLoading(submitButton, false);
-        }
-    });
-}
-
-// Search functions
+// =======================
+// SEARCH FUNCTIONS
+// =======================
 function searchSubjects() {
     const searchInput = document.getElementById('subjectSearch');
     const dropdown = document.getElementById('subjectDropdown');
@@ -1486,7 +1136,9 @@ function selectSearchResult(option, type) {
     }
 }
 
-// Main calculation functions
+// =======================
+// CALCULATION FUNCTIONS
+// =======================
 function calculateTotal() {
     const baseAmountSelect = document.querySelector('select[name="base_amount_id"]');
     const volumeInput = document.querySelector('input[name="contract_volume"]');
@@ -1523,7 +1175,6 @@ function calculateTotal() {
     calculatePaymentSchedule();
 }
 
-// Update object volume when selected
 function updateObjectVolume() {
     const objectSelect = document.querySelector('select[name="object_id"]');
     if (!objectSelect) return;
@@ -1552,7 +1203,7 @@ function updateObjectVolume() {
         });
 
         // Calculate contract volume: (Hb + Hyu) - (Ha + Ht + Hu)
-        const contractVolume = (hb + hyu) - (ha + ht + hu);
+        const contractVolume = Math.max(0, (hb + hyu) - (ha + ht + hu));
         const displayCalcVolume = document.getElementById('display_calculated_volume');
         if (displayCalcVolume) {
             displayCalcVolume.textContent = formatNumber(contractVolume) + ' m³';
@@ -1573,7 +1224,6 @@ function updateObjectVolume() {
         const ko = coefficients.object_type[objectType] || 1.0;
         const kz = coefficients.territorial_zone[zone] || 1.0;
 
-        // Fix Kj coefficient calculation
         let kj = 1.0;
         if (location === 'metro_radius_200m_outside') {
             kj = coefficients.location['metro_radius_200m_outside'];
@@ -1581,8 +1231,7 @@ function updateObjectVolume() {
             kj = coefficients.location['other_locations'];
         }
 
-        // Calculate total coefficient: Kt * Ko * Kz * Kj
-        let totalCoef = kt * ko * kz * kj;
+        const totalCoef = kt * ko * kz * kj;
 
         // Display coefficients
         const coefficientElements = {
@@ -1613,228 +1262,9 @@ function updateObjectVolume() {
     }
 }
 
-// Modal calculation functions
-function calculateModalEverything() {
-    calculateModalVolume();
-    calculateModalCoefficients();
-    calculateModalContractSum();
-    calculateModalPaymentSchedule();
-}
-
-function toggleModalPaymentFields() {
-    const paymentTypeSelect = document.getElementById('modal_payment_type');
-    if (!paymentTypeSelect) return;
-
-    const paymentType = paymentTypeSelect.value;
-    const initialPaymentField = document.getElementById('modal_initial_payment_field');
-    const constructionPeriodField = document.getElementById('modal_construction_period_field');
-    const initialPercentInput = document.getElementById('modal_initial_payment_percent');
-
-    if (paymentType === 'full') {
-        if (initialPaymentField) initialPaymentField.style.display = 'none';
-        if (constructionPeriodField) constructionPeriodField.style.display = 'none';
-        if (initialPercentInput) initialPercentInput.value = 100;
-    } else {
-        if (initialPaymentField) initialPaymentField.style.display = 'block';
-        if (constructionPeriodField) constructionPeriodField.style.display = 'block';
-        if (initialPercentInput && initialPercentInput.value == 100) {
-            initialPercentInput.value = 20;
-        }
-    }
-    calculateModalPaymentSchedule();
-}
-
-function calculateModalVolume() {
-    const hb = parseFloat(safeGetValue('modal_hb')) || 0;
-    const hyu = parseFloat(safeGetValue('modal_hyu')) || 0;
-    const ha = parseFloat(safeGetValue('modal_ha')) || 0;
-    const ht = parseFloat(safeGetValue('modal_ht')) || 0;
-    const hu = parseFloat(safeGetValue('modal_hu')) || 0;
-
-    // Calculate volume: (Hb + Hyu) - (Ha + Ht + Hu)
-    const calculatedVolume = Math.max(0, (hb + hyu) - (ha + ht + hu));
-
-    const displayEl = document.getElementById('calculated_volume_modal');
-    const contractVolumeInput = document.getElementById('modal_contract_volume');
-
-    if (displayEl) {
-        displayEl.textContent = calculatedVolume.toFixed(2) + ' m³';
-    }
-    if (contractVolumeInput) {
-        contractVolumeInput.value = calculatedVolume.toFixed(2);
-    }
-}
-
-function calculateModalPaymentSchedule() {
-    const paymentTypeSelect = document.getElementById('modal_payment_type');
-    const totalAmountDisplay = document.getElementById('modal_total_amount_display');
-
-    if (!paymentTypeSelect || !totalAmountDisplay) return;
-
-    const paymentType = paymentTypeSelect.value;
-    const totalAmountText = totalAmountDisplay.textContent;
-    const totalAmount = parseFloat(totalAmountText.replace(/[^\d]/g, '')) || 0;
-
-    if (totalAmount <= 0) return;
-
-    const initialPercentInput = document.getElementById('modal_initial_payment_percent');
-    const yearsInput = document.getElementById('modal_construction_period_years');
-
-    const initialPercent = initialPercentInput ? parseInt(initialPercentInput.value) || 20 : 20;
-    const years = yearsInput ? parseInt(yearsInput.value) || 2 : 2;
-    const quarters = years * 4;
-
-    const elements = {
-        initialPayment: document.getElementById('modal_initial_payment_amount'),
-        remainingAmount: document.getElementById('modal_remaining_amount'),
-        quarterlyPayment: document.getElementById('modal_quarterly_payment'),
-        quartersTable: document.getElementById('modal_quarters_tbody'),
-        summaryInitial: document.getElementById('modal_summary_initial')
-    };
-
-    if (paymentType === 'full') {
-        if (elements.initialPayment) elements.initialPayment.textContent = formatNumber(totalAmount) + ' so\'m';
-        if (elements.remainingAmount) elements.remainingAmount.textContent = '0 so\'m';
-        if (elements.quarterlyPayment) elements.quarterlyPayment.textContent = '0 so\'m';
-        if (elements.summaryInitial) elements.summaryInitial.textContent = formatNumber(totalAmount) + ' so\'m';
-
-        if (elements.quartersTable) {
-            elements.quartersTable.innerHTML = `
-                <tr class="hover:bg-gray-50">
-                    <td class="px-3 py-2 text-sm text-gray-900">${new Date().getFullYear()}</td>
-                    <td class="px-3 py-2 text-sm text-gray-900">To'liq to'lov</td>
-                    <td class="px-3 py-2 text-sm text-gray-900 text-right font-semibold">${formatNumber(totalAmount)} so'm</td>
-                </tr>
-            `;
-        }
-    } else {
-        const initialPayment = totalAmount * (initialPercent / 100);
-        const remainingAmount = totalAmount - initialPayment;
-        const quarterlyPayment = remainingAmount / quarters;
-
-        if (elements.initialPayment) elements.initialPayment.textContent = formatNumber(initialPayment) + ' so\'m';
-        if (elements.remainingAmount) elements.remainingAmount.textContent = formatNumber(remainingAmount) + ' so\'m';
-        if (elements.quarterlyPayment) elements.quarterlyPayment.textContent = formatNumber(quarterlyPayment) + ' so\'m';
-        if (elements.summaryInitial) elements.summaryInitial.textContent = formatNumber(initialPayment) + ' so\'m';
-
-        let tbody = `
-            <tr class="bg-green-50 hover:bg-green-100">
-                <td class="px-3 py-2 text-sm font-semibold text-gray-900">${new Date().getFullYear()}</td>
-                <td class="px-3 py-2 text-sm font-semibold text-gray-900">Boshlang'ich to'lov</td>
-                <td class="px-3 py-2 text-sm font-semibold text-gray-900 text-right">${formatNumber(initialPayment)} so'm</td>
-            </tr>
-        `;
-
-        const startYear = new Date().getFullYear();
-        const startQuarter = Math.ceil((new Date().getMonth() + 1) / 3);
-
-        for (let i = 0; i < quarters; i++) {
-            const currentQuarter = ((startQuarter - 1 + i) % 4) + 1;
-            const currentYear = startYear + Math.floor((startQuarter - 1 + i) / 4);
-
-            tbody += `
-                <tr class="hover:bg-gray-50">
-                    <td class="px-3 py-2 text-sm text-gray-900">${currentYear}</td>
-                    <td class="px-3 py-2 text-sm text-gray-900">${currentQuarter}-chorak</td>
-                    <td class="px-3 py-2 text-sm text-gray-900 text-right">${formatNumber(quarterlyPayment)} so'm</td>
-                </tr>
-            `;
-        }
-
-        if (elements.quartersTable) {
-            elements.quartersTable.innerHTML = tbody;
-        }
-    }
-}
-
-
-function calculateModalCoefficients() {
-    const constructionType = document.querySelector('select[name="construction_type_id"]');
-    const objectType = document.querySelector('select[name="object_type_id"]');
-    const territorialZone = document.querySelector('select[name="territorial_zone_id"]');
-    const locationType = document.querySelector('select[name="location_type"]');
-
-    const kt = constructionType && constructionType.selectedIndex > 0 ?
-        parseFloat(constructionType.options[constructionType.selectedIndex].dataset.coef) : 1.0;
-    const ko = objectType && objectType.selectedIndex > 0 ?
-        parseFloat(objectType.options[objectType.selectedIndex].dataset.coef) : 1.0;
-    const kz = territorialZone && territorialZone.selectedIndex > 0 ?
-        parseFloat(territorialZone.options[territorialZone.selectedIndex].dataset.coef) : 1.0;
-
-    // Fix Kj coefficient calculation in modal
-    let kj = 1.0;
-    if (locationType && locationType.selectedIndex >= 0) {
-        const selectedValue = locationType.options[locationType.selectedIndex].value;
-        if (selectedValue === 'metro_radius_200m_outside') {
-            kj = 0.6;
-        } else {
-            kj = 1.0;
-        }
-    }
-
-    // Calculate total coefficient
-    const totalCoef = kt * ko * kz * kj;
-
-    // Update displays
-    const coefficientDisplays = {
-        'modal_kt': kt.toFixed(2),
-        'modal_ko': ko.toFixed(2),
-        'modal_kz': kz.toFixed(2),
-        'modal_kj': kj.toFixed(2),
-        'modal_total_coef': totalCoef.toFixed(2)
-    };
-
-    Object.keys(coefficientDisplays).forEach(id => {
-        const element = document.getElementById(id);
-        if (element) element.textContent = coefficientDisplays[id];
-    });
-}
-
-function calculateModalContractSum() {
-    const baseAmountSelect = document.getElementById('modal_base_amount');
-    const volumeInput = document.getElementById('modal_contract_volume');
-    const calculatedBhInput = document.getElementById('modal_calculated_bh');
-    const totalDisplay = document.getElementById('modal_total_amount_display');
-    const formulaDisplay = document.getElementById('modal_formula_display');
-
-    if (!baseAmountSelect || !volumeInput || !totalDisplay) return;
-
-    const selectedOption = baseAmountSelect.options[baseAmountSelect.selectedIndex];
-    const baseAmount = selectedOption && selectedOption.dataset.amount ?
-        parseFloat(selectedOption.dataset.amount) : 0;
-    const volume = parseFloat(volumeInput.value) || 0;
-
-    // Get total coefficient
-    const totalCoefElement = document.getElementById('modal_total_coef');
-    const totalCoef = totalCoefElement ? parseFloat(totalCoefElement.textContent) : 1.0;
-
-    // Calculate Bh with coefficient
-    const calculatedBh = baseAmount * totalCoef;
-    if (calculatedBhInput) {
-        calculatedBhInput.value = calculatedBh.toFixed(2);
-    }
-
-    const totalAmount = calculatedBh * volume;
-
-    totalDisplay.textContent = formatNumber(totalAmount) + ' so\'m';
-
-    // Update summary displays
-    const summaryAmount = document.getElementById('modal_summary_amount');
-    if (summaryAmount) {
-        summaryAmount.textContent = formatNumber(totalAmount) + ' so\'m';
-    }
-
-    if (formulaDisplay) {
-        if (calculatedBh && volume) {
-            formulaDisplay.textContent =
-                `Ti = ${formatNumber(calculatedBh)} × ${formatNumber(volume)} m³ = ${formatNumber(totalAmount)} so'm`;
-        } else {
-            formulaDisplay.textContent = 'Ti = Hisobga olinadigan Bh × Hisoblash hajmi';
-        }
-    }
-}
-
-// Payment schedule functions
+// =======================
+// PAYMENT FUNCTIONS
+// =======================
 function calculateCompletionDate() {
     const contractDateInput = document.querySelector('input[name="contract_date"]');
     const yearsInput = document.querySelector('input[name="construction_period_years"]');
@@ -1959,7 +1389,9 @@ function togglePaymentFields() {
     calculatePaymentSchedule();
 }
 
-// Sidebar functions
+// =======================
+// UI FUNCTIONS
+// =======================
 function toggleSidebar() {
     const sidebar = document.getElementById('documentationSidebar');
     const overlay = document.getElementById('sidebarOverlay');
@@ -1970,7 +1402,6 @@ function toggleSidebar() {
     }
 }
 
-// Modal functions
 function openSubjectModal() {
     const modal = document.getElementById('subjectModal');
     if (modal) {
@@ -2002,6 +1433,7 @@ function toggleEntityFields() {
     const legalFields = document.getElementById('legalEntityFields');
     const physicalFields = document.getElementById('physicalPersonFields');
 
+    // Update visual cards
     document.querySelectorAll('.entity-type-card').forEach((card) => {
         const input = card.parentElement.querySelector('input[type="radio"]');
         card.classList.remove('border-blue-500', 'bg-blue-50', 'border-green-500', 'bg-green-50', 'border-gray-200');
@@ -2017,11 +1449,13 @@ function toggleEntityFields() {
         }
     });
 
+    // Toggle fields
     if (legalFields && physicalFields) {
         if (isLegalEntity) {
             legalFields.classList.remove('hidden');
             physicalFields.classList.add('hidden');
 
+            // Set required fields
             legalFields.querySelectorAll('input[name="company_name"], input[name="inn"]').forEach(input => {
                 input.setAttribute('required', 'required');
             });
@@ -2032,6 +1466,7 @@ function toggleEntityFields() {
             legalFields.classList.add('hidden');
             physicalFields.classList.remove('hidden');
 
+            // Set required fields
             physicalFields.querySelectorAll('select[name="document_type"], input[name="document_number"], input[name="pinfl"]').forEach(input => {
                 input.setAttribute('required', 'required');
             });
@@ -2060,15 +1495,10 @@ function openObjectModal() {
                 objectMap.invalidateSize();
             }
 
-            // Initialize form with default values
-            toggleModalPaymentFields();
-            calculateModalEverything();
-
-            // Trigger feather icons
             if (typeof feather !== 'undefined') {
                 feather.replace();
             }
-        }, 200);
+        }, 300);
     }
 }
 
@@ -2084,18 +1514,6 @@ function closeObjectModal() {
 
     if (form) {
         form.reset();
-
-        // Reset to default values
-        const paymentType = document.getElementById('modal_payment_type');
-        const initialPercent = document.getElementById('modal_initial_payment_percent');
-        const constructionPeriod = document.getElementById('modal_construction_period_years');
-
-        if (paymentType) paymentType.value = 'installment';
-        if (initialPercent) initialPercent.value = '20';
-        if (constructionPeriod) constructionPeriod.value = '2';
-
-        toggleModalPaymentFields();
-        calculateModalEverything();
     }
 
     if (zoneInfo) {
@@ -2108,11 +1526,9 @@ function closeObjectModal() {
     }
 }
 
-function updateDistrictInfo() {
-    calculateModalEverything();
-}
-
-// Form submission handlers
+// =======================
+// FORM SUBMISSION FUNCTIONS
+// =======================
 function handleSubjectFormSubmission() {
     const form = document.getElementById('subjectModalForm');
     if (!form) return;
@@ -2126,10 +1542,8 @@ function handleSubjectFormSubmission() {
         toggleLoading(submitButton, true);
 
         try {
-            const csrfToken = document.querySelector('meta[name="csrf-token"]')?.content ||
-                            document.querySelector('input[name="_token"]')?.value;
+            const csrfToken = getCsrfToken();
 
-            // ✅ Fixed URL - use the correct route path
             const response = await fetch('/contracts/create-subject', {
                 method: 'POST',
                 headers: {
@@ -2168,6 +1582,100 @@ function handleSubjectFormSubmission() {
         }
     });
 }
+
+function handleObjectFormSubmission() {
+    const form = document.getElementById('objectModalForm');
+    if (!form) return;
+
+    form.addEventListener('submit', async function(e) {
+        e.preventDefault();
+
+        const subjectSelect = document.querySelector('select[name="subject_id"]');
+        if (!subjectSelect || !subjectSelect.value) {
+            showNotification('Avval Mulk egasini tanlang', 'error');
+            return;
+        }
+
+        // Validate required fields
+        const requiredFields = [
+            { name: 'district_id', label: 'Tuman' },
+            { name: 'address', label: 'Manzil' },
+            { name: 'construction_volume', label: 'Umumiy hajm' }
+        ];
+
+        let isValid = true;
+        for (const field of requiredFields) {
+            const input = form.querySelector(`[name="${field.name}"]`);
+            if (!input || !input.value.trim()) {
+                showNotification(`${field.label} kiritilishi shart`, 'error');
+                isValid = false;
+                break;
+            }
+        }
+
+        if (!isValid) return;
+
+        const formData = new FormData(this);
+        formData.append('subject_id', subjectSelect.value);
+
+        const submitButton = this.querySelector('button[type="submit"]');
+        toggleLoading(submitButton, true);
+
+        try {
+            const csrfToken = getCsrfToken();
+
+            const response = await fetch('/contracts/create-object', {
+                method: 'POST',
+                headers: {
+                    'X-CSRF-TOKEN': csrfToken,
+                    'X-Requested-With': 'XMLHttpRequest'
+                },
+                body: formData
+            });
+
+            const result = await response.json();
+
+            if (result.success) {
+                const objectSelect = document.getElementById('objectSelect');
+                const objectSearch = document.getElementById('objectSearch');
+
+                if (objectSelect) {
+                    const newOption = new Option(result.object.text, result.object.id, true, true);
+
+                    // Set data attributes for calculation
+                    newOption.dataset.volume = result.object.construction_volume;
+                    newOption.dataset.abovePermit = result.object.above_permit_volume;
+                    newOption.dataset.parking = result.object.parking_volume;
+                    newOption.dataset.technical = result.object.technical_rooms_volume;
+                    newOption.dataset.common = result.object.common_area_volume;
+                    newOption.dataset.constructionType = result.object.construction_type_id;
+                    newOption.dataset.objectType = result.object.object_type_id;
+                    newOption.dataset.zone = result.object.territorial_zone_id;
+                    newOption.dataset.location = result.object.location_type;
+
+                    objectSelect.add(newOption);
+                    objectSelect.value = result.object.id;
+                }
+
+                if (objectSearch) {
+                    objectSearch.value = result.object.text;
+                }
+
+                closeObjectModal();
+                updateObjectVolume();
+                showNotification(result.message, 'success');
+            } else {
+                throw new Error(result.message || 'Obyekt yaratishda xato');
+            }
+        } catch (error) {
+            console.error('Error:', error);
+            showNotification(error.message, 'error');
+        } finally {
+            toggleLoading(submitButton, false);
+        }
+    });
+}
+
 function handleContractFormSubmission() {
     const form = document.getElementById('contractForm');
     if (!form) return;
@@ -2181,8 +1689,7 @@ function handleContractFormSubmission() {
         toggleLoading(submitButton, true);
 
         try {
-            const csrfToken = document.querySelector('meta[name="csrf-token"]')?.content ||
-                            document.querySelector('input[name="_token"]')?.value;
+            const csrfToken = getCsrfToken();
 
             const response = await fetch(this.action, {
                 method: 'POST',
@@ -2200,7 +1707,7 @@ function handleContractFormSubmission() {
                 if (result.redirect) {
                     setTimeout(() => {
                         window.location.href = result.redirect;
-                    }, 1500);
+                    }, 2000);
                 }
             } else {
                 throw new Error(result.message || 'Shartnoma yaratishda xato');
@@ -2214,7 +1721,14 @@ function handleContractFormSubmission() {
     });
 }
 
-// Helper functions
+// =======================
+// HELPER FUNCTIONS
+// =======================
+function getCsrfToken() {
+    return document.querySelector('meta[name="csrf-token"]')?.content ||
+           document.querySelector('input[name="_token"]')?.value;
+}
+
 function formatNumber(num) {
     if (isNaN(num)) return '0';
     return new Intl.NumberFormat('uz-UZ').format(Math.round(num));
@@ -2225,16 +1739,21 @@ function toggleLoading(button, loading) {
 
     if (loading) {
         button.disabled = true;
+        const originalText = button.innerHTML;
+        button.dataset.originalText = originalText;
         button.innerHTML = '<svg class="animate-spin -ml-1 mr-3 h-5 w-5 text-white inline" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24"><circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle><path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path></svg>Kutilmoqda...';
     } else {
         button.disabled = false;
+        const originalText = button.dataset.originalText;
 
-        if (button.closest('#subjectModalForm') || button.closest('#objectModalForm')) {
+        if (originalText) {
+            button.innerHTML = originalText;
+        } else if (button.closest('#subjectModalForm')) {
             button.innerHTML = 'Yaratish';
+        } else if (button.closest('#objectModalForm')) {
+            button.innerHTML = '<i data-feather="plus" class="w-4 h-4 mr-2 inline"></i>Obyekt yaratish';
         } else if (button.closest('#contractForm')) {
             button.innerHTML = '<i data-feather="save" class="w-4 h-4 mr-2 inline"></i>Shartnoma yaratish';
-        } else {
-            button.innerHTML = 'Yaratish';
         }
 
         if (typeof feather !== 'undefined') {
@@ -2268,7 +1787,7 @@ function showNotification(message, type = 'info') {
         notification.classList.remove('translate-x-full', 'opacity-0');
     }, 100);
 
-    // Auto remove
+    // Auto remove after 5 seconds
     setTimeout(() => {
         if (notification.parentElement) {
             notification.classList.add('translate-x-full', 'opacity-0');
@@ -2281,12 +1800,21 @@ function showNotification(message, type = 'info') {
     }, 5000);
 }
 
-function safeGetValue(elementId) {
-    const element = document.getElementById(elementId);
-    return element ? element.value : '';
+function debounce(func, wait) {
+    let timeout;
+    return function executedFunction(...args) {
+        const later = () => {
+            clearTimeout(timeout);
+            func(...args);
+        };
+        clearTimeout(timeout);
+        timeout = setTimeout(later, wait);
+    };
 }
 
-// Setup event listeners
+// =======================
+// EVENT LISTENERS SETUP
+// =======================
 function setupEventListeners() {
     // Payment type change
     const paymentTypeSelect = document.querySelector('select[name="payment_type"]');
@@ -2308,14 +1836,14 @@ function setupEventListeners() {
     const constructionYearsInput = document.querySelector('input[name="construction_period_years"]');
 
     if (initialPercentInput) {
-        initialPercentInput.addEventListener('input', calculatePaymentSchedule);
+        initialPercentInput.addEventListener('input', debounce(calculatePaymentSchedule, 500));
     }
 
     if (constructionYearsInput) {
-        constructionYearsInput.addEventListener('input', () => {
+        constructionYearsInput.addEventListener('input', debounce(() => {
             calculateCompletionDate();
             calculatePaymentSchedule();
-        });
+        }, 500));
     }
 
     // Contract date change
@@ -2324,7 +1852,7 @@ function setupEventListeners() {
         contractDateInput.addEventListener('change', calculateCompletionDate);
     }
 
-    // Outside click listeners
+    // Outside click listeners for dropdowns
     document.addEventListener('click', function(e) {
         const subjectDropdown = document.getElementById('subjectDropdown');
         const objectDropdown = document.getElementById('objectDropdown');
@@ -2337,47 +1865,102 @@ function setupEventListeners() {
             objectDropdown.classList.add('hidden');
         }
     });
+
+    // Prevent form submission on enter key in search inputs
+    ['subjectSearch', 'objectSearch'].forEach(id => {
+        const element = document.getElementById(id);
+        if (element) {
+            element.addEventListener('keydown', function(e) {
+                if (e.key === 'Enter') {
+                    e.preventDefault();
+                }
+            });
+        }
+    });
+
+    // Modal escape key handling
+    document.addEventListener('keydown', function(e) {
+        if (e.key === 'Escape') {
+            const subjectModal = document.getElementById('subjectModal');
+            const objectModal = document.getElementById('objectModal');
+
+            if (subjectModal && !subjectModal.classList.contains('hidden')) {
+                closeSubjectModal();
+            }
+            if (objectModal && !objectModal.classList.contains('hidden')) {
+                closeObjectModal();
+            }
+        }
+    });
 }
 
-// Main initialization
+// =======================
+// INITIALIZATION
+// =======================
 function initializeApplication() {
     try {
+        console.log('Initializing contract creation application...');
+
+        // Initialize calculations
         calculateTotal();
         togglePaymentFields();
         toggleEntityFields();
         calculatePaymentSchedule();
         calculateCompletionDate();
+
+        // Setup all event listeners
         setupEventListeners();
+
+        // Setup form submissions
         handleSubjectFormSubmission();
         handleObjectFormSubmission();
         handleContractFormSubmission();
 
-        // Initialize feather icons
+        // Initialize icons
         if (typeof feather !== 'undefined') {
             feather.replace();
         }
 
-        console.log('Application initialized successfully');
+        // Log successful initialization
+        console.log('Contract creation application initialized successfully');
+
+        // Optional: Show initialization success
+        // showNotification('Dastur muvaffaqiyatli yuklandi', 'success');
+
     } catch (error) {
         console.error('Error initializing application:', error);
         showNotification('Dastur ishga tushirishda xato yuz berdi', 'error');
     }
 }
 
-// DOM Content Loaded
+// =======================
+// DOM READY AND ERROR HANDLING
+// =======================
 document.addEventListener('DOMContentLoaded', function() {
-    initializeApplication();
+    try {
+        initializeApplication();
+    } catch (error) {
+        console.error('DOMContentLoaded error:', error);
+        showNotification('Sahifa yuklanishida xato', 'error');
+    }
 });
 
-// Global error handlers
+// Global error handling
 window.addEventListener('error', function(e) {
-    console.error('Global error:', e.error);
+    console.error('Global JavaScript error:', e.error);
+    showNotification('Kutilmagan xato yuz berdi', 'error');
 });
 
 window.addEventListener('unhandledrejection', function(e) {
     console.error('Unhandled promise rejection:', e.reason);
+    showNotification('Server bilan aloqa xatosi', 'error');
 });
 
-console.log('Contract creation system loaded successfully');
+// Prevent form resubmission on page reload
+if (window.history.replaceState) {
+    window.history.replaceState(null, null, window.location.href);
+}
+
+console.log('Production-ready contract creation system loaded successfully');
 </script>
 @endpush

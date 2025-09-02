@@ -10,11 +10,13 @@ use App\Models\BaseCalculationAmount;
 use App\Models\District;
 use App\Models\ObjectType;
 use App\Models\ConstructionType;
+use App\Models\ContractAmendment;
 use App\Models\TerritorialZone;
 use App\Models\PermitType;
 use App\Models\IssuingAuthority;
 use App\Models\OrgForm;
 use App\Services\CoefficientCalculatorService;
+use Carbon\Carbon;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Log;
@@ -345,7 +347,7 @@ class ContractController extends Controller
     /**
      * Create object via AJAX
      */
-   public function createObject(Request $request)
+    public function createObject(Request $request)
     {
         $validated = $request->validate([
             // Required fields
@@ -353,23 +355,23 @@ class ContractController extends Controller
             'district_id' => 'required|exists:districts,id',
             'address' => 'required|string|max:500',
             'construction_volume' => 'required|numeric|min:0.01',
-            
+
             // Optional basic fields
             'cadastre_number' => 'nullable|string|max:50',
             'geolocation' => 'nullable|string|max:100',
-            
+
             // Volume fields
             'above_permit_volume' => 'nullable|numeric|min:0',
             'parking_volume' => 'nullable|numeric|min:0',
             'technical_rooms_volume' => 'nullable|numeric|min:0',
             'common_area_volume' => 'nullable|numeric|min:0',
-            
+
             // Coefficient-related fields
             'construction_type_id' => 'nullable|exists:construction_types,id',
             'object_type_id' => 'nullable|exists:object_types,id',
             'territorial_zone_id' => 'nullable|exists:territorial_zones,id',
             'location_type' => 'nullable|string|max:100',
-            
+
             // Permit information
             'application_number' => 'nullable|string|max:50',
             'application_date' => 'nullable|date',
@@ -409,8 +411,8 @@ class ContractController extends Controller
                 $districtName = $object->district->name_uz ?? $object->district->name_ru ?? 'Unknown District';
             }
 
-            $displayText = $object->address . 
-                ' (' . $districtName . ') - ' . 
+            $displayText = $object->address .
+                ' (' . $districtName . ') - ' .
                 number_format($object->construction_volume, 2) . ' m³';
 
             return response()->json([
@@ -431,19 +433,17 @@ class ContractController extends Controller
                     'subject_id' => $object->subject_id
                 ]
             ]);
-
         } catch (\Illuminate\Validation\ValidationException $e) {
             DB::rollback();
-            
+
             return response()->json([
                 'success' => false,
                 'message' => 'Validatsiya xatosi',
                 'errors' => $e->errors()
             ], 422);
-            
         } catch (\Exception $e) {
             DB::rollback();
-            
+
             // More detailed error logging
             Log::error('Object creation error', [
                 'error' => $e->getMessage(),
@@ -451,7 +451,7 @@ class ContractController extends Controller
                 'request_data' => $request->except(['_token']),
                 'validated_data' => $validated ?? null
             ]);
-            
+
             return response()->json([
                 'success' => false,
                 'message' => 'Obyekt yaratishda xato: ' . $e->getMessage()
@@ -554,28 +554,17 @@ class ContractController extends Controller
 
 
 
-    public function show(Contract $contract)
+     public function show(Contract $contract)
     {
-        $contract->load([
-            'subject.orgForm',
-            'object.district',
-            'object.constructionType',
-            'object.objectType',
-            'object.territorialZone',
-            'status',
-            'baseAmount',
-            'paymentSchedules' => function ($query) {
-                $query->orderBy('year')->orderBy('quarter');
-            },
-            'actualPayments' => function ($query) {
-                $query->orderBy('payment_date', 'desc');
-            }
-        ]);
+        $contract->load(['subject', 'object.district', 'status', 'baseAmount', 'amendments', 'paymentSchedules' => function($q) {
+            $q->where('is_active', true)->orderBy('year')->orderBy('quarter');
+        }, 'actualPayments' => function($q) {
+            $q->orderBy('payment_date', 'desc');
+        }]);
 
-        $calculatorService = new \App\Services\CoefficientCalculatorService();
-        $coefficients = $calculatorService->getCoefficientBreakdown($contract->object);
+        $penalties = $this->calculatePenalties($contract);
 
-        return view('contracts.show', compact('contract', 'coefficients'));
+        return view('contracts.show', compact('contract', 'penalties'));
     }
 
     public function edit(Contract $contract)
@@ -784,4 +773,97 @@ class ContractController extends Controller
 
         return $coefficients[$zoneName] ?? 1.00;
     }
+private function calculatePenalties(Contract $contract)
+    {
+        $penalties = [];
+        $totalPenalty = 0;
+
+        $overdueSchedules = $contract->paymentSchedules()
+            ->where('is_active', true)
+            ->get()
+            ->filter(function ($schedule) {
+                $quarterEndDate = Carbon::createFromDate($schedule->year, $schedule->quarter * 3, 1)->endOfQuarter();
+                return $quarterEndDate->lt(now()) && $schedule->remaining_amount > 0;
+            });
+
+        foreach ($overdueSchedules as $schedule) {
+            $quarterEndDate = Carbon::createFromDate($schedule->year, $schedule->quarter * 3, 1)->endOfQuarter();
+            $unpaidAmount = $schedule->remaining_amount;
+            $overdueDays = $quarterEndDate->diffInDays(now());
+
+            $penaltyAmount = $unpaidAmount * 0.0001 * $overdueDays;
+            $maxPenalty = $unpaidAmount * 0.15;
+            $penaltyAmount = min($penaltyAmount, $maxPenalty);
+
+            $penalties[] = [
+                'year' => $schedule->year,
+                'quarter' => $schedule->quarter,
+                'scheduled_amount' => $schedule->quarter_amount,
+                'paid_amount' => $schedule->paid_amount,
+                'unpaid_amount' => $unpaidAmount,
+                'overdue_days' => $overdueDays,
+                'penalty_amount' => $penaltyAmount
+            ];
+
+            $totalPenalty += $penaltyAmount;
+        }
+
+        return [
+            'penalties' => $penalties,
+            'total_penalty' => $totalPenalty,
+            'total_debt' => $contract->remaining_debt + $totalPenalty
+        ];
+    }
+
+public function createAmendment(Request $request, Contract $contract)
+    {
+        $validated = $request->validate([
+            'reason' => 'required|string',
+            'new_volume' => 'nullable|numeric|min:0',
+            'new_coefficient' => 'nullable|numeric|min:0',
+            'new_base_amount_id' => 'nullable|exists:base_calculation_amounts,id',
+            'bank_changes' => 'nullable|string'
+        ]);
+
+        DB::beginTransaction();
+        try {
+            $amendmentNumber = $contract->amendments()->count() + 1;
+
+            $amendment = ContractAmendment::create([
+                'contract_id' => $contract->id,
+                'amendment_number' => $amendmentNumber,
+                'amendment_date' => now(),
+                'reason' => $validated['reason'],
+                'old_volume' => $contract->contract_volume,
+                'old_coefficient' => $contract->coefficient,
+                'old_amount' => $contract->total_amount,
+                'old_base_amount_id' => $contract->base_amount_id,
+                'new_volume' => $validated['new_volume'] ?? $contract->contract_volume,
+                'new_coefficient' => $validated['new_coefficient'] ?? $contract->coefficient,
+                'new_base_amount_id' => $validated['new_base_amount_id'] ?? $contract->base_amount_id,
+                'bank_changes' => $validated['bank_changes']
+            ]);
+
+            $newBaseAmount = BaseCalculationAmount::find($amendment->new_base_amount_id);
+            $newTotalAmount = $amendment->new_volume * $newBaseAmount->amount * $amendment->new_coefficient;
+            $amendment->update(['new_amount' => $newTotalAmount]);
+
+            $contract->update([
+                'contract_volume' => $amendment->new_volume,
+                'coefficient' => $amendment->new_coefficient,
+                'total_amount' => $newTotalAmount,
+                'base_amount_id' => $amendment->new_base_amount_id
+            ]);
+
+            $contract->paymentSchedules()->update(['is_active' => false]);
+            $this->generatePaymentScheduleForAmendment($contract, $amendment);
+
+            DB::commit();
+            return response()->json(['success' => true, 'message' => 'Дополнительное соглашение успешно создано']);
+        } catch (\Exception $e) {
+            DB::rollback();
+            return response()->json(['success' => false, 'message' => 'Ошибка: ' . $e->getMessage()]);
+        }
+    }
+
 }
