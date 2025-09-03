@@ -42,7 +42,8 @@ Route::prefix('contracts')->name('contracts.')->group(function () {
     Route::post('/store', [ContractController::class, 'store'])->name('store');
     Route::get('/{contract}', [ContractController::class, 'show'])->name('show');
     Route::get('/{contract}/edit', [ContractController::class, 'edit'])->name('edit');
-    Route::put('/{contract}', [ContractController::class, 'update'])->name('update');
+    Route::put('/{contract}', [ContractController::class, 'update'])->name('contracts.update');
+
     Route::delete('/{contract}', [ContractController::class, 'destroy'])->name('destroy');
 
     // Zone detection
@@ -69,7 +70,8 @@ Route::prefix('contracts')->name('contracts.')->group(function () {
         Route::get('/next-payment-due', [ContractController::class, 'getNextPaymentDue'])->name('next_payment_due');
 
         // Payment schedule management
-        Route::post('/quarterly-schedule', [ContractController::class, 'createQuarterlySchedule'])->name('create_quarterly_schedule');
+        Route::post('/create-quarterly-schedule', [ContractController::class, 'createQuarterlySchedule'])->name('create_quarterly_schedule');
+
         Route::post('/store-plan-payment', [ContractController::class, 'storePlanPayment'])->name('store_plan_payment');
         Route::put('/plan-payment/{id}', [ContractController::class, 'updatePlanPayment'])->name('update_plan_payment');
         Route::delete('/plan-payment/{id}', [ContractController::class, 'deletePlanPayment'])->name('delete_plan_payment');

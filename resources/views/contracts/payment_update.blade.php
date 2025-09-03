@@ -156,9 +156,10 @@
 
                         <div>
                             <label class="block text-sm font-semibold text-gray-700 mb-3">Jami choraklar soni</label>
-                            <input type="number" name="quarters_count" min="1" max="20" step="1" readonly
+                            <input type="number" name="quarters_count" min="1" max="20" step="1"
                                    value="{{ $contract->quarters_count ?? 8 }}"
-                                   class="w-full px-4 py-3 border border-gray-300 rounded-lg bg-gray-100 text-lg font-semibold">
+                                   class="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 text-lg font-semibold"
+                                   onchange="calculatePaymentBreakdown()">
                         </div>
                     </div>
 
@@ -303,19 +304,17 @@
                         <div>
                             <label class="block text-sm font-medium text-gray-700 mb-2">Yil</label>
                             <select name="schedule_year" class="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500">
-                                @for($y = date('Y'); $y <= date('Y') + 5; $y++)
+                                @for($y = date('Y') - 1; $y <= date('Y') + 5; $y++)
                                     <option value="{{ $y }}">{{ $y }} yil</option>
                                 @endfor
                             </select>
                         </div>
                         <div>
                             <label class="block text-sm font-medium text-gray-700 mb-2">Choraklar soni</label>
-                            <select name="quarters_count" onchange="updateSchedulePreview()" class="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500">
-                                <option value="1">1 chorak</option>
-                                <option value="2">2 chorak</option>
-                                <option value="3">3 chorak</option>
-                                <option value="4" selected>4 chorak</option>
-                            </select>
+                            <input type="number" name="quarters_count" min="1" max="20" step="1" value="{{$contract->quarters_count ?? 8}}"
+                                   onchange="updateSchedulePreview()"
+                                   class="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500"
+                                   placeholder="1-20 orasida">
                         </div>
                         <div>
                             <label class="block text-sm font-medium text-gray-700 mb-2">Jami summa</label>
@@ -328,7 +327,7 @@
                     <!-- Custom Schedule Grid -->
                     <div id="customScheduleGrid" class="hidden">
                         <h4 class="text-lg font-medium text-gray-900 mb-4">Choraklar bo'yicha taqsimlash</h4>
-                        <div class="grid grid-cols-1 md:grid-cols-2 gap-4" id="quarterInputs">
+                        <div class="grid grid-cols-2 gap-4" id="quarterInputs">
                             <!-- Dynamic quarter inputs will be added here -->
                         </div>
                     </div>
@@ -336,7 +335,7 @@
                     <!-- Schedule Preview -->
                     <div id="schedulePreview" class="bg-gray-50 rounded-xl p-6">
                         <h4 class="text-lg font-medium text-gray-900 mb-4">Jadval ko'rinishi</h4>
-                        <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-3" id="previewGrid">
+                        <div class="grid grid-cols-2 gap-3" id="previewGrid">
                             <!-- Preview cards will be generated here -->
                         </div>
                     </div>
@@ -442,9 +441,20 @@ const contractData = @json($contract ?? null);
 let quarterlyData = {};
 let currentQuarterData = null;
 
+// Safe feather replace function
+function safeFeatherReplace() {
+    try {
+        if (typeof feather !== 'undefined') {
+            feather.replace();
+        }
+    } catch (error) {
+        console.warn('Feather icons replace failed:', error);
+    }
+}
+
 // Initialize everything when page loads
 document.addEventListener('DOMContentLoaded', function() {
-    feather.replace();
+    safeFeatherReplace();
 
     // Initialize payment settings based on contract data
     if (contractData) {
@@ -463,7 +473,7 @@ function setupEventListeners() {
     document.querySelector('select[name="payment_type"]').addEventListener('change', togglePaymentSettings);
     document.querySelector('input[name="total_amount"]').addEventListener('input', debounce(calculatePaymentBreakdown, 500));
     document.querySelector('input[name="initial_payment_percent"]').addEventListener('input', debounce(calculatePaymentBreakdown, 500));
-    document.querySelector('input[name="construction_period_years"]').addEventListener('input', debounce(calculatePaymentBreakdown, 500));
+    document.querySelector('input[name="quarters_count"]').addEventListener('input', debounce(calculatePaymentBreakdown, 500));
 
     // Schedule form listeners
     document.querySelectorAll('input[name="schedule_type"]').forEach(radio => {
@@ -498,16 +508,12 @@ function togglePaymentSettings() {
 function calculatePaymentBreakdown() {
     const totalAmount = parseFloat(document.querySelector('input[name="total_amount"]').value) || 0;
     const initialPercent = parseFloat(document.querySelector('input[name="initial_payment_percent"]').value) || 0;
-    const constructionYears = parseInt(document.querySelector('input[name="construction_period_years"]').value) || 2;
+    const quartersCount = parseInt(document.querySelector('input[name="quarters_count"]').value) || 0;
     const paymentType = document.querySelector('select[name="payment_type"]').value;
 
     const initialAmount = totalAmount * (initialPercent / 100);
     const remainingAmount = totalAmount - initialAmount;
-    const quartersCount = paymentType === 'full' ? 0 : constructionYears * 4;
     const quarterlyAmount = quartersCount > 0 ? remainingAmount / quartersCount : 0;
-
-    // Update quarters count
-    document.querySelector('input[name="quarters_count"]').value = quartersCount;
 
     // Update display
     document.getElementById('initialAmount').textContent = formatCurrency(initialAmount);
@@ -541,7 +547,7 @@ function loadQuarterlyData() {
         });
 }
 
-// Render quarterly breakdown
+// Render quarterly breakdown with table format
 function renderQuarterlyBreakdown() {
     const container = document.getElementById('quarterlyBreakdown');
 
@@ -553,88 +559,174 @@ function renderQuarterlyBreakdown() {
     let html = '';
 
     Object.entries(quarterlyData).forEach(([year, quarters]) => {
+        const quarterEntries = Object.entries(quarters).sort((a, b) => parseInt(a[0]) - parseInt(b[0]));
+
+        console.log(`Year ${year} has quarters:`, quarterEntries.map(([q]) => q)); // Debug log
+
         html += `
-        <div class="bg-gray-50 rounded-xl p-6">
-            <div class="flex items-center justify-between mb-6">
-                <h3 class="text-xl font-bold text-gray-900">${year} yil</h3>
-                <button onclick="editYearSchedule(${year})"
-                        class="px-4 py-2 bg-blue-100 text-blue-600 rounded-lg hover:bg-blue-200 transition-colors">
-                    <i data-feather="edit" class="w-4 h-4 mr-1"></i>
-                    Tahrirlash
-                </button>
+        <div class="bg-white rounded-xl shadow-lg border border-gray-200">
+            <div class="flex items-center justify-between p-6 border-b border-gray-200 bg-gradient-to-r from-blue-50 to-indigo-50">
+                <h3 class="text-xl font-bold text-gray-900 flex items-center">
+                    <i data-feather="calendar" class="w-5 h-5 mr-2 text-blue-600"></i>
+                    ${year} yil to'lov jadvali
+                </h3>
+                <div class="flex items-center space-x-3">
+                    <span class="px-3 py-1 bg-blue-100 text-blue-800 rounded-full text-sm font-medium">
+                        ${quarterEntries.length} chorak
+                    </span>
+                    <button onclick="editYearSchedule(${year})"
+                            class="px-4 py-2 bg-blue-100 text-blue-600 rounded-lg hover:bg-blue-200 transition-colors">
+                        <i data-feather="edit" class="w-4 h-4 mr-1"></i>
+                        Tahrirlash
+                    </button>
+                </div>
             </div>
 
-            <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
-        `;
+            <div class="p-6">
+                <!-- Summary Row -->
+                <div class="grid grid-cols-4 gap-4 mb-6">
+                    <div class="info-gradient rounded-lg p-4 text-center">
+                        <p class="text-sm font-medium text-blue-800">JAMI PLAN</p>
+                        <p class="text-xl font-bold text-blue-900">${formatCurrencyShort(calculateYearTotal(quarters, 'plan_amount'))}</p>
+                    </div>
+                    <div class="success-gradient rounded-lg p-4 text-center">
+                        <p class="text-sm font-medium text-green-800">TO'LANGAN</p>
+                        <p class="text-xl font-bold text-green-900">${formatCurrencyShort(calculateYearTotal(quarters, 'fact_total'))}</p>
+                    </div>
+                    <div class="warning-gradient rounded-lg p-4 text-center">
+                        <p class="text-sm font-medium text-yellow-800">QARZ</p>
+                        <p class="text-xl font-bold text-yellow-900">${formatCurrencyShort(calculateYearDebt(quarters))}</p>
+                    </div>
+                    <div class="primary-gradient rounded-lg p-4 text-center">
+                        <p class="text-sm font-medium text-indigo-800">FOIZ</p>
+                        <p class="text-xl font-bold text-indigo-900">${calculateYearPercent(quarters).toFixed(1)}%</p>
+                    </div>
+                </div>
 
-        for (let quarter = 1; quarter <= 4; quarter++) {
-            const quarterData = quarters[quarter] || {
-                plan_amount: 0,
-                fact_total: 0,
-                debt: 0,
-                payment_percent: 0,
-                is_overdue: false
-            };
+                <!-- Quarters Table -->
+                <div class="overflow-x-auto">
+                    <table class="w-full border-collapse">
+                        <thead>
+                            <tr class="bg-gray-50">
+                                <th class="border border-gray-200 px-4 py-3 text-left font-semibold text-gray-700">Chorak</th>
+                                <th class="border border-gray-200 px-4 py-3 text-right font-semibold text-gray-700">Plan summasi</th>
+                                <th class="border border-gray-200 px-4 py-3 text-right font-semibold text-gray-700">To'langan</th>
+                                <th class="border border-gray-200 px-4 py-3 text-right font-semibold text-gray-700">Qarz/Ortiqcha</th>
+                                <th class="border border-gray-200 px-4 py-3 text-center font-semibold text-gray-700">Foiz</th>
+                                <th class="border border-gray-200 px-4 py-3 text-center font-semibold text-gray-700">Status</th>
+                                <th class="border border-gray-200 px-4 py-3 text-center font-semibold text-gray-700">Amallar</th>
+                            </tr>
+                        </thead>
+                        <tbody>`;
 
-            const cardClass = getQuarterCardClass(quarterData);
+        quarterEntries.forEach(([quarter, quarterData]) => {
+            const statusClass = getQuarterStatusClass(quarterData);
+            const statusText = getQuarterStatusText(quarterData);
             const progressColor = getProgressColor(quarterData.payment_percent);
+            const debt = quarterData.debt || 0;
+            const isOverdue = quarterData.is_overdue || false;
 
             html += `
-            <div class="quarter-card ${cardClass} rounded-xl p-5" onclick="openQuarterDetails(${year}, ${quarter})">
-                <div class="flex items-center justify-between mb-4">
-                    <h4 class="font-bold text-gray-800">${quarter}-chorak</h4>
-                    <div class="relative">
-                        <svg class="progress-ring transform -rotate-90" viewBox="0 0 36 36">
-                            <path class="text-gray-300" stroke="currentColor" stroke-width="3" fill="none"
-                                  d="M18 2.0845a 15.9155 15.9155 0 0 1 0 31.831a 15.9155 15.9155 0 0 1 0 -31.831"/>
-                            <path class="${progressColor}" stroke="currentColor" stroke-width="3" fill="none" stroke-linecap="round"
-                                  stroke-dasharray="${quarterData.payment_percent}, 100"
-                                  d="M18 2.0845a 15.9155 15.9155 0 0 1 0 31.831a 15.9155 15.9155 0 0 1 0 -31.831"/>
-                        </svg>
-                        <div class="absolute inset-0 flex items-center justify-center">
-                            <span class="text-xs font-bold">${Math.round(quarterData.payment_percent)}%</span>
-                        </div>
-                    </div>
-                </div>
-
-                <div class="space-y-3">
-                    <div class="flex justify-between items-center">
-                        <span class="text-sm text-gray-600">Plan:</span>
-                        <span class="font-bold text-blue-600">${formatCurrencyShort(quarterData.plan_amount)}</span>
-                    </div>
-
-                    <div class="flex justify-between items-center">
-                        <span class="text-sm text-gray-600">Fakt:</span>
-                        <span class="font-bold text-green-600">${formatCurrencyShort(quarterData.fact_total)}</span>
-                    </div>
-
-                    <div class="flex justify-between items-center pt-2 border-t border-gray-200">
-                        <span class="text-sm font-medium ${quarterData.debt > 0 ? 'text-red-600' : 'text-green-600'}">
-                            ${quarterData.debt > 0 ? 'Qarz:' : 'Ortiqcha:'}
-                        </span>
-                        <span class="font-bold ${quarterData.debt > 0 ? 'text-red-600' : 'text-green-600'}">
-                            ${formatCurrencyShort(Math.abs(quarterData.debt))}
-                        </span>
-                    </div>
-
-                    ${quarterData.is_overdue ? `
-                    <div class="bg-red-100 text-red-800 px-3 py-1 rounded-full text-xs font-medium text-center animate-pulse-slow">
-                        MUDDATI O'TGAN
-                    </div>
-                    ` : ''}
-                </div>
-            </div>
-            `;
-        }
+                            <tr class="hover:bg-gray-50 ${isOverdue ? 'bg-red-50' : ''}">
+                                <td class="border border-gray-200 px-4 py-3">
+                                    <div class="flex items-center">
+                                        <span class="font-semibold text-gray-900">${quarter}-chorak</span>
+                                        ${isOverdue ? '<i data-feather="alert-triangle" class="w-4 h-4 ml-2 text-red-500"></i>' : ''}
+                                    </div>
+                                </td>
+                                <td class="border border-gray-200 px-4 py-3 text-right font-semibold text-blue-600">
+                                    ${formatCurrency(quarterData.plan_amount || 0)}
+                                </td>
+                                <td class="border border-gray-200 px-4 py-3 text-right font-semibold text-green-600">
+                                    ${formatCurrency(quarterData.fact_total || 0)}
+                                </td>
+                                <td class="border border-gray-200 px-4 py-3 text-right font-semibold ${debt >= 0 ? 'text-red-600' : 'text-green-600'}">
+                                    ${debt >= 0 ? '+' : ''}${formatCurrency(Math.abs(debt))}
+                                </td>
+                                <td class="border border-gray-200 px-4 py-3 text-center">
+                                    <div class="flex items-center justify-center">
+                                        <div class="relative w-12 h-12">
+                                            <svg class="w-12 h-12 transform -rotate-90" viewBox="0 0 36 36">
+                                                <path class="text-gray-300" stroke="currentColor" stroke-width="3" fill="none"
+                                                      d="M18 2.0845a 15.9155 15.9155 0 0 1 0 31.831a 15.9155 15.9155 0 0 1 0 -31.831"/>
+                                                <path class="${progressColor}" stroke="currentColor" stroke-width="3" fill="none" stroke-linecap="round"
+                                                      stroke-dasharray="${quarterData.payment_percent || 0}, 100"
+                                                      d="M18 2.0845a 15.9155 15.9155 0 0 1 0 31.831a 15.9155 15.9155 0 0 1 0 -31.831"/>
+                                            </svg>
+                                            <div class="absolute inset-0 flex items-center justify-center">
+                                                <span class="text-xs font-bold">${Math.round(quarterData.payment_percent || 0)}%</span>
+                                            </div>
+                                        </div>
+                                    </div>
+                                </td>
+                                <td class="border border-gray-200 px-4 py-3 text-center">
+                                    <span class="px-2 py-1 rounded-full text-xs font-medium ${statusClass}">${statusText}</span>
+                                </td>
+                                <td class="border border-gray-200 px-4 py-3 text-center">
+                                    <div class="flex items-center justify-center space-x-2">
+                                        <button onclick="openQuarterDetails(${year}, ${quarter})"
+                                                class="p-2 text-blue-600 hover:bg-blue-100 rounded-lg transition-colors"
+                                                title="Batafsil">
+                                            <i data-feather="eye" class="w-4 h-4"></i>
+                                        </button>
+                                        <button onclick="editQuarterPlan(${year}, ${quarter})"
+                                                class="p-2 text-green-600 hover:bg-green-100 rounded-lg transition-colors"
+                                                title="Tahrirlash">
+                                            <i data-feather="edit-2" class="w-4 h-4"></i>
+                                        </button>
+                                        <button onclick="addQuarterPayment(${year}, ${quarter})"
+                                                class="p-2 text-purple-600 hover:bg-purple-100 rounded-lg transition-colors"
+                                                title="To'lov qo'shish">
+                                            <i data-feather="plus-circle" class="w-4 h-4"></i>
+                                        </button>
+                                    </div>
+                                </td>
+                            </tr>`;
+        });
 
         html += `
+                        </tbody>
+                    </table>
+                </div>
             </div>
         </div>
         `;
     });
 
     container.innerHTML = html;
-    feather.replace();
+    safeFeatherReplace();
+}
+
+// Helper functions for year calculations
+function calculateYearTotal(quarters, field) {
+    return Object.values(quarters).reduce((sum, quarter) => sum + (quarter[field] || 0), 0);
+}
+
+function calculateYearDebt(quarters) {
+    return Object.values(quarters).reduce((sum, quarter) => sum + Math.max(0, quarter.debt || 0), 0);
+}
+
+function calculateYearPercent(quarters) {
+    const totalPlan = calculateYearTotal(quarters, 'plan_amount');
+    const totalFact = calculateYearTotal(quarters, 'fact_total');
+    return totalPlan > 0 ? (totalFact / totalPlan) * 100 : 0;
+}
+
+// Get quarter status class and text
+function getQuarterStatusClass(quarterData) {
+    if (quarterData.is_overdue && quarterData.debt > 0) return 'bg-red-100 text-red-800';
+    if (quarterData.debt > 0) return 'bg-yellow-100 text-yellow-800';
+    if (quarterData.payment_percent >= 100) return 'bg-green-100 text-green-800';
+    if (quarterData.payment_percent > 0) return 'bg-blue-100 text-blue-800';
+    return 'bg-gray-100 text-gray-800';
+}
+
+function getQuarterStatusText(quarterData) {
+    if (quarterData.is_overdue && quarterData.debt > 0) return 'Muddati o\'tgan';
+    if (quarterData.debt > 0) return 'Qarz mavjud';
+    if (quarterData.payment_percent >= 100) return 'To\'liq to\'langan';
+    if (quarterData.payment_percent > 0) return 'Qisman to\'langan';
+    return 'To\'lanmagan';
 }
 
 // Render empty quarterly breakdown
@@ -654,16 +746,7 @@ function renderEmptyQuarterlyBreakdown() {
         </button>
     </div>
     `;
-    feather.replace();
-}
-
-// Get quarter card CSS class based on status
-function getQuarterCardClass(quarterData) {
-    if (quarterData.is_overdue && quarterData.debt > 0) return 'debt-overdue';
-    if (quarterData.debt > 0) return 'debt-current';
-    if (quarterData.payment_percent >= 100) return 'paid-complete';
-    if (quarterData.payment_percent > 0) return 'paid-partial';
-    return 'bg-gray-50 border-gray-200';
+    safeFeatherReplace();
 }
 
 // Get progress color based on completion percentage
@@ -769,7 +852,7 @@ function openQuarterDetails(year, quarter) {
 
     document.getElementById('quarterDetailsContent').innerHTML = content;
     document.getElementById('quarterDetailsModal').classList.remove('hidden');
-    feather.replace();
+    safeFeatherReplace();
 }
 
 function closeQuarterDetailsModal() {
@@ -794,15 +877,22 @@ function toggleCustomScheduleGrid() {
 
 // Generate quarter inputs based on selected count
 function generateQuarterInputs() {
-    const quartersCount = parseInt(document.querySelector('select[name="quarters_count"]').value);
+    const quartersCount = parseInt(document.querySelector('input[name="quarters_count"]').value) || 4;
     const container = document.getElementById('quarterInputs');
 
     let html = '';
+    const equalPercent = (100 / quartersCount).toFixed(2);
+
+    // Create a responsive grid based on quarter count
+    const gridClass = quartersCount <= 4 ? 'grid-cols-2' :
+                     quartersCount <= 8 ? 'grid-cols-4' : 'grid-cols-5';
+    container.className = `grid ${gridClass} gap-4`;
+
     for (let i = 1; i <= quartersCount; i++) {
         html += `
         <div>
             <label class="block text-sm font-medium text-gray-700 mb-2">${i}-chorak (%)</label>
-            <input type="number" name="quarter_${i}_percent" min="0" max="100" step="0.1" value="${100/quartersCount}"
+            <input type="number" name="quarter_${i}_percent" min="0" max="100" step="0.01" value="${equalPercent}"
                    class="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500"
                    onchange="updateSchedulePreview()">
         </div>
@@ -814,13 +904,19 @@ function generateQuarterInputs() {
 
 // Update schedule preview
 function updateSchedulePreview() {
-    const quartersCount = parseInt(document.querySelector('select[name="quarters_count"]').value);
+    const quartersCount = parseInt(document.querySelector('input[name="quarters_count"]').value) || 4;
     const totalAmount = parseFloat(document.querySelector('input[name="total_schedule_amount"]').value) || 0;
     const scheduleType = document.querySelector('input[name="schedule_type"]:checked').value;
     const previewGrid = document.getElementById('previewGrid');
 
     let html = '';
     let totalPercent = 0;
+
+    // Create responsive grid for preview
+    const gridClass = quartersCount <= 4 ? 'grid-cols-2' :
+                     quartersCount <= 8 ? 'grid-cols-4' :
+                     quartersCount <= 12 ? 'grid-cols-6' : 'grid-cols-8';
+    previewGrid.className = `grid ${gridClass} gap-3`;
 
     for (let i = 1; i <= quartersCount; i++) {
         let percent, amount;
@@ -837,8 +933,8 @@ function updateSchedulePreview() {
         totalPercent += percent;
 
         html += `
-        <div class="bg-white border-2 border-blue-200 rounded-lg p-4 text-center">
-            <div class="text-sm font-medium text-blue-600 mb-2">${i}-chorak</div>
+        <div class="bg-white border-2 border-blue-200 rounded-lg p-3 text-center">
+            <div class="text-sm font-medium text-blue-600 mb-1">${i}-chorak</div>
             <div class="text-lg font-bold text-blue-900">${formatCurrencyShort(amount)}</div>
             <div class="text-xs text-gray-500">${percent.toFixed(1)}%</div>
         </div>
@@ -853,6 +949,16 @@ function updateSchedulePreview() {
             <div class="text-center">
                 <div class="font-bold">Jami: ${totalPercent.toFixed(1)}%</div>
                 <div class="text-sm">${isValidTotal ? 'To\'g\'ri' : '100% bo\'lishi kerak'}</div>
+            </div>
+        </div>
+        `;
+    } else {
+        // Show summary for auto mode
+        html += `
+        <div class="col-span-full mt-4 p-4 rounded-lg bg-blue-100 text-blue-800">
+            <div class="text-center">
+                <div class="font-bold">Jami: 100%</div>
+                <div class="text-sm">Har bir chorak: ${(100/quartersCount).toFixed(1)}%</div>
             </div>
         </div>
         `;
@@ -873,32 +979,69 @@ async function handleContractSubmit(e) {
 
     try {
         const formData = new FormData(e.target);
-        const url = contractData ? `/contracts/${contractData.id}` : '/contracts';
+        const url = contractData ? `/contracts/${contractData.id}` : '/contracts/store';
         const method = contractData ? 'PUT' : 'POST';
+
+        // Get CSRF token
+        const csrfToken = document.querySelector('meta[name="csrf-token"]')?.getAttribute('content') ||
+                         document.querySelector('input[name="_token"]')?.value;
+
+        if (!csrfToken) {
+            throw new Error('CSRF token not found');
+        }
 
         const response = await fetch(url, {
             method: 'POST',
             headers: {
-                'X-CSRF-TOKEN': document.querySelector('meta[name="csrf-token"]').content,
-                'X-HTTP-Method-Override': method
+                'X-CSRF-TOKEN': csrfToken,
+                'X-HTTP-Method-Override': method,
+                'Accept': 'application/json',
+                'X-Requested-With': 'XMLHttpRequest'
             },
             body: formData
         });
 
+        // Check if response is ok
+        if (!response.ok) {
+            const errorText = await response.text();
+            console.error('Server response:', errorText);
+            throw new Error(`Server error: ${response.status} ${response.statusText}`);
+        }
+
+        // Check if response is JSON
+        const contentType = response.headers.get('content-type');
+        if (!contentType || !contentType.includes('application/json')) {
+            const htmlResponse = await response.text();
+            console.error('Expected JSON but got HTML:', htmlResponse.substring(0, 500));
+            throw new Error('Server returned HTML instead of JSON. Check server logs.');
+        }
+
         const result = await response.json();
 
         if (result.success) {
-            showNotification(result.message, 'success');
-            if (!contractData) {
+            showNotification(result.message || 'Muvaffaqiyatli saqlandi', 'success');
+            if (!contractData && result.contract) {
                 setTimeout(() => {
                     window.location.href = `/contracts/${result.contract.id}/payment-update`;
+                }, 1500);
+            } else {
+                // Refresh page data if updating existing contract
+                setTimeout(() => {
+                    window.location.reload();
                 }, 1500);
             }
         } else {
             throw new Error(result.message || 'Xatolik yuz berdi');
         }
     } catch (error) {
-        showNotification(error.message, 'error');
+        console.error('Form submission error:', error);
+        let errorMessage = error.message;
+
+        if (error.message.includes('Unexpected token')) {
+            errorMessage = 'Server xatosi. Sahifani yangilang va qayta urinib ko\'ring.';
+        }
+
+        showNotification(errorMessage, 'error');
     } finally {
         toggleSubmitState(submitBtn, submitText, submitLoader, false);
     }
@@ -933,10 +1076,25 @@ async function handleScheduleSubmit(e) {
         const response = await fetch(`/contracts/${contractData.id}/create-quarterly-schedule`, {
             method: 'POST',
             headers: {
-                'X-CSRF-TOKEN': document.querySelector('meta[name="csrf-token"]').content
+                'X-CSRF-TOKEN': document.querySelector('meta[name="csrf-token"]').content,
+                'Accept': 'application/json',
+                'X-Requested-With': 'XMLHttpRequest'
             },
             body: formData
         });
+
+        if (!response.ok) {
+            const errorText = await response.text();
+            console.error('Schedule submission error:', errorText);
+            throw new Error(`Server error: ${response.status}`);
+        }
+
+        const contentType = response.headers.get('content-type');
+        if (!contentType || !contentType.includes('application/json')) {
+            const htmlResponse = await response.text();
+            console.error('Expected JSON but got HTML:', htmlResponse.substring(0, 500));
+            throw new Error('Server returned HTML instead of JSON');
+        }
 
         const result = await response.json();
 
@@ -1158,8 +1316,9 @@ document.addEventListener('click', function(e) {
     if (e.target.classList.contains('fixed') && e.target.classList.contains('inset-0')) {
         const modals = ['paymentScheduleModal', 'paymentModal', 'quarterDetailsModal'];
         modals.forEach(modalId => {
-            if (e.target.closest(`#${modalId}`)) {
-                document.getElementById(modalId).classList.add('hidden');
+            const modal = document.getElementById(modalId);
+            if (modal && !modal.classList.contains('hidden')) {
+                modal.classList.add('hidden');
             }
         });
     }
