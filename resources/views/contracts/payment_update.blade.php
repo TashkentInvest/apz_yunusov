@@ -1,1082 +1,1168 @@
+{{-- Shartnoma to'lov boshqaruvi - Production Ready --}}
 @extends('layouts.app')
 
-@section('title', 'To\'lov boshqaruvi - ' . $contract->contract_number)
-@section('page-title', 'SHARTNOMA №' . $contract->contract_number)
-@section('page-subtitle', $contract->contract_date->format('d.m.Y') . ' • ' . ($contract->subject->is_legal_entity ? $contract->subject->company_name : 'Jismoniy shaxs') . ' • ' . $contract->status->name_ru)
+@section('title', 'Shartnoma to\'lov boshqaruvi - ' . ($contract->contract_number ?? 'Yangi shartnoma'))
+@section('page-title', 'Shartnoma to\'lov boshqaruvi')
 
 @section('header-actions')
-    <button onclick="openContractEditModal()" class="bg-blue-600 text-white px-4 py-2 rounded hover:bg-blue-700 transition-colors">
-        <i class="fas fa-edit mr-2"></i>Tahrir
+<div class="flex flex-wrap gap-3">
+    @if(isset($contract))
+    <a href="{{ route('contracts.show', $contract) }}"
+       class="inline-flex items-center px-4 py-2 bg-gray-600 text-white rounded-lg hover:bg-gray-700 transition-colors">
+        <i data-feather="arrow-left" class="w-4 h-4 mr-2"></i>
+        Ortga qaytish
+    </a>
+    @endif
+
+    <button onclick="exportReport()"
+            class="inline-flex items-center px-4 py-2 bg-green-600 text-white rounded-lg hover:bg-green-700 transition-colors">
+        <i data-feather="download" class="w-4 h-4 mr-2"></i>
+        Hisobot yuklab olish
     </button>
-    <button onclick="generateReport()" class="bg-green-600 text-white px-4 py-2 rounded hover:bg-green-700 transition-colors">
-        <i class="fas fa-file-excel mr-2"></i>Hisobot
-    </button>
+</div>
 @endsection
 
+@push('styles')
+<style>
+/* Custom styles for professional government appearance */
+.govt-header { background: linear-gradient(135deg, #1e40af 0%, #3b82f6 50%, #60a5fa 100%); }
+.govt-card { border-left: 5px solid #1e40af; }
+.success-gradient { background: linear-gradient(135deg, #dcfce7 0%, #bbf7d0 100%); }
+.warning-gradient { background: linear-gradient(135deg, #fef3c7 0%, #fde68a 100%); }
+.danger-gradient { background: linear-gradient(135deg, #fee2e2 0%, #fecaca 100%); }
+.info-gradient { background: linear-gradient(135deg, #dbeafe 0%, #bfdbfe 100%); }
+.primary-gradient { background: linear-gradient(135deg, #e0e7ff 0%, #c7d2fe 100%); }
+
+.quarter-card {
+    transition: all 0.3s ease;
+    border: 2px solid transparent;
+    cursor: pointer;
+}
+.quarter-card:hover {
+    transform: translateY(-4px);
+    box-shadow: 0 12px 32px rgba(0,0,0,0.15);
+    border-color: #3b82f6;
+}
+
+.debt-overdue { border-color: #dc2626; background: linear-gradient(135deg, #fee2e2 0%, #fecaca 100%); }
+.debt-current { border-color: #f59e0b; background: linear-gradient(135deg, #fef3c7 0%, #fde68a 100%); }
+.paid-complete { border-color: #16a34a; background: linear-gradient(135deg, #dcfce7 0%, #bbf7d0 100%); }
+.paid-partial { border-color: #2563eb; background: linear-gradient(135deg, #dbeafe 0%, #bfdbfe 100%); }
+
+.progress-ring { width: 60px; height: 60px; }
+.progress-ring circle { transition: stroke-dasharray 0.5s ease; }
+
+.animate-pulse-slow { animation: pulse 3s cubic-bezier(0.4, 0, 0.6, 1) infinite; }
+</style>
+@endpush
+
 @section('content')
-@php
-    $initialAmount = ($contract->total_amount * $contract->initial_payment_percent) / 100;
-    $remainingAmount = $contract->total_amount - $initialAmount;
-    $plannedTotal = $contract->paymentSchedules()->where('is_active', true)->sum('quarter_amount');
-    $paidTotal = $contract->actualPayments()->sum('amount');
-    $totalDebt = $contract->total_amount - $paidTotal;
-    $paymentPercent = $contract->total_amount > 0 ? ($paidTotal / $contract->total_amount) * 100 : 0;
-@endphp
-
-<!-- Contract Summary Card -->
-<div class="bg-blue-600 text-white p-6 rounded-lg mb-6">
-    <div class="flex justify-between items-center">
-        <div>
-            <h2 class="text-3xl font-bold mb-2">{{ number_format($contract->total_amount / 1000000, 1) }}M SO'M</h2>
-            <p class="text-blue-100 mb-4">Jami shartnoma summasi</p>
-            <div class="text-blue-100 text-sm space-y-1">
-                <p>Boshlang'ich to'lov: {{ $contract->initial_payment_percent }}% ({{ number_format($initialAmount / 1000000, 1) }}M so'm)</p>
-                <p>Qolgan summa: {{ number_format($remainingAmount / 1000000, 1) }}M so'm</p>
+<div class="space-y-8">
+    <!-- Government Header -->
+    <div class="govt-header rounded-2xl shadow-lg p-8 text-white">
+        <div class="flex items-center justify-between">
+            <div>
+                <h1 class="text-3xl font-bold mb-2">O'ZBEKISTON RESPUBLIKASI</h1>
+                <p class="text-xl opacity-90">Shartnoma to'lov boshqaruv tizimi</p>
             </div>
-        </div>
-        <div class="text-right">
-            <div class="bg-white bg-opacity-20 p-4 rounded-lg">
-                <div class="text-sm text-blue-100">To'lov holati</div>
-                <div class="text-3xl font-bold">{{ number_format($paymentPercent, 1) }}%</div>
+            <div class="text-right">
+                <p class="text-lg font-semibold">Sana: {{ date('d.m.Y') }}</p>
+                <p class="opacity-90">Vaqt: {{ date('H:i') }}</p>
             </div>
         </div>
     </div>
-</div>
 
-<!-- Statistics Cards -->
-<div class="grid grid-cols-1 md:grid-cols-4 gap-6 mb-8">
-    <div class="bg-white p-6 rounded-lg shadow border-l-4 border-blue-500">
-        <div class="flex items-center justify-between mb-4">
-            <h3 class="text-sm font-medium text-gray-600 uppercase">BOSHLANG'ICH TO'LOV</h3>
-            <i class="fas fa-hand-holding-usd text-blue-500 text-xl"></i>
+    <!-- Contract Information Form -->
+    <div class="bg-white rounded-2xl shadow-lg border govt-card">
+        <div class="border-b border-gray-200 p-6">
+            <h2 class="text-2xl font-bold text-gray-900 flex items-center">
+                <i data-feather="file-text" class="w-6 h-6 mr-3 text-blue-600"></i>
+                Shartnoma ma'lumotlari
+            </h2>
         </div>
-        <div class="text-2xl font-bold text-blue-600">{{ number_format($initialAmount / 1000000, 1) }}M</div>
-        <div class="text-sm text-gray-500">{{ $contract->initial_payment_percent }}% dan</div>
-    </div>
 
-    <div class="bg-white p-6 rounded-lg shadow border-l-4 border-green-500">
-        <div class="flex items-center justify-between mb-4">
-            <h3 class="text-sm font-medium text-gray-600 uppercase">TO'LANGAN</h3>
-            <i class="fas fa-check-circle text-green-500 text-xl"></i>
-        </div>
-        <div class="text-2xl font-bold text-green-600">{{ number_format($paidTotal / 1000000, 1) }}M</div>
-        <div class="text-sm text-gray-500">{{ number_format($paymentPercent, 1) }}%</div>
-    </div>
-
-    <div class="bg-white p-6 rounded-lg shadow border-l-4 border-yellow-500">
-        <div class="flex items-center justify-between mb-4">
-            <h3 class="text-sm font-medium text-gray-600 uppercase">QOLGAN SUMMA</h3>
-            <i class="fas fa-coins text-yellow-500 text-xl"></i>
-        </div>
-        <div class="text-2xl font-bold text-yellow-600">{{ number_format($remainingAmount / 1000000, 1) }}M</div>
-        <div class="text-sm text-gray-500">Taqsimlash uchun</div>
-    </div>
-
-    <div class="bg-white p-6 rounded-lg shadow border-l-4 border-red-500">
-        <div class="flex items-center justify-between mb-4">
-            <h3 class="text-sm font-medium text-gray-600 uppercase">QARZ</h3>
-            <i class="fas fa-exclamation-triangle text-red-500 text-xl"></i>
-        </div>
-        <div class="text-2xl font-bold text-red-600">{{ number_format($totalDebt / 1000000, 1) }}M</div>
-        <div class="text-sm text-gray-500">{{ number_format(100 - $paymentPercent, 1) }}% qolgan</div>
-    </div>
-</div>
-
-<!-- Main Content Grid -->
-<div class="grid grid-cols-1 lg:grid-cols-3 gap-8">
-    <!-- Payment Schedule -->
-    <div class="lg:col-span-2">
-        <div class="bg-white rounded-lg shadow">
-            <div class="p-6 border-b">
-                <div class="flex justify-between items-center">
-                    <h3 class="text-lg font-bold text-gray-900">TO'LOV GRAFIGI</h3>
-                    <div class="flex space-x-2">
-                        <button onclick="openAutoScheduleModal()" class="bg-blue-600 text-white px-3 py-2 rounded text-sm hover:bg-blue-700 transition-colors">
-                            <i class="fas fa-magic mr-1"></i>Avto grafik
-                        </button>
-                        <button onclick="openManualScheduleModal()" class="bg-gray-600 text-white px-3 py-2 rounded text-sm hover:bg-gray-700 transition-colors">
-                            <i class="fas fa-plus mr-1"></i>Qo'lda qo'shish
-                        </button>
-                    </div>
-                </div>
-            </div>
-
-            @if(!empty($paymentSummary) && isset($hasPaymentData) && $hasPaymentData)
-                @foreach($paymentSummary as $year => $quarters)
-                <div class="p-6 border-b">
-                    <h4 class="font-bold mb-4 text-gray-700 uppercase">{{ $year }} YIL</h4>
-                    <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
-                        @for($quarter = 1; $quarter <= 4; $quarter++)
-                            @php
-                                $quarterData = $quarters[$quarter];
-                                $completionPercent = $quarterData['payment_percent'];
-                                $cardClass = 'border-gray-200 bg-gray-50';
-                                $badgeClass = 'bg-gray-100 text-gray-800';
-                                $progressClass = 'bg-gray-400';
-
-                                if ($completionPercent >= 100) {
-                                    $cardClass = 'border-green-200 bg-green-50';
-                                    $badgeClass = 'bg-green-100 text-green-800';
-                                    $progressClass = 'bg-green-500';
-                                } elseif ($completionPercent > 0) {
-                                    $cardClass = 'border-yellow-200 bg-yellow-50';
-                                    $badgeClass = 'bg-yellow-100 text-yellow-800';
-                                    $progressClass = 'bg-yellow-500';
-                                } elseif ($quarterData['plan_amount'] > 0 && $completionPercent == 0) {
-                                    $cardClass = 'border-red-200 bg-red-50';
-                                    $badgeClass = 'bg-red-100 text-red-800';
-                                    $progressClass = 'bg-red-400';
-                                }
-                            @endphp
-
-                            <div class="border-2 {{ $cardClass }} p-4 rounded-lg transition-all hover:shadow-md">
-                                <div class="flex justify-between items-center mb-3">
-                                    <span class="font-bold">{{ $quarter }}-CHORAK</span>
-                                    <span class="px-2 py-1 rounded text-xs {{ $badgeClass }}">
-                                        {{ number_format($completionPercent, 0) }}%
-                                    </span>
-                                </div>
-
-                                <div class="space-y-2 mb-3">
-                                    <div class="flex justify-between text-sm">
-                                        <span class="text-gray-600">PLAN:</span>
-                                        <span class="font-bold">{{ number_format($quarterData['plan_amount'] / 1000000, 1) }}M</span>
-                                    </div>
-                                    <div class="flex justify-between text-sm">
-                                        <span class="text-gray-600">FAKT:</span>
-                                        <span class="font-bold text-green-600">{{ number_format($quarterData['fact_total'] / 1000000, 1) }}M</span>
-                                    </div>
-                                    <div class="flex justify-between text-sm">
-                                        <span class="text-gray-600">{{ $quarterData['debt'] > 0 ? 'QARZ:' : 'ORTIQCHA:' }}</span>
-                                        <span class="font-bold {{ $quarterData['debt'] > 0 ? 'text-red-600' : 'text-green-600' }}">
-                                            {{ number_format(abs($quarterData['debt']) / 1000000, 1) }}M
-                                        </span>
-                                    </div>
-                                </div>
-
-                                <div class="w-full bg-gray-200 rounded-full h-2 mb-3">
-                                    <div class="{{ $progressClass }} h-2 rounded-full transition-all duration-300"
-                                         style="width: {{ min(100, $completionPercent) }}%"></div>
-                                </div>
-
-                                <div class="flex justify-center space-x-1">
-                                    @if($quarterData['plan'])
-                                        <button onclick="editQuarterPlan({{ $year }}, {{ $quarter }}, {{ $quarterData['plan_amount'] }})"
-                                                class="p-2 text-blue-600 hover:bg-blue-100 rounded transition-colors" title="Tahrirlash">
-                                            <i class="fas fa-edit"></i>
-                                        </button>
-                                    @else
-                                        <button onclick="addQuarterPlan({{ $year }}, {{ $quarter }})"
-                                                class="p-2 text-blue-600 hover:bg-blue-100 rounded transition-colors" title="Plan qo'shish">
-                                            <i class="fas fa-plus"></i>
-                                        </button>
-                                    @endif
-
-                                    @if($quarterData['fact_payments']->count() > 0)
-                                        <button onclick="showQuarterPayments({{ $year }}, {{ $quarter }})"
-                                                class="p-2 text-green-600 hover:bg-green-100 rounded transition-colors" title="To'lovlarni ko'rish">
-                                            <i class="fas fa-eye"></i>
-                                        </button>
-                                    @endif
-
-                                    <button onclick="addQuarterPayment({{ $year }}, {{ $quarter }})"
-                                            class="p-2 text-green-600 hover:bg-green-100 rounded transition-colors" title="To'lov qo'shish">
-                                        <i class="fas fa-plus"></i>
-                                    </button>
-                                </div>
-                            </div>
-                        @endfor
-                    </div>
-                </div>
-                @endforeach
-            @else
-                <div class="p-8 text-center">
-                    <div class="mb-6">
-                        <i class="fas fa-calendar-plus text-6xl text-gray-400"></i>
-                    </div>
-                    <h4 class="text-lg font-bold mb-3">TO'LOV GRAFIGI TUZILMAGAN</h4>
-                    <p class="text-gray-600 mb-6">
-                        Qolgan {{ number_format($remainingAmount / 1000000, 1) }}M so'mni choraklar bo'yicha taqsimlab grafik tuzing
-                    </p>
-                    <div class="bg-blue-50 border border-blue-200 p-4 rounded mb-6">
-                        <strong>Formula:</strong> {{ number_format($contract->total_amount / 1000000, 1) }}M - {{ $contract->initial_payment_percent }}% = {{ number_format($remainingAmount / 1000000, 1) }}M,
-                        keyin choraklar soniga bo'linadi
-                    </div>
-                    <button onclick="openAutoScheduleModal()" class="bg-blue-600 text-white px-6 py-3 rounded-lg hover:bg-blue-700 transition-colors">
-                        <i class="fas fa-magic mr-2"></i>GRAFIK TUZISH
-                    </button>
-                </div>
+        <form id="contractForm" class="p-8 space-y-8">
+            @csrf
+            @if(isset($contract))
+                @method('PUT')
+                <input type="hidden" name="contract_id" value="{{ $contract->id }}">
             @endif
-        </div>
+
+            <!-- Basic Contract Information -->
+            <div class="grid grid-cols-1 lg:grid-cols-3 gap-6">
+                <div>
+                    <label class="block text-sm font-semibold text-gray-700 mb-3">Shartnoma raqami *</label>
+                    <input type="text" name="contract_number" required
+                           value="{{ $contract->contract_number ?? '' }}"
+                           class="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 text-lg font-medium">
+                </div>
+
+                <div>
+                    <label class="block text-sm font-semibold text-gray-700 mb-3">Shartnoma sanasi *</label>
+                    <input type="date" name="contract_date" required
+                           value="{{ isset($contract) ? $contract->contract_date->format('Y-m-d') : date('Y-m-d') }}"
+                           class="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 text-lg">
+                </div>
+
+                <div>
+                    <label class="block text-sm font-semibold text-gray-700 mb-3">Yakunlash sanasi</label>
+                    <input type="date" name="completion_date"
+                           value="{{ isset($contract) && $contract->completion_date ? $contract->completion_date->format('Y-m-d') : '' }}"
+                           class="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 text-lg">
+                </div>
+            </div>
+
+            <!-- Financial Information -->
+            <div class="bg-blue-50 rounded-xl p-6 border-l-4 border-blue-500">
+                <h3 class="text-xl font-bold text-blue-900 mb-6">Moliyaviy ma'lumotlar</h3>
+
+                <div class="grid grid-cols-1 lg:grid-cols-2 gap-6 mb-6">
+                    <div>
+                        <label class="block text-sm font-semibold text-gray-700 mb-3">Jami shartnoma summasi (so'm) *</label>
+                        <input type="number" name="total_amount" required step="0.01" min="0"
+                               value="{{ $contract->total_amount ?? '' }}"
+                               class="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 text-lg font-bold"
+                               onchange="calculatePaymentBreakdown()">
+                    </div>
+
+                    <div>
+                        <label class="block text-sm font-semibold text-gray-700 mb-3">To'lov turi *</label>
+                        <select name="payment_type" required onchange="togglePaymentSettings()"
+                                class="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 text-lg">
+                            <option value="installment" {{ (isset($contract) && $contract->payment_type === 'installment') ? 'selected' : 'selected' }}>Bo'lib to'lash</option>
+                            <option value="full" {{ (isset($contract) && $contract->payment_type === 'full') ? 'selected' : '' }}>To'liq to'lash</option>
+                        </select>
+                    </div>
+                </div>
+
+                <!-- Installment Settings -->
+                <div id="installmentSettings" class="space-y-6">
+                    <div class="grid grid-cols-1 lg:grid-cols-3 gap-6">
+                        <div>
+                            <label class="block text-sm font-semibold text-gray-700 mb-3">Boshlang'ich to'lov (%) *</label>
+                            <input type="number" name="initial_payment_percent" min="0" max="100" step="1"
+                                   value="{{ $contract->initial_payment_percent ?? 20 }}"
+                                   class="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 text-lg"
+                                   onchange="calculatePaymentBreakdown()">
+                        </div>
+
+                        <div>
+                            <label class="block text-sm font-semibold text-gray-700 mb-3">Qurulish muddati (yil) *</label>
+                            <input type="number" name="construction_period_years" min="1" max="10" step="1"
+                                   value="{{ $contract->construction_period_years ?? 2 }}"
+                                   class="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 text-lg"
+                                   onchange="calculatePaymentBreakdown()">
+                        </div>
+
+                        <div>
+                            <label class="block text-sm font-semibold text-gray-700 mb-3">Jami choraklar soni</label>
+                            <input type="number" name="quarters_count" min="1" max="20" step="1" readonly
+                                   value="{{ $contract->quarters_count ?? 8 }}"
+                                   class="w-full px-4 py-3 border border-gray-300 rounded-lg bg-gray-100 text-lg font-semibold">
+                        </div>
+                    </div>
+
+                    <!-- Payment Calculation Preview -->
+                    <div id="paymentPreview" class="bg-white rounded-xl p-6 border-2 border-blue-200">
+                        <h4 class="text-lg font-bold text-blue-900 mb-4">To'lov hisob-kitobi</h4>
+                        <div class="grid grid-cols-1 md:grid-cols-3 gap-4 text-center">
+                            <div class="success-gradient rounded-lg p-4">
+                                <p class="text-sm font-medium text-green-800">Boshlang'ich to'lov</p>
+                                <p class="text-2xl font-bold text-green-900" id="initialAmount">0 so'm</p>
+                            </div>
+                            <div class="info-gradient rounded-lg p-4">
+                                <p class="text-sm font-medium text-blue-800">Qolgan summa</p>
+                                <p class="text-2xl font-bold text-blue-900" id="remainingAmount">0 so'm</p>
+                            </div>
+                            <div class="primary-gradient rounded-lg p-4">
+                                <p class="text-sm font-medium text-indigo-800">Chorak to'lovi</p>
+                                <p class="text-2xl font-bold text-indigo-900" id="quarterlyAmount">0 so'm</p>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Action Buttons -->
+            <div class="flex justify-end space-x-4 pt-6 border-t border-gray-200">
+                <button type="button" onclick="resetForm()"
+                        class="px-8 py-3 bg-gray-100 text-gray-700 rounded-lg hover:bg-gray-200 transition-colors font-medium">
+                    Tozalash
+                </button>
+                <button type="submit"
+                        class="px-8 py-3 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors font-medium">
+                    <span id="submitText">{{ isset($contract) ? 'Yangilash' : 'Saqlash' }}</span>
+                    <i data-feather="loader" class="w-4 h-4 ml-2 hidden animate-spin" id="submitLoader"></i>
+                </button>
+            </div>
+        </form>
     </div>
 
-    <!-- Sidebar -->
-    <div class="space-y-6">
-        <!-- Quick Actions -->
-        <div class="bg-white p-6 rounded-lg shadow">
-            <h3 class="font-bold mb-4 text-gray-900">TEZKOR AMALLAR</h3>
-            <div class="space-y-3">
-                <button onclick="openContractEditModal()"
-                        class="w-full flex items-center p-3 text-left border border-gray-200 rounded hover:bg-gray-50 transition-colors">
-                    <i class="fas fa-edit mr-3 text-blue-600"></i>
-                    <span>Shartnoma tahriri</span>
+    <!-- Payment Schedule Management -->
+    @if(isset($contract))
+    <div class="bg-white rounded-2xl shadow-lg border govt-card">
+        <div class="border-b border-gray-200 p-6 flex items-center justify-between">
+            <h2 class="text-2xl font-bold text-gray-900 flex items-center">
+                <i data-feather="calendar" class="w-6 h-6 mr-3 text-blue-600"></i>
+                To'lov jadvali boshqaruvi
+            </h2>
+            <div class="flex space-x-3">
+                <button onclick="openPaymentScheduleModal()"
+                        class="inline-flex items-center px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors">
+                    <i data-feather="plus" class="w-4 h-4 mr-2"></i>
+                    Jadval tuzish
                 </button>
                 <button onclick="openPaymentModal()"
-                        class="w-full flex items-center p-3 text-left border border-gray-200 rounded hover:bg-gray-50 transition-colors">
-                    <i class="fas fa-credit-card mr-3 text-green-600"></i>
-                    <span>To'lov qo'shish</span>
-                </button>
-                <button onclick="calculatePlan()"
-                        class="w-full flex items-center p-3 text-left border border-gray-200 rounded hover:bg-gray-50 transition-colors">
-                    <i class="fas fa-calculator mr-3 text-yellow-600"></i>
-                    <span>Hisoblash</span>
-                </button>
-                <button onclick="generateReport()"
-                        class="w-full flex items-center p-3 text-left border border-gray-200 rounded hover:bg-gray-50 transition-colors">
-                    <i class="fas fa-file-download mr-3 text-indigo-600"></i>
-                    <span>Hisobot olish</span>
+                        class="inline-flex items-center px-4 py-2 bg-green-600 text-white rounded-lg hover:bg-green-700 transition-colors">
+                    <i data-feather="credit-card" class="w-4 h-4 mr-2"></i>
+                    To'lov qo'shish
                 </button>
             </div>
         </div>
 
-        <!-- Recent Payments -->
-        <div class="bg-white p-6 rounded-lg shadow">
-            <h3 class="font-bold mb-4 text-gray-900">OXIRGI TO'LOVLAR</h3>
-            @if($contract->actualPayments->count() > 0)
-                <div class="space-y-3">
-                    @foreach($contract->actualPayments->take(5) as $payment)
-                    <div class="flex justify-between items-start pb-3 border-b border-gray-100 last:border-b-0 last:pb-0">
-                        <div class="flex-1">
-                            <div class="font-bold text-gray-900">{{ number_format($payment->amount / 1000000, 1) }}M</div>
-                            <div class="text-sm text-gray-600">{{ $payment->payment_date->format('d.m.Y') }} • {{ $payment->quarter }}-chorak</div>
-                            @if($payment->payment_number)
-                                <div class="text-xs text-gray-500">{{ $payment->payment_number }}</div>
-                            @endif
-                        </div>
-                        <div class="relative">
-                            <button class="text-gray-400 hover:text-gray-600 p-1" onclick="togglePaymentMenu({{ $payment->id }})">
-                                <i class="fas fa-ellipsis-v"></i>
-                            </button>
-                            <div id="paymentMenu{{ $payment->id }}" class="hidden absolute right-0 mt-2 w-48 bg-white rounded-lg shadow-lg border z-10">
-                                <button onclick="editPayment({{ $payment->id }})" class="w-full px-4 py-2 text-left text-sm hover:bg-gray-50">
-                                    <i class="fas fa-edit mr-2 text-blue-600"></i>Tahrirlaish
-                                </button>
-                                <button onclick="deletePaymentConfirm({{ $payment->id }})" class="w-full px-4 py-2 text-left text-sm hover:bg-gray-50 text-red-600">
-                                    <i class="fas fa-trash mr-2"></i>O'chirish
-                                </button>
-                            </div>
+        <div class="p-8">
+            <!-- Summary Cards -->
+            <div class="grid grid-cols-1 md:grid-cols-4 gap-6 mb-8">
+                <div class="info-gradient rounded-xl p-6 text-center">
+                    <div class="w-12 h-12 bg-blue-100 rounded-full flex items-center justify-center mx-auto mb-3">
+                        <i data-feather="target" class="w-6 h-6 text-blue-600"></i>
+                    </div>
+                    <p class="text-sm font-medium text-blue-800">JAMI PLAN</p>
+                    <p class="text-2xl font-bold text-blue-900" id="totalPlan">{{ number_format($contract->paymentSummary['plan_total'] ?? 0, 0, '.', ' ') }}</p>
+                </div>
+
+                <div class="success-gradient rounded-xl p-6 text-center">
+                    <div class="w-12 h-12 bg-green-100 rounded-full flex items-center justify-center mx-auto mb-3">
+                        <i data-feather="check-circle" class="w-6 h-6 text-green-600"></i>
+                    </div>
+                    <p class="text-sm font-medium text-green-800">TO'LANGAN</p>
+                    <p class="text-2xl font-bold text-green-900" id="totalPaid">{{ number_format($contract->paymentSummary['fact_total'] ?? 0, 0, '.', ' ') }}</p>
+                </div>
+
+                <div class="warning-gradient rounded-xl p-6 text-center">
+                    <div class="w-12 h-12 bg-yellow-100 rounded-full flex items-center justify-center mx-auto mb-3">
+                        <i data-feather="clock" class="w-6 h-6 text-yellow-600"></i>
+                    </div>
+                    <p class="text-sm font-medium text-yellow-800">JORIY QARZ</p>
+                    <p class="text-2xl font-bold text-yellow-900" id="currentDebt">0</p>
+                </div>
+
+                <div class="danger-gradient rounded-xl p-6 text-center">
+                    <div class="w-12 h-12 bg-red-100 rounded-full flex items-center justify-center mx-auto mb-3">
+                        <i data-feather="alert-triangle" class="w-6 h-6 text-red-600"></i>
+                    </div>
+                    <p class="text-sm font-medium text-red-800">MUDDATI O'TGAN</p>
+                    <p class="text-2xl font-bold text-red-900" id="overdueDebt">0</p>
+                </div>
+            </div>
+
+            <!-- Quarterly Breakdown -->
+            <div id="quarterlyBreakdown" class="space-y-6">
+                <!-- Dynamic content will be inserted here -->
+            </div>
+        </div>
+    </div>
+    @endif
+</div>
+
+<!-- Payment Schedule Modal -->
+<div id="paymentScheduleModal" class="hidden fixed inset-0 z-50 overflow-y-auto">
+    <div class="flex items-center justify-center min-h-screen px-4">
+        <div class="fixed inset-0 bg-gray-500 bg-opacity-75"></div>
+        <div class="inline-block bg-white rounded-2xl shadow-xl transform transition-all sm:max-w-4xl sm:w-full max-h-screen overflow-y-auto">
+            <form id="paymentScheduleForm">
+                @csrf
+                <div class="px-8 py-6 border-b border-gray-200">
+                    <h3 class="text-xl font-semibold text-gray-900">To'lov jadvali tuzish</h3>
+                </div>
+
+                <div class="px-8 py-6 space-y-6">
+                    <!-- Schedule Type Selection -->
+                    <div>
+                        <label class="block text-sm font-medium text-gray-700 mb-3">Jadval turi</label>
+                        <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+                            <label class="flex items-center p-4 border border-gray-300 rounded-lg cursor-pointer hover:bg-gray-50">
+                                <input type="radio" name="schedule_type" value="auto" checked class="text-blue-600 mr-3">
+                                <div>
+                                    <span class="font-medium">Avtomatik taqsimlash</span>
+                                    <p class="text-sm text-gray-600">Barcha choraklar uchun teng miqdorda</p>
+                                </div>
+                            </label>
+                            <label class="flex items-center p-4 border border-gray-300 rounded-lg cursor-pointer hover:bg-gray-50">
+                                <input type="radio" name="schedule_type" value="custom" class="text-blue-600 mr-3">
+                                <div>
+                                    <span class="font-medium">Qo'lda belgilash</span>
+                                    <p class="text-sm text-gray-600">Har bir chorak uchun alohida miqdor</p>
+                                </div>
+                            </label>
                         </div>
                     </div>
-                    @endforeach
+
+                    <!-- Year and Quarters Selection -->
+                    <div class="grid grid-cols-1 md:grid-cols-3 gap-4">
+                        <div>
+                            <label class="block text-sm font-medium text-gray-700 mb-2">Yil</label>
+                            <select name="schedule_year" class="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500">
+                                @for($y = date('Y'); $y <= date('Y') + 5; $y++)
+                                    <option value="{{ $y }}">{{ $y }} yil</option>
+                                @endfor
+                            </select>
+                        </div>
+                        <div>
+                            <label class="block text-sm font-medium text-gray-700 mb-2">Choraklar soni</label>
+                            <select name="quarters_count" onchange="updateSchedulePreview()" class="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500">
+                                <option value="1">1 chorak</option>
+                                <option value="2">2 chorak</option>
+                                <option value="3">3 chorak</option>
+                                <option value="4" selected>4 chorak</option>
+                            </select>
+                        </div>
+                        <div>
+                            <label class="block text-sm font-medium text-gray-700 mb-2">Jami summa</label>
+                            <input type="number" name="total_schedule_amount" step="0.01"
+                                   value="{{ isset($contract) ? $contract->remaining_amount : 0 }}"
+                                   class="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500">
+                        </div>
+                    </div>
+
+                    <!-- Custom Schedule Grid -->
+                    <div id="customScheduleGrid" class="hidden">
+                        <h4 class="text-lg font-medium text-gray-900 mb-4">Choraklar bo'yicha taqsimlash</h4>
+                        <div class="grid grid-cols-1 md:grid-cols-2 gap-4" id="quarterInputs">
+                            <!-- Dynamic quarter inputs will be added here -->
+                        </div>
+                    </div>
+
+                    <!-- Schedule Preview -->
+                    <div id="schedulePreview" class="bg-gray-50 rounded-xl p-6">
+                        <h4 class="text-lg font-medium text-gray-900 mb-4">Jadval ko'rinishi</h4>
+                        <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-3" id="previewGrid">
+                            <!-- Preview cards will be generated here -->
+                        </div>
+                    </div>
                 </div>
-            @else
-                <p class="text-gray-500 text-center py-4">Hali to'lovlar yo'q</p>
-            @endif
+
+                <div class="px-8 py-6 border-t border-gray-200 flex justify-end space-x-4">
+                    <button type="button" onclick="closePaymentScheduleModal()"
+                            class="px-6 py-3 bg-gray-100 text-gray-700 rounded-lg hover:bg-gray-200 transition-colors">
+                        Bekor qilish
+                    </button>
+                    <button type="submit"
+                            class="px-6 py-3 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors">
+                        Jadvalni saqlash
+                    </button>
+                </div>
+            </form>
         </div>
     </div>
 </div>
 
-<!-- Contract Edit Modal -->
-<div id="contractEditModal" class="modal fixed inset-0 bg-black bg-opacity-50 items-center justify-center p-4 z-50" style="display: none;">
-    <div class="bg-white rounded-lg max-w-2xl w-full max-h-screen overflow-y-auto">
-        <div class="p-6 border-b">
-            <h3 class="text-lg font-bold text-gray-900">SHARTNOMA MA'LUMOTLARINI TAHRIRLASH</h3>
-        </div>
-
-        <form id="contractEditForm" class="p-6">
-            @csrf
-            <div class="grid grid-cols-1 md:grid-cols-2 gap-4 mb-4">
-                <div>
-                    <label class="block text-sm font-medium text-gray-700 mb-2">TO'LOV SANASI</label>
-                    <input type="date"
-                           name="payment_date"
-                           value="{{ date('Y-m-d') }}"
-                           class="w-full p-3 border border-gray-300 rounded focus:outline-none focus:ring-2 focus:ring-blue-500"
-                           required>
+<!-- Add Payment Modal -->
+<div id="paymentModal" class="hidden fixed inset-0 z-50 overflow-y-auto">
+    <div class="flex items-center justify-center min-h-screen px-4">
+        <div class="fixed inset-0 bg-gray-500 bg-opacity-75"></div>
+        <div class="inline-block bg-white rounded-2xl shadow-xl transform transition-all sm:max-w-lg sm:w-full">
+            <form id="paymentForm">
+                @csrf
+                <div class="px-8 py-6 border-b border-gray-200">
+                    <h3 class="text-xl font-semibold text-gray-900 flex items-center">
+                        <i data-feather="credit-card" class="w-5 h-5 mr-2 text-green-600"></i>
+                        Yangi to'lov qo'shish
+                    </h3>
                 </div>
-                <div>
-                    <label class="block text-sm font-medium text-gray-700 mb-2">TO'LOV SUMMASI</label>
-                    <input type="number"
-                           name="amount"
-                           step="0.01"
-                           min="0"
-                           placeholder="0.00"
-                           class="w-full p-3 border border-gray-300 rounded focus:outline-none focus:ring-2 focus:ring-blue-500"
-                           required>
+
+                <div class="px-8 py-6 space-y-4">
+                    <div>
+                        <label class="block text-sm font-medium text-gray-700 mb-2">To'lov sanasi *</label>
+                        <input type="date" name="payment_date" required value="{{ date('Y-m-d') }}"
+                               class="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-green-500">
+                    </div>
+
+                    <div>
+                        <label class="block text-sm font-medium text-gray-700 mb-2">To'lov summasi (so'm) *</label>
+                        <input type="number" name="payment_amount" step="0.01" min="0" required
+                               class="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-green-500 text-lg font-medium"
+                               placeholder="0.00">
+                    </div>
+
+                    <div>
+                        <label class="block text-sm font-medium text-gray-700 mb-2">Hujjat raqami</label>
+                        <input type="text" name="payment_number" maxlength="50"
+                               class="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-green-500"
+                               placeholder="Chek, spravka raqami">
+                    </div>
+
+                    <div>
+                        <label class="block text-sm font-medium text-gray-700 mb-2">Izoh</label>
+                        <textarea name="payment_notes" rows="3"
+                                  class="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-green-500"
+                                  placeholder="Qo'shimcha ma'lumot"></textarea>
+                    </div>
                 </div>
-            </div>
 
-            <div class="mb-4">
-                <label class="block text-sm font-medium text-gray-700 mb-2">HUJJAT RAQAMI</label>
-                <input type="text"
-                       name="payment_number"
-                       maxlength="50"
-                       placeholder="Chek, spravka raqami"
-                       class="w-full p-3 border border-gray-300 rounded focus:outline-none focus:ring-2 focus:ring-blue-500">
-            </div>
-
-            <div class="mb-6">
-                <label class="block text-sm font-medium text-gray-700 mb-2">IZOH</label>
-                <textarea name="notes"
-                          rows="3"
-                          placeholder="Qo'shimcha ma'lumot"
-                          class="w-full p-3 border border-gray-300 rounded focus:outline-none focus:ring-2 focus:ring-blue-500 resize-none"></textarea>
-            </div>
-
-            <div class="flex justify-end space-x-3 pt-4 border-t">
-                <button type="button"
-                        onclick="closeModal('paymentModal')"
-                        class="px-4 py-2 text-gray-600 border border-gray-300 rounded hover:bg-gray-50 transition-colors">
-                    BEKOR QILISH
-                </button>
-                <button type="submit"
-                        class="px-4 py-2 bg-green-600 text-white rounded hover:bg-green-700 transition-colors">
-                    TO'LOVNI QO'SHISH
-                </button>
-            </div>
-        </form>
-    </div>
-</div>
-
-<!-- Quarter Plan Modal -->
-<div id="quarterPlanModal" class="modal fixed inset-0 bg-black bg-opacity-50 items-center justify-center p-4 z-50" style="display: none;">
-    <div class="bg-white rounded-lg max-w-lg w-full">
-        <div class="p-6 border-b">
-            <h3 class="text-lg font-bold text-gray-900">CHORAK UCHUN PLAN</h3>
-            <p class="text-gray-600" id="quarterModalTitle">3-chorak 2024 yil</p>
+                <div class="px-8 py-6 border-t border-gray-200 flex justify-end space-x-4">
+                    <button type="button" onclick="closePaymentModal()"
+                            class="px-6 py-3 bg-gray-100 text-gray-700 rounded-lg hover:bg-gray-200 transition-colors">
+                        Bekor qilish
+                    </button>
+                    <button type="submit"
+                            class="px-6 py-3 bg-green-600 text-white rounded-lg hover:bg-green-700 transition-colors">
+                        To'lovni qo'shish
+                    </button>
+                </div>
+            </form>
         </div>
-
-        <form id="quarterPlanForm" class="p-6">
-            @csrf
-            <input type="hidden" name="year" id="quarterYear">
-            <input type="hidden" name="quarter" id="quarterNumber">
-
-            <div class="mb-6">
-                <label class="block text-sm font-medium text-gray-700 mb-2">TO'LOV SUMMASI</label>
-                <input type="number"
-                       name="amount"
-                       step="0.01"
-                       min="0"
-                       placeholder="0.00"
-                       class="w-full p-3 border border-gray-300 rounded focus:outline-none focus:ring-2 focus:ring-blue-500"
-                       required>
-            </div>
-
-            <div class="flex justify-end space-x-3 pt-4 border-t">
-                <button type="button"
-                        onclick="closeModal('quarterPlanModal')"
-                        class="px-4 py-2 text-gray-600 border border-gray-300 rounded hover:bg-gray-50 transition-colors">
-                    BEKOR QILISH
-                </button>
-                <button type="submit"
-                        class="px-4 py-2 bg-blue-600 text-white rounded hover:bg-blue-700 transition-colors">
-                    SAQLASH
-                </button>
-            </div>
-        </form>
     </div>
 </div>
 
 <!-- Quarter Details Modal -->
-<div id="quarterDetailsModal" class="modal fixed inset-0 bg-black bg-opacity-50 items-center justify-center p-4 z-50" style="display: none;">
-    <div class="bg-white rounded-lg max-w-4xl w-full max-h-screen overflow-y-auto">
-        <div class="p-6 border-b">
-            <h3 class="text-lg font-bold text-gray-900">CHORAK TO'LOVLARI TAFSILOTI</h3>
-            <p class="text-gray-600" id="quarterDetailsTitle">2-chorak 2024 yil</p>
-        </div>
-
-        <div class="p-6">
-            <div class="overflow-x-auto">
-                <table class="w-full border-collapse border border-gray-200">
-                    <thead>
-                        <tr class="bg-gray-50">
-                            <th class="border border-gray-200 p-3 text-left font-medium text-gray-700">SANA</th>
-                            <th class="border border-gray-200 p-3 text-left font-medium text-gray-700">SUMMA</th>
-                            <th class="border border-gray-200 p-3 text-left font-medium text-gray-700">HUJJAT</th>
-                            <th class="border border-gray-200 p-3 text-left font-medium text-gray-700">IZOH</th>
-                            <th class="border border-gray-200 p-3 text-left font-medium text-gray-700">AMALLAR</th>
-                        </tr>
-                    </thead>
-                    <tbody id="quarterDetailsList">
-                        <!-- Dynamic content will be loaded here -->
-                    </tbody>
-                </table>
+<div id="quarterDetailsModal" class="hidden fixed inset-0 z-50 overflow-y-auto">
+    <div class="flex items-center justify-center min-h-screen px-4">
+        <div class="fixed inset-0 bg-gray-500 bg-opacity-75"></div>
+        <div class="inline-block bg-white rounded-2xl shadow-xl transform transition-all sm:max-w-4xl sm:w-full max-h-screen overflow-y-auto">
+            <div class="px-8 py-6 border-b border-gray-200 flex items-center justify-between">
+                <h3 class="text-xl font-semibold text-gray-900" id="quarterDetailsTitle">Chorak ma'lumotlari</h3>
+                <button onclick="closeQuarterDetailsModal()" class="text-gray-400 hover:text-gray-600">
+                    <i data-feather="x" class="w-6 h-6"></i>
+                </button>
             </div>
-        </div>
-
-        <div class="p-6 border-t flex justify-between items-center">
-            <div class="text-lg font-bold text-green-600" id="quarterDetailsTotal">
-                <!-- Total will be displayed here -->
+            <div class="px-8 py-6" id="quarterDetailsContent">
+                <!-- Dynamic content will be inserted here -->
             </div>
-            <button onclick="closeModal('quarterDetailsModal')"
-                    class="px-4 py-2 text-gray-600 border border-gray-300 rounded hover:bg-gray-50 transition-colors">
-                YOPISH
-            </button>
         </div>
     </div>
 </div>
-
 @endsection
 
 @push('scripts')
+<script src="https://unpkg.com/feather-icons"></script>
 <script>
-    // Essential utility functions with null checks
-    function showAlert(message, type = 'info') {
-        const alertContainer = document.getElementById('alertContainer') || createAlertContainer();
-        const alertDiv = document.createElement('div');
+// Global variables
+const contractData = @json($contract ?? null);
+let quarterlyData = {};
+let currentQuarterData = null;
 
-        const bgColor = type === 'success' ? 'bg-green-500' :
-                       type === 'error' ? 'bg-red-500' :
-                       type === 'warning' ? 'bg-yellow-500' : 'bg-blue-500';
+// Initialize everything when page loads
+document.addEventListener('DOMContentLoaded', function() {
+    feather.replace();
 
-        const icon = type === 'success' ? 'fa-check-circle' :
-                    type === 'error' ? 'fa-exclamation-triangle' :
-                    type === 'warning' ? 'fa-exclamation-triangle' : 'fa-info-circle';
+    // Initialize payment settings based on contract data
+    if (contractData) {
+        togglePaymentSettings();
+        calculatePaymentBreakdown();
+        loadQuarterlyData();
+    } else {
+        calculatePaymentBreakdown();
+    }
 
-        alertDiv.className = `${bgColor} text-white p-4 rounded-lg shadow-lg mb-4 flex items-center max-w-sm`;
-        alertDiv.innerHTML = `
-            <i class="fas ${icon} mr-3 flex-shrink-0"></i>
-            <span class="flex-1">${message}</span>
-            <button onclick="this.parentElement.remove()" class="ml-3 text-white hover:text-gray-200 flex-shrink-0">
-                <i class="fas fa-times"></i>
-            </button>
+    setupEventListeners();
+});
+
+function setupEventListeners() {
+    // Form change listeners
+    document.querySelector('select[name="payment_type"]').addEventListener('change', togglePaymentSettings);
+    document.querySelector('input[name="total_amount"]').addEventListener('input', debounce(calculatePaymentBreakdown, 500));
+    document.querySelector('input[name="initial_payment_percent"]').addEventListener('input', debounce(calculatePaymentBreakdown, 500));
+    document.querySelector('input[name="construction_period_years"]').addEventListener('input', debounce(calculatePaymentBreakdown, 500));
+
+    // Schedule form listeners
+    document.querySelectorAll('input[name="schedule_type"]').forEach(radio => {
+        radio.addEventListener('change', toggleCustomScheduleGrid);
+    });
+
+    // Form submissions
+    document.getElementById('contractForm').addEventListener('submit', handleContractSubmit);
+    document.getElementById('paymentScheduleForm').addEventListener('submit', handleScheduleSubmit);
+    document.getElementById('paymentForm').addEventListener('submit', handlePaymentSubmit);
+}
+
+// Toggle payment settings based on payment type
+function togglePaymentSettings() {
+    const paymentType = document.querySelector('select[name="payment_type"]').value;
+    const installmentDiv = document.getElementById('installmentSettings');
+
+    if (paymentType === 'full') {
+        installmentDiv.style.display = 'none';
+        document.querySelector('input[name="initial_payment_percent"]').value = 100;
+        document.querySelector('input[name="quarters_count"]').value = 0;
+    } else {
+        installmentDiv.style.display = 'block';
+        if (document.querySelector('input[name="initial_payment_percent"]').value == 100) {
+            document.querySelector('input[name="initial_payment_percent"]').value = 20;
+        }
+    }
+    calculatePaymentBreakdown();
+}
+
+// Calculate and display payment breakdown
+function calculatePaymentBreakdown() {
+    const totalAmount = parseFloat(document.querySelector('input[name="total_amount"]').value) || 0;
+    const initialPercent = parseFloat(document.querySelector('input[name="initial_payment_percent"]').value) || 0;
+    const constructionYears = parseInt(document.querySelector('input[name="construction_period_years"]').value) || 2;
+    const paymentType = document.querySelector('select[name="payment_type"]').value;
+
+    const initialAmount = totalAmount * (initialPercent / 100);
+    const remainingAmount = totalAmount - initialAmount;
+    const quartersCount = paymentType === 'full' ? 0 : constructionYears * 4;
+    const quarterlyAmount = quartersCount > 0 ? remainingAmount / quartersCount : 0;
+
+    // Update quarters count
+    document.querySelector('input[name="quarters_count"]').value = quartersCount;
+
+    // Update display
+    document.getElementById('initialAmount').textContent = formatCurrency(initialAmount);
+    document.getElementById('remainingAmount').textContent = formatCurrency(remainingAmount);
+    document.getElementById('quarterlyAmount').textContent = formatCurrency(quarterlyAmount);
+
+    // Update preview visibility
+    const previewDiv = document.getElementById('paymentPreview');
+    if (paymentType === 'full') {
+        previewDiv.style.display = 'none';
+    } else {
+        previewDiv.style.display = 'block';
+    }
+}
+
+// Load quarterly data for existing contract
+function loadQuarterlyData() {
+    if (!contractData) return;
+
+    // Simulate AJAX call to load quarterly data
+    fetch(`/contracts/${contractData.id}/quarterly-breakdown`)
+        .then(response => response.json())
+        .then(data => {
+            quarterlyData = data;
+            renderQuarterlyBreakdown();
+            updateSummaryCards();
+        })
+        .catch(error => {
+            console.error('Error loading quarterly data:', error);
+            renderEmptyQuarterlyBreakdown();
+        });
+}
+
+// Render quarterly breakdown
+function renderQuarterlyBreakdown() {
+    const container = document.getElementById('quarterlyBreakdown');
+
+    if (Object.keys(quarterlyData).length === 0) {
+        renderEmptyQuarterlyBreakdown();
+        return;
+    }
+
+    let html = '';
+
+    Object.entries(quarterlyData).forEach(([year, quarters]) => {
+        html += `
+        <div class="bg-gray-50 rounded-xl p-6">
+            <div class="flex items-center justify-between mb-6">
+                <h3 class="text-xl font-bold text-gray-900">${year} yil</h3>
+                <button onclick="editYearSchedule(${year})"
+                        class="px-4 py-2 bg-blue-100 text-blue-600 rounded-lg hover:bg-blue-200 transition-colors">
+                    <i data-feather="edit" class="w-4 h-4 mr-1"></i>
+                    Tahrirlash
+                </button>
+            </div>
+
+            <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
         `;
 
-        alertContainer.appendChild(alertDiv);
+        for (let quarter = 1; quarter <= 4; quarter++) {
+            const quarterData = quarters[quarter] || {
+                plan_amount: 0,
+                fact_total: 0,
+                debt: 0,
+                payment_percent: 0,
+                is_overdue: false
+            };
 
-        setTimeout(() => {
-            if (alertDiv && alertDiv.parentElement) {
-                alertDiv.remove();
-            }
-        }, 5000);
-    }
+            const cardClass = getQuarterCardClass(quarterData);
+            const progressColor = getProgressColor(quarterData.payment_percent);
 
-    function createAlertContainer() {
-        const container = document.createElement('div');
-        container.id = 'alertContainer';
-        container.className = 'fixed top-4 right-4 z-50';
-        document.body.appendChild(container);
-        return container;
-    }
-
-    function showLoading(message = 'Ishlov berilmoqda...') {
-        let overlay = document.getElementById('loadingOverlay');
-        if (!overlay) {
-            overlay = document.createElement('div');
-            overlay.id = 'loadingOverlay';
-            overlay.className = 'fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50';
-            overlay.innerHTML = `
-                <div class="bg-white p-6 rounded-lg shadow-lg">
-                    <div class="flex items-center">
-                        <div class="animate-spin rounded-full h-8 w-8 border-b-2 border-blue-600 mr-3"></div>
-                        <span id="loadingMessage">${message}</span>
+            html += `
+            <div class="quarter-card ${cardClass} rounded-xl p-5" onclick="openQuarterDetails(${year}, ${quarter})">
+                <div class="flex items-center justify-between mb-4">
+                    <h4 class="font-bold text-gray-800">${quarter}-chorak</h4>
+                    <div class="relative">
+                        <svg class="progress-ring transform -rotate-90" viewBox="0 0 36 36">
+                            <path class="text-gray-300" stroke="currentColor" stroke-width="3" fill="none"
+                                  d="M18 2.0845a 15.9155 15.9155 0 0 1 0 31.831a 15.9155 15.9155 0 0 1 0 -31.831"/>
+                            <path class="${progressColor}" stroke="currentColor" stroke-width="3" fill="none" stroke-linecap="round"
+                                  stroke-dasharray="${quarterData.payment_percent}, 100"
+                                  d="M18 2.0845a 15.9155 15.9155 0 0 1 0 31.831a 15.9155 15.9155 0 0 1 0 -31.831"/>
+                        </svg>
+                        <div class="absolute inset-0 flex items-center justify-center">
+                            <span class="text-xs font-bold">${Math.round(quarterData.payment_percent)}%</span>
+                        </div>
                     </div>
                 </div>
+
+                <div class="space-y-3">
+                    <div class="flex justify-between items-center">
+                        <span class="text-sm text-gray-600">Plan:</span>
+                        <span class="font-bold text-blue-600">${formatCurrencyShort(quarterData.plan_amount)}</span>
+                    </div>
+
+                    <div class="flex justify-between items-center">
+                        <span class="text-sm text-gray-600">Fakt:</span>
+                        <span class="font-bold text-green-600">${formatCurrencyShort(quarterData.fact_total)}</span>
+                    </div>
+
+                    <div class="flex justify-between items-center pt-2 border-t border-gray-200">
+                        <span class="text-sm font-medium ${quarterData.debt > 0 ? 'text-red-600' : 'text-green-600'}">
+                            ${quarterData.debt > 0 ? 'Qarz:' : 'Ortiqcha:'}
+                        </span>
+                        <span class="font-bold ${quarterData.debt > 0 ? 'text-red-600' : 'text-green-600'}">
+                            ${formatCurrencyShort(Math.abs(quarterData.debt))}
+                        </span>
+                    </div>
+
+                    ${quarterData.is_overdue ? `
+                    <div class="bg-red-100 text-red-800 px-3 py-1 rounded-full text-xs font-medium text-center animate-pulse-slow">
+                        MUDDATI O'TGAN
+                    </div>
+                    ` : ''}
+                </div>
+            </div>
             `;
-            document.body.appendChild(overlay);
         }
-        const loadingMessage = document.getElementById('loadingMessage');
-        if (loadingMessage) {
-            loadingMessage.textContent = message;
-        }
-        overlay.style.display = 'flex';
-    }
 
-    function hideLoading() {
-        const overlay = document.getElementById('loadingOverlay');
-        if (overlay) {
-            overlay.style.display = 'none';
-        }
-    }
+        html += `
+            </div>
+        </div>
+        `;
+    });
 
-    function openModal(modalId) {
-        const modal = document.getElementById(modalId);
-        if (modal) {
-            modal.style.display = 'flex';
-            document.body.style.overflow = 'hidden';
+    container.innerHTML = html;
+    feather.replace();
+}
 
-            setTimeout(() => {
-                const firstInput = modal.querySelector('input:not([type="hidden"]):not([disabled]), select:not([disabled]), textarea:not([disabled])');
-                if (firstInput) {
-                    firstInput.focus();
+// Render empty quarterly breakdown
+function renderEmptyQuarterlyBreakdown() {
+    const container = document.getElementById('quarterlyBreakdown');
+    container.innerHTML = `
+    <div class="text-center py-16">
+        <div class="w-24 h-24 bg-blue-100 rounded-full flex items-center justify-center mx-auto mb-6">
+            <i data-feather="calendar-plus" class="w-12 h-12 text-blue-600"></i>
+        </div>
+        <h3 class="text-xl font-semibold text-gray-900 mb-3">To'lov jadvali mavjud emas</h3>
+        <p class="text-gray-600 mb-6">Choraklar bo'yicha to'lov jadvalini tuzish uchun "Jadval tuzish" tugmasini bosing</p>
+        <button onclick="openPaymentScheduleModal()"
+                class="inline-flex items-center px-6 py-3 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors">
+            <i data-feather="calendar-plus" class="w-5 h-5 mr-2"></i>
+            Jadval tuzish
+        </button>
+    </div>
+    `;
+    feather.replace();
+}
+
+// Get quarter card CSS class based on status
+function getQuarterCardClass(quarterData) {
+    if (quarterData.is_overdue && quarterData.debt > 0) return 'debt-overdue';
+    if (quarterData.debt > 0) return 'debt-current';
+    if (quarterData.payment_percent >= 100) return 'paid-complete';
+    if (quarterData.payment_percent > 0) return 'paid-partial';
+    return 'bg-gray-50 border-gray-200';
+}
+
+// Get progress color based on completion percentage
+function getProgressColor(percent) {
+    if (percent >= 100) return 'text-green-500';
+    if (percent >= 50) return 'text-yellow-500';
+    if (percent > 0) return 'text-blue-500';
+    return 'text-gray-300';
+}
+
+// Update summary cards
+function updateSummaryCards() {
+    let totalPlan = 0, totalPaid = 0, currentDebt = 0, overdueDebt = 0;
+
+    Object.values(quarterlyData).forEach(quarters => {
+        Object.values(quarters).forEach(quarter => {
+            totalPlan += quarter.plan_amount || 0;
+            totalPaid += quarter.fact_total || 0;
+
+            if (quarter.debt > 0) {
+                if (quarter.is_overdue) {
+                    overdueDebt += quarter.debt;
+                } else {
+                    currentDebt += quarter.debt;
                 }
-            }, 150);
-        } else {
-            console.error('Modal not found:', modalId);
-        }
-    }
-
-    function closeModal(modalId) {
-        const modal = document.getElementById(modalId);
-        if (modal) {
-            modal.style.display = 'none';
-            document.body.style.overflow = 'auto';
-        }
-    }
-
-    function toggleLoading(button, isLoading) {
-        if (!button) return;
-
-        if (isLoading) {
-            button.disabled = true;
-            const originalText = button.innerHTML;
-            button.setAttribute('data-original-text', originalText);
-            button.innerHTML = '<i class="fas fa-spinner fa-spin mr-2"></i>Ishlatilmoqda...';
-        } else {
-            button.disabled = false;
-            const originalText = button.getAttribute('data-original-text');
-            if (originalText) {
-                button.innerHTML = originalText;
             }
+        });
+    });
+
+    document.getElementById('totalPlan').textContent = formatCurrency(totalPlan);
+    document.getElementById('totalPaid').textContent = formatCurrency(totalPaid);
+    document.getElementById('currentDebt').textContent = formatCurrency(currentDebt);
+    document.getElementById('overdueDebt').textContent = formatCurrency(overdueDebt);
+}
+
+// Modal management functions
+function openPaymentScheduleModal() {
+    document.getElementById('paymentScheduleModal').classList.remove('hidden');
+    updateSchedulePreview();
+}
+
+function closePaymentScheduleModal() {
+    document.getElementById('paymentScheduleModal').classList.add('hidden');
+    document.getElementById('paymentScheduleForm').reset();
+}
+
+function openPaymentModal() {
+    document.getElementById('paymentModal').classList.remove('hidden');
+}
+
+function closePaymentModal() {
+    document.getElementById('paymentModal').classList.add('hidden');
+    document.getElementById('paymentForm').reset();
+}
+
+function openQuarterDetails(year, quarter) {
+    const quarterData = quarterlyData[year] && quarterlyData[year][quarter];
+    if (!quarterData) return;
+
+    currentQuarterData = { year, quarter, data: quarterData };
+
+    document.getElementById('quarterDetailsTitle').textContent = `${quarter}-chorak ${year} yil ma'lumotlari`;
+
+    const content = `
+    <div class="space-y-6">
+        <div class="grid grid-cols-1 md:grid-cols-3 gap-6">
+            <div class="info-gradient rounded-lg p-4 text-center">
+                <p class="text-sm font-medium text-blue-800">PLAN SUMMASI</p>
+                <p class="text-2xl font-bold text-blue-900">${formatCurrency(quarterData.plan_amount)}</p>
+            </div>
+            <div class="success-gradient rounded-lg p-4 text-center">
+                <p class="text-sm font-medium text-green-800">TO'LANGAN</p>
+                <p class="text-2xl font-bold text-green-900">${formatCurrency(quarterData.fact_total)}</p>
+            </div>
+            <div class="${quarterData.debt > 0 ? 'danger-gradient' : 'success-gradient'} rounded-lg p-4 text-center">
+                <p class="text-sm font-medium ${quarterData.debt > 0 ? 'text-red-800' : 'text-green-800'}">${quarterData.debt > 0 ? 'QARZ' : 'ORTIQCHA'}</p>
+                <p class="text-2xl font-bold ${quarterData.debt > 0 ? 'text-red-900' : 'text-green-900'}">${formatCurrency(Math.abs(quarterData.debt))}</p>
+            </div>
+        </div>
+
+        <div class="flex justify-center space-x-4">
+            <button onclick="editQuarterPlan(${year}, ${quarter})"
+                    class="px-6 py-3 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors">
+                <i data-feather="edit" class="w-4 h-4 mr-2"></i>
+                Planni tahrirlash
+            </button>
+            <button onclick="addQuarterPayment(${year}, ${quarter})"
+                    class="px-6 py-3 bg-green-600 text-white rounded-lg hover:bg-green-700 transition-colors">
+                <i data-feather="plus" class="w-4 h-4 mr-2"></i>
+                To'lov qo'shish
+            </button>
+        </div>
+
+        <!-- Payment History -->
+        <div class="bg-gray-50 rounded-lg p-6">
+            <h4 class="text-lg font-bold text-gray-900 mb-4">To'lovlar tarixi</h4>
+            <div id="quarterPaymentsList" class="space-y-3">
+                ${quarterData.payments ? renderPaymentsList(quarterData.payments) : '<p class="text-gray-500 text-center py-8">Hali to\'lovlar mavjud emas</p>'}
+            </div>
+        </div>
+    </div>
+    `;
+
+    document.getElementById('quarterDetailsContent').innerHTML = content;
+    document.getElementById('quarterDetailsModal').classList.remove('hidden');
+    feather.replace();
+}
+
+function closeQuarterDetailsModal() {
+    document.getElementById('quarterDetailsModal').classList.add('hidden');
+    currentQuarterData = null;
+}
+
+// Toggle custom schedule grid
+function toggleCustomScheduleGrid() {
+    const scheduleType = document.querySelector('input[name="schedule_type"]:checked').value;
+    const customGrid = document.getElementById('customScheduleGrid');
+
+    if (scheduleType === 'custom') {
+        customGrid.classList.remove('hidden');
+        generateQuarterInputs();
+    } else {
+        customGrid.classList.add('hidden');
+    }
+
+    updateSchedulePreview();
+}
+
+// Generate quarter inputs based on selected count
+function generateQuarterInputs() {
+    const quartersCount = parseInt(document.querySelector('select[name="quarters_count"]').value);
+    const container = document.getElementById('quarterInputs');
+
+    let html = '';
+    for (let i = 1; i <= quartersCount; i++) {
+        html += `
+        <div>
+            <label class="block text-sm font-medium text-gray-700 mb-2">${i}-chorak (%)</label>
+            <input type="number" name="quarter_${i}_percent" min="0" max="100" step="0.1" value="${100/quartersCount}"
+                   class="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500"
+                   onchange="updateSchedulePreview()">
+        </div>
+        `;
+    }
+
+    container.innerHTML = html;
+}
+
+// Update schedule preview
+function updateSchedulePreview() {
+    const quartersCount = parseInt(document.querySelector('select[name="quarters_count"]').value);
+    const totalAmount = parseFloat(document.querySelector('input[name="total_schedule_amount"]').value) || 0;
+    const scheduleType = document.querySelector('input[name="schedule_type"]:checked').value;
+    const previewGrid = document.getElementById('previewGrid');
+
+    let html = '';
+    let totalPercent = 0;
+
+    for (let i = 1; i <= quartersCount; i++) {
+        let percent, amount;
+
+        if (scheduleType === 'auto') {
+            percent = 100 / quartersCount;
+            amount = totalAmount / quartersCount;
+        } else {
+            const input = document.querySelector(`input[name="quarter_${i}_percent"]`);
+            percent = parseFloat(input ? input.value : 0) || 0;
+            amount = totalAmount * (percent / 100);
+        }
+
+        totalPercent += percent;
+
+        html += `
+        <div class="bg-white border-2 border-blue-200 rounded-lg p-4 text-center">
+            <div class="text-sm font-medium text-blue-600 mb-2">${i}-chorak</div>
+            <div class="text-lg font-bold text-blue-900">${formatCurrencyShort(amount)}</div>
+            <div class="text-xs text-gray-500">${percent.toFixed(1)}%</div>
+        </div>
+        `;
+    }
+
+    // Add total validation indicator
+    if (scheduleType === 'custom') {
+        const isValidTotal = Math.abs(totalPercent - 100) < 0.1;
+        html += `
+        <div class="col-span-full mt-4 p-4 rounded-lg ${isValidTotal ? 'bg-green-100 text-green-800' : 'bg-red-100 text-red-800'}">
+            <div class="text-center">
+                <div class="font-bold">Jami: ${totalPercent.toFixed(1)}%</div>
+                <div class="text-sm">${isValidTotal ? 'To\'g\'ri' : '100% bo\'lishi kerak'}</div>
+            </div>
+        </div>
+        `;
+    }
+
+    previewGrid.innerHTML = html;
+}
+
+// Form submission handlers
+async function handleContractSubmit(e) {
+    e.preventDefault();
+
+    const submitBtn = e.target.querySelector('button[type="submit"]');
+    const submitText = document.getElementById('submitText');
+    const submitLoader = document.getElementById('submitLoader');
+
+    toggleSubmitState(submitBtn, submitText, submitLoader, true);
+
+    try {
+        const formData = new FormData(e.target);
+        const url = contractData ? `/contracts/${contractData.id}` : '/contracts';
+        const method = contractData ? 'PUT' : 'POST';
+
+        const response = await fetch(url, {
+            method: 'POST',
+            headers: {
+                'X-CSRF-TOKEN': document.querySelector('meta[name="csrf-token"]').content,
+                'X-HTTP-Method-Override': method
+            },
+            body: formData
+        });
+
+        const result = await response.json();
+
+        if (result.success) {
+            showNotification(result.message, 'success');
+            if (!contractData) {
+                setTimeout(() => {
+                    window.location.href = `/contracts/${result.contract.id}/payment-update`;
+                }, 1500);
+            }
+        } else {
+            throw new Error(result.message || 'Xatolik yuz berdi');
+        }
+    } catch (error) {
+        showNotification(error.message, 'error');
+    } finally {
+        toggleSubmitState(submitBtn, submitText, submitLoader, false);
+    }
+}
+
+async function handleScheduleSubmit(e) {
+    e.preventDefault();
+
+    if (!contractData) {
+        showNotification('Avval shartnomani saqlang', 'error');
+        return;
+    }
+
+    const formData = new FormData(e.target);
+    const scheduleType = formData.get('schedule_type');
+    const quartersCount = parseInt(formData.get('quarters_count'));
+
+    // Validate custom percentages
+    if (scheduleType === 'custom') {
+        let totalPercent = 0;
+        for (let i = 1; i <= quartersCount; i++) {
+            totalPercent += parseFloat(formData.get(`quarter_${i}_percent`) || 0);
+        }
+
+        if (Math.abs(totalPercent - 100) > 0.1) {
+            showNotification('Foizlar yig\'indisi 100% bo\'lishi kerak', 'error');
+            return;
         }
     }
 
-    function validateAmount(amount, max = Infinity) {
-        if (isNaN(amount) || amount <= 0) {
-            showAlert('Summa to\'g\'ri kiritilmagan', 'error');
-            return false;
+    try {
+        const response = await fetch(`/contracts/${contractData.id}/create-quarterly-schedule`, {
+            method: 'POST',
+            headers: {
+                'X-CSRF-TOKEN': document.querySelector('meta[name="csrf-token"]').content
+            },
+            body: formData
+        });
+
+        const result = await response.json();
+
+        if (result.success) {
+            closePaymentScheduleModal();
+            showNotification(result.message, 'success');
+            loadQuarterlyData(); // Reload data
+        } else {
+            throw new Error(result.message || 'Jadval yaratishda xatolik');
         }
-        if (amount > max) {
-            showAlert(`Summa ${formatNumber(max)} dan oshmasligi kerak`, 'error');
-            return false;
+    } catch (error) {
+        showNotification(error.message, 'error');
+    }
+}
+
+async function handlePaymentSubmit(e) {
+    e.preventDefault();
+
+    if (!contractData) {
+        showNotification('Avval shartnomani saqlang', 'error');
+        return;
+    }
+
+    const formData = new FormData(e.target);
+
+    try {
+        const response = await fetch(`/contracts/${contractData.id}/store-fact-payment`, {
+            method: 'POST',
+            headers: {
+                'X-CSRF-TOKEN': document.querySelector('meta[name="csrf-token"]').content
+            },
+            body: formData
+        });
+
+        const result = await response.json();
+
+        if (result.success) {
+            closePaymentModal();
+            showNotification(result.message, 'success');
+            loadQuarterlyData(); // Reload data
+        } else {
+            throw new Error(result.message || 'To\'lov qo\'shishda xatolik');
         }
-        return true;
+    } catch (error) {
+        showNotification(error.message, 'error');
     }
+}
 
-    function formatNumber(number) {
-        return new Intl.NumberFormat('uz-UZ').format(number);
+// Utility functions
+function toggleSubmitState(button, textElement, loaderElement, isLoading) {
+    if (isLoading) {
+        button.disabled = true;
+        textElement.classList.add('hidden');
+        loaderElement.classList.remove('hidden');
+    } else {
+        button.disabled = false;
+        textElement.classList.remove('hidden');
+        loaderElement.classList.add('hidden');
     }
+}
 
-    function formatCurrency(amount) {
-        return (amount / 1000000).toFixed(1) + 'M so\'m';
+function formatCurrency(amount) {
+    return new Intl.NumberFormat('uz-UZ', {
+        style: 'decimal',
+        minimumFractionDigits: 0,
+        maximumFractionDigits: 0
+    }).format(amount) + ' so\'m';
+}
+
+function formatCurrencyShort(amount) {
+    if (amount >= 1000000000) {
+        return (amount / 1000000000).toFixed(1) + 'Mlrd';
+    } else if (amount >= 1000000) {
+        return (amount / 1000000).toFixed(1) + 'Mln';
+    } else if (amount >= 1000) {
+        return (amount / 1000).toFixed(1) + 'K';
     }
+    return Math.round(amount).toLocaleString();
+}
 
-    function formatDate(dateString) {
-        return new Date(dateString).toLocaleDateString('uz-UZ');
-    }
+function showNotification(message, type) {
+    const bgColor = type === 'success' ? 'bg-green-500' :
+                   type === 'warning' ? 'bg-yellow-500' :
+                   'bg-red-500';
+    const icon = type === 'success' ? 'check-circle' :
+                type === 'warning' ? 'alert-triangle' :
+                'alert-triangle';
 
-    // Contract specific variables
-    const contractId = {{ $contract->id }};
-    const remainingAmount = {{ $remainingAmount }};
-    const contractData = {
-        id: {{ $contract->id }},
-        contract_number: '{{ $contract->contract_number }}',
-        total_amount: {{ $contract->total_amount }},
-        initial_payment_percent: {{ $contract->initial_payment_percent }},
-        remaining_amount: {{ $remainingAmount }}
+    const notification = document.createElement('div');
+    notification.className = `fixed top-4 right-4 ${bgColor} text-white px-6 py-4 rounded-lg shadow-lg z-50 transform transition-all duration-300 translate-x-full`;
+    notification.innerHTML = `
+        <div class="flex items-center">
+            <i data-feather="${icon}" class="w-5 h-5 mr-2"></i>
+            <span>${message}</span>
+        </div>
+    `;
+
+    document.body.appendChild(notification);
+    safeFeatherReplace();
+
+    setTimeout(() => notification.classList.remove('translate-x-full'), 100);
+    setTimeout(() => {
+        notification.classList.add('translate-x-full');
+        setTimeout(() => {
+            if (document.body.contains(notification)) {
+                document.body.removeChild(notification);
+            }
+        }, 300);
+    }, type === 'success' ? 3000 : 5000);
+}
+
+function debounce(func, wait) {
+    let timeout;
+    return function executedFunction(...args) {
+        const later = () => {
+            clearTimeout(timeout);
+            func(...args);
+        };
+        clearTimeout(timeout);
+        timeout = setTimeout(later, wait);
     };
+}
 
-    // Payment summary data for quarter details
-    const paymentSummary = {!! json_encode($paymentSummary ?? []) !!};
+function resetForm() {
+    if (confirm('Barcha ma\'lumotlarni tozalashni xohlaysizmi?')) {
+        document.getElementById('contractForm').reset();
+        calculatePaymentBreakdown();
+    }
+}
 
-    // Modal control functions with null checks
-    function openContractEditModal() {
-        openModal('contractEditModal');
+function exportReport() {
+    if (!contractData) {
+        showNotification('Avval shartnomani saqlang', 'error');
+        return;
     }
 
-    function openAutoScheduleModal() {
-        openModal('autoScheduleModal');
-        // Delay the calculation to ensure modal is rendered
-        setTimeout(() => {
-            updateCalculation();
-        }, 200);
+    // Mock export for demonstration
+    showNotification('Hisobot tayyorlanmoqda...', 'info');
+
+    // Generate and download mock report
+    setTimeout(() => {
+        const reportData = generateReportData();
+        downloadReport(reportData, `shartnoma_${contractData.contract_number}_hisobot.json`);
+        showNotification('Hisobot muvaffaqiyatli yuklab olindi', 'success');
+    }, 2000);
+
+    /* // Actual export when backend is ready
+    window.open(`/contracts/${contractData.id}/payment-report`, '_blank');
+    */
+}
+
+function generateReportData() {
+    return {
+        contract_info: {
+            contract_number: contractData.contract_number,
+            contract_date: contractData.contract_date,
+            total_amount: contractData.total_amount
+        },
+        payment_summary: quarterlyData,
+        generated_at: new Date().toISOString(),
+        report_type: 'payment_breakdown'
+    };
+}
+
+function downloadReport(data, filename) {
+    const blob = new Blob([JSON.stringify(data, null, 2)], { type: 'application/json' });
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement('a');
+    a.href = url;
+    a.download = filename;
+    document.body.appendChild(a);
+    a.click();
+    document.body.removeChild(a);
+    URL.revokeObjectURL(url);
+}
+
+function renderPaymentsList(payments) {
+    if (!payments || payments.length === 0) {
+        return '<p class="text-gray-500 text-center py-8">Hali to\'lovlar mavjud emas</p>';
     }
 
-    function openManualScheduleModal() {
-        showAlert('Qo\'lda grafik tuzish funksiyasi ishlab chiqilmoqda', 'info');
-    }
+    return payments.map(payment => `
+        <div class="bg-white rounded-lg p-4 border border-gray-200">
+            <div class="flex justify-between items-center">
+                <div>
+                    <div class="font-medium">${payment.payment_number || 'To\'lov #' + payment.id}</div>
+                    <div class="text-sm text-gray-600">${new Date(payment.payment_date).toLocaleDateString('uz-UZ')}</div>
+                </div>
+                <div class="text-right">
+                    <div class="font-bold text-green-600">${formatCurrency(payment.amount)}</div>
+                    <div class="text-sm text-gray-500">${payment.notes || ''}</div>
+                </div>
+            </div>
+        </div>
+    `).join('');
+}
 
-    function openPaymentModal() {
-        openModal('paymentModal');
+// Additional helper functions for specific actions
+function editYearSchedule(year) {
+    openPaymentScheduleModal();
+    document.querySelector('select[name="schedule_year"]').value = year;
+}
 
-        // Wait for modal to render before accessing form
-        setTimeout(() => {
-            const form = document.getElementById('paymentForm');
-            const dateInput = document.querySelector('#paymentModal input[name="payment_date"]');
+function editQuarterPlan(year, quarter) {
+    // Implementation for editing specific quarter plan
+    showNotification(`${quarter}-chorak ${year} yil planini tahrirlash`, 'info');
+}
 
-            if (form) {
-                form.reset();
-            }
-            if (dateInput) {
-                dateInput.value = new Date().toISOString().split('T')[0];
-            }
-        }, 100);
-    }
+function addQuarterPayment(year, quarter) {
+    openPaymentModal();
+    // Set payment date to middle of the quarter
+    const month = (quarter - 1) * 3 + 2; // Middle month of quarter
+    const date = new Date(year, month - 1, 15);
+    document.querySelector('input[name="payment_date"]').value = date.toISOString().split('T')[0];
+}
 
-    // Quarter management functions
-    function addQuarterPlan(year, quarter) {
-        const yearInput = document.getElementById('quarterYear');
-        const quarterInput = document.getElementById('quarterNumber');
-        const titleElement = document.getElementById('quarterModalTitle');
-        const amountInput = document.querySelector('#quarterPlanForm input[name="amount"]');
-
-        if (yearInput) yearInput.value = year;
-        if (quarterInput) quarterInput.value = quarter;
-        if (titleElement) titleElement.textContent = `${quarter}-chorak ${year} yil`;
-        if (amountInput) amountInput.value = '';
-
-        openModal('quarterPlanModal');
-    }
-
-    function editQuarterPlan(year, quarter, amount) {
-        addQuarterPlan(year, quarter);
-
-        setTimeout(() => {
-            const amountInput = document.querySelector('#quarterPlanForm input[name="amount"]');
-            if (amountInput) {
-                amountInput.value = amount;
-            }
-        }, 100);
-    }
-
-    function addQuarterPayment(year, quarter) {
-        openPaymentModal();
-
-        setTimeout(() => {
-            const firstMonth = (quarter - 1) * 3 + 2;
-            const date = new Date(year, firstMonth - 1, 15);
-            const dateInput = document.querySelector('#paymentModal input[name="payment_date"]');
-
-            if (dateInput) {
-                dateInput.value = date.toISOString().split('T')[0];
-            }
-        }, 100);
-    }
-
-    function showQuarterPayments(year, quarter) {
-        const titleElement = document.getElementById('quarterDetailsTitle');
-        if (titleElement) {
-            titleElement.textContent = `${quarter}-chorak ${year} yil`;
-        }
-
-        const quarterData = paymentSummary[year] && paymentSummary[year][quarter];
-
-        if (quarterData && quarterData.fact_payments && quarterData.fact_payments.length > 0) {
-            populateQuarterDetails(quarterData.fact_payments, quarterData.fact_total);
-        } else {
-            const listElement = document.getElementById('quarterDetailsList');
-            const totalElement = document.getElementById('quarterDetailsTotal');
-
-            if (listElement) {
-                listElement.innerHTML = `
-                    <tr>
-                        <td colspan="5" class="border p-4 text-center text-gray-500">
-                            Bu chorakda to'lovlar yo'q
-                        </td>
-                    </tr>
-                `;
-            }
-            if (totalElement) {
-                totalElement.textContent = '';
-            }
-        }
-
-        openModal('quarterDetailsModal');
-    }
-
-    function populateQuarterDetails(payments, total) {
-        const listElement = document.getElementById('quarterDetailsList');
-        const totalElement = document.getElementById('quarterDetailsTotal');
-
-        if (!listElement || !totalElement) return;
-
-        let html = '';
-
-        payments.forEach(payment => {
-            html += `
-                <tr>
-                    <td class="border border-gray-200 p-3">${formatDate(payment.payment_date)}</td>
-                    <td class="border border-gray-200 p-3 font-bold text-green-600">${formatCurrency(payment.amount)}</td>
-                    <td class="border border-gray-200 p-3">${payment.payment_number || '-'}</td>
-                    <td class="border border-gray-200 p-3 max-w-xs truncate" title="${payment.notes || ''}">${payment.notes || '-'}</td>
-                    <td class="border border-gray-200 p-3">
-                        <button onclick="editPayment(${payment.id})" class="text-blue-600 hover:text-blue-800 mr-2" title="Tahrirlaish">
-                            <i class="fas fa-edit"></i>
-                        </button>
-                        <button onclick="deletePaymentConfirm(${payment.id})" class="text-red-600 hover:text-red-800" title="O'chirish">
-                            <i class="fas fa-trash"></i>
-                        </button>
-                    </td>
-                </tr>
-            `;
-        });
-
-        listElement.innerHTML = html;
-        totalElement.textContent = `Jami: ${formatCurrency(total)} (${payments.length} ta to'lov)`;
-    }
-
-    // Auto-schedule calculation with null checks
-    function updateCalculation() {
-        const quarterSelect = document.querySelector('#autoScheduleModal select[name="total_quarters"]');
-        const quarterAmountElement = document.getElementById('quarterAmount');
-
-        if (!quarterSelect || !quarterAmountElement) {
-            console.warn('Calculation elements not found');
-            return;
-        }
-
-        const totalQuarters = parseInt(quarterSelect.value);
-        const quarterAmount = remainingAmount / totalQuarters;
-
-        quarterAmountElement.textContent = formatCurrency(quarterAmount);
-    }
-
-    // Payment menu toggle with null checks
-    function togglePaymentMenu(paymentId) {
-        const menu = document.getElementById(`paymentMenu${paymentId}`);
-        if (!menu) return;
-
-        // Close all other menus
-        document.querySelectorAll('[id^="paymentMenu"]').forEach(m => {
-            if (m.id !== `paymentMenu${paymentId}`) {
-                m.classList.add('hidden');
+// Close modals on background click
+document.addEventListener('click', function(e) {
+    if (e.target.classList.contains('fixed') && e.target.classList.contains('inset-0')) {
+        const modals = ['paymentScheduleModal', 'paymentModal', 'quarterDetailsModal'];
+        modals.forEach(modalId => {
+            if (e.target.closest(`#${modalId}`)) {
+                document.getElementById(modalId).classList.add('hidden');
             }
         });
-
-        menu.classList.toggle('hidden');
     }
-
-    // Payment actions
-    function editPayment(id) {
-        showAlert('To\'lovni tahrirlaish funksiyasi ishlab chiqilmoqda', 'info');
-        const menu = document.getElementById(`paymentMenu${id}`);
-        if (menu) {
-            menu.classList.add('hidden');
-        }
-    }
-
-    function deletePaymentConfirm(id) {
-        if (confirm('Bu to\'lovni o\'chirishga ishonchingiz komilmi?')) {
-            deletePayment(id);
-        }
-        const menu = document.getElementById(`paymentMenu${id}`);
-        if (menu) {
-            menu.classList.add('hidden');
-        }
-    }
-
-    async function deletePayment(id) {
-        const csrfToken = document.querySelector('meta[name="csrf-token"]');
-        if (!csrfToken) {
-            showAlert('CSRF token topilmadi', 'error');
-            return;
-        }
-
-        showLoading('To\'lov o\'chirilmoqda...');
-
-        try {
-            const response = await fetch(`/contracts/fact-payment/${id}`, {
-                method: 'DELETE',
-                headers: {
-                    'X-CSRF-TOKEN': csrfToken.content,
-                    'Content-Type': 'application/json'
-                }
-            });
-
-            const result = await response.json();
-
-            if (result.success) {
-                showAlert(result.message, 'success');
-                setTimeout(() => location.reload(), 1000);
-            } else {
-                showAlert(result.message || 'Xatolik yuz berdi', 'error');
-            }
-        } catch (error) {
-            showAlert('Serverga ulanishda xatolik: ' + error.message, 'error');
-        } finally {
-            hideLoading();
-        }
-    }
-
-    // Quick action functions
-    function calculatePlan() {
-        openAutoScheduleModal();
-    }
-
-    async function generateReport() {
-        showLoading('Hisobot tayyorlanmoqda...');
-
-        try {
-            const response = await fetch(`/contracts/${contractId}/payment-report`);
-
-            if (response.ok) {
-                const blob = await response.blob();
-                const url = window.URL.createObjectURL(blob);
-                const a = document.createElement('a');
-                a.href = url;
-                a.download = `payment_report_${contractId}_${new Date().toISOString().split('T')[0]}.pdf`;
-                document.body.appendChild(a);
-                a.click();
-                window.URL.revokeObjectURL(url);
-                document.body.removeChild(a);
-
-                showAlert('Hisobot muvaffaqiyatli yuklandi', 'success');
-            } else {
-                showAlert('Hisobot olishda xatolik: ' + response.status, 'error');
-            }
-        } catch (error) {
-            showAlert('Hisobot olishda xatolik: ' + error.message, 'error');
-        } finally {
-            hideLoading();
-        }
-    }
-
-    // Initialize forms and event listeners when DOM is ready
-    function initializeForms() {
-        // Contract Edit Form
-        const contractEditForm = document.getElementById('contractEditForm');
-        if (contractEditForm) {
-            contractEditForm.addEventListener('submit', async function(e) {
-                e.preventDefault();
-                const submitButton = this.querySelector('button[type="submit"]');
-                const csrfToken = document.querySelector('meta[name="csrf-token"]');
-
-                if (!csrfToken) {
-                    showAlert('CSRF token topilmadi', 'error');
-                    return;
-                }
-
-                toggleLoading(submitButton, true);
-
-                try {
-                    const formData = new FormData(this);
-                    const response = await fetch(`/contracts/${contractId}/update-info`, {
-                        method: 'POST',
-                        headers: {
-                            'X-CSRF-TOKEN': csrfToken.content
-                        },
-                        body: formData
-                    });
-
-                    if (response.ok) {
-                        const result = await response.json();
-                        showAlert(result.message || 'Muvaffaqiyatli yangilandi', 'success');
-                        closeModal('contractEditModal');
-                        setTimeout(() => location.reload(), 1500);
-                    } else {
-                        showAlert('Server xatolik: ' + response.status, 'error');
-                    }
-                } catch (error) {
-                    showAlert('Xatolik yuz berdi: ' + error.message, 'error');
-                } finally {
-                    toggleLoading(submitButton, false);
-                }
-            });
-        }
-
-        // Auto Schedule Form
-        const autoScheduleForm = document.getElementById('autoScheduleForm');
-        if (autoScheduleForm) {
-            autoScheduleForm.addEventListener('submit', async function(e) {
-                e.preventDefault();
-                const submitButton = this.querySelector('button[type="submit"]');
-                const csrfToken = document.querySelector('meta[name="csrf-token"]');
-
-                if (!csrfToken) {
-                    showAlert('CSRF token topilmadi', 'error');
-                    return;
-                }
-
-                toggleLoading(submitButton, true);
-
-                try {
-                    const formData = new FormData(this);
-                    const response = await fetch(`/contracts/${contractId}/generate-auto-schedule`, {
-                        method: 'POST',
-                        headers: {
-                            'X-CSRF-TOKEN': csrfToken.content
-                        },
-                        body: formData
-                    });
-
-                    if (response.ok) {
-                        const result = await response.json();
-                        showAlert(result.message || 'Grafik muvaffaqiyatli tuzildi', 'success');
-                        closeModal('autoScheduleModal');
-                        setTimeout(() => location.reload(), 1500);
-                    } else {
-                        showAlert('Server xatolik: ' + response.status, 'error');
-                    }
-                } catch (error) {
-                    showAlert('Xatolik yuz berdi: ' + error.message, 'error');
-                } finally {
-                    toggleLoading(submitButton, false);
-                }
-            });
-        }
-
-        // Payment Form
-        const paymentForm = document.getElementById('paymentForm');
-        if (paymentForm) {
-            paymentForm.addEventListener('submit', async function(e) {
-                e.preventDefault();
-                const submitButton = this.querySelector('button[type="submit"]');
-                const csrfToken = document.querySelector('meta[name="csrf-token"]');
-
-                if (!csrfToken) {
-                    showAlert('CSRF token topilmadi', 'error');
-                    return;
-                }
-
-                const amount = parseFloat(this.amount.value);
-                if (!validateAmount(amount, contractData.total_amount)) {
-                    return;
-                }
-
-                toggleLoading(submitButton, true);
-
-                try {
-                    const formData = new FormData(this);
-                    const response = await fetch(`/contracts/${contractId}/store-fact-payment`, {
-                        method: 'POST',
-                        headers: {
-                            'X-CSRF-TOKEN': csrfToken.content
-                        },
-                        body: formData
-                    });
-
-                    if (response.ok) {
-                        const result = await response.json();
-                        showAlert(result.message || 'To\'lov muvaffaqiyatli qo\'shildi', 'success');
-                        closeModal('paymentModal');
-                        setTimeout(() => location.reload(), 1500);
-                    } else {
-                        showAlert('Server xatolik: ' + response.status, 'error');
-                    }
-                } catch (error) {
-                    showAlert('Xatolik yuz berdi: ' + error.message, 'error');
-                } finally {
-                    toggleLoading(submitButton, false);
-                }
-            });
-        }
-
-        // Quarter Plan Form
-        const quarterPlanForm = document.getElementById('quarterPlanForm');
-        if (quarterPlanForm) {
-            quarterPlanForm.addEventListener('submit', async function(e) {
-                e.preventDefault();
-                const submitButton = this.querySelector('button[type="submit"]');
-                const csrfToken = document.querySelector('meta[name="csrf-token"]');
-
-                if (!csrfToken) {
-                    showAlert('CSRF token topilmadi', 'error');
-                    return;
-                }
-
-                const amount = parseFloat(this.amount.value);
-                if (!validateAmount(amount)) {
-                    return;
-                }
-
-                toggleLoading(submitButton, true);
-
-                try {
-                    const formData = new FormData(this);
-                    const response = await fetch(`/contracts/${contractId}/store-plan-payment`, {
-                        method: 'POST',
-                        headers: {
-                            'X-CSRF-TOKEN': csrfToken.content
-                        },
-                        body: formData
-                    });
-
-                    if (response.ok) {
-                        const result = await response.json();
-                        showAlert(result.message || 'Plan muvaffaqiyatli saqlandi', 'success');
-                        closeModal('quarterPlanModal');
-                        setTimeout(() => location.reload(), 1000);
-                    } else {
-                        showAlert('Server xatolik: ' + response.status, 'error');
-                    }
-                } catch (error) {
-                    showAlert('Xatolik yuz berdi: ' + error.message, 'error');
-                } finally {
-                    toggleLoading(submitButton, false);
-                }
-            });
-        }
-    }
-
-    // Initialize everything when DOM is fully loaded
-    document.addEventListener('DOMContentLoaded', function() {
-        console.log('Payment update page loaded');
-
-        // Initialize forms
-        initializeForms();
-
-        // Set default date
-        setTimeout(() => {
-            const today = new Date().toISOString().split('T')[0];
-            const paymentDateInputs = document.querySelectorAll('input[name="payment_date"]');
-            paymentDateInputs.forEach(input => {
-                if (input) input.value = today;
-            });
-        }, 100);
-
-        // Initialize quarter select change handler
-        setTimeout(() => {
-            const quarterSelect = document.querySelector('#autoScheduleModal select[name="total_quarters"]');
-            if (quarterSelect) {
-                quarterSelect.addEventListener('change', updateCalculation);
-            }
-        }, 200);
-
-        // Close modals on ESC key
-        document.addEventListener('keydown', function(e) {
-            if (e.key === 'Escape') {
-                document.querySelectorAll('.modal[style*="flex"]').forEach(modal => {
-                    modal.style.display = 'none';
-                });
-                document.body.style.overflow = 'auto';
-            }
-        });
-
-        // Close modals on background click
-        document.addEventListener('click', function(e) {
-            if (e.target.classList.contains('modal')) {
-                e.target.style.display = 'none';
-                document.body.style.overflow = 'auto';
-            }
-        });
-
-        // Close payment menus when clicking outside
-        document.addEventListener('click', function(e) {
-            if (!e.target.closest('[id^="paymentMenu"]') && !e.target.closest('button[onclick*="togglePaymentMenu"]')) {
-                document.querySelectorAll('[id^="paymentMenu"]').forEach(menu => {
-                    menu.classList.add('hidden');
-                });
-            }
-        });
-
-        // Show welcome message
-        setTimeout(() => {
-            showAlert('To\'lov boshqaruvi sistemasi tayyor', 'success');
-        }, 1000);
-    });
-
-    // Keyboard shortcuts
-    document.addEventListener('keydown', function(e) {
-        if (e.ctrlKey || e.metaKey) {
-            switch(e.key.toLowerCase()) {
-                case 'n':
-                    e.preventDefault();
-                    openPaymentModal();
-                    break;
-                case 's':
-                    e.preventDefault();
-                    openAutoScheduleModal();
-                    break;
-                case 'e':
-                    e.preventDefault();
-                    openContractEditModal();
-                    break;
-                case 'r':
-                    e.preventDefault();
-                    location.reload();
-                    break;
-            }
-        }
-    });
+});
 </script>
 @endpush

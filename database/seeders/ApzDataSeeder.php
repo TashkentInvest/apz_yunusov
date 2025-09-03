@@ -9,8 +9,6 @@ use App\Models\Contract;
 use App\Models\ContractStatus;
 use App\Models\District;
 use App\Models\BaseCalculationAmount;
-use App\Models\ActualPayment;
-use App\Models\PaymentSchedule;
 use App\Models\CouncilConclusion;
 use App\Models\OrgForm;
 use Illuminate\Support\Facades\DB;
@@ -25,12 +23,9 @@ class ApzDataSeeder extends Seeder
     private $skippedRows = [];
     private $unmappedDistricts = [];
     private $headerRow = [];
-    private $monthlyPaymentColumns = [];
 
-    // Fixed column indexes based on your data structure
+    // Essential column indexes only
     private $columnMap = [
-        'council_conclusion_1' => 0,  // Умуман тўловни амалга оширмаганлар
-        'council_conclusion_2' => 2,  // Қарздорлар
         'serial_number' => 3,         // №
         'inn' => 4,                   // ИНН
         'pinfl' => 5,                 // ПИНФЛ
@@ -41,15 +36,8 @@ class ApzDataSeeder extends Seeder
         'completion_date' => 10,      // Якунлаш сана
         'payment_terms' => 11,        // Тўлов шарти
         'payment_period' => 12,       // Тўлов муддати
-        'advance_percent' => 13,      // Аванс
         'district' => 14,             // Туман
         'area' => 15,                 // М3 (площадь)
-        'contract_amount' => 16,      // Шартнома қиймати
-        'installment_payment' => 17,  // Бўнак тўлов
-        'monthly_payment' => 18,      // Ойлик тўлов
-        'total_payment' => 19,        // Жами тўлов
-        'remaining' => 20,            // Қолдиқ
-        'actual_payment_indicator' => 21, // ФАКТ
     ];
 
     public function run()
@@ -61,8 +49,8 @@ class ApzDataSeeder extends Seeder
             return;
         }
 
-        $this->command->info('Starting APZ data import from XLSX...');
-        Log::info('Starting APZ data import from XLSX');
+        $this->command->info('Starting APZ essential data import from XLSX...');
+        Log::info('Starting APZ essential data import from XLSX');
 
         try {
             // Create essential data first
@@ -210,7 +198,6 @@ class ApzDataSeeder extends Seeder
         }
 
         $this->headerRow = $data[$headerRowIndex];
-        $this->identifyMonthlyPaymentColumns();
 
         // Data starts after header row
         $dataRows = array_slice($data, $headerRowIndex + 1);
@@ -218,7 +205,6 @@ class ApzDataSeeder extends Seeder
         Log::info("Header analysis completed", [
             'header_row_index' => $headerRowIndex,
             'header_columns' => count($this->headerRow),
-            'monthly_payment_columns' => count($this->monthlyPaymentColumns),
             'data_rows_remaining' => count($dataRows)
         ]);
 
@@ -247,62 +233,6 @@ class ApzDataSeeder extends Seeder
             }
         }
         return -1;
-    }
-
-    private function identifyMonthlyPaymentColumns()
-    {
-        $this->monthlyPaymentColumns = [];
-
-        // Start searching from column 22 onwards
-        for ($i = 22; $i < count($this->headerRow); $i++) {
-            $headerText = trim($this->headerRow[$i]);
-
-            // Debug log each column header
-            if ($i < 35) {
-                Log::info("Checking column {$i}: '{$headerText}'");
-            }
-
-            // Check for M/D/YYYY format (like 4/30/2024)
-            if (preg_match('/^(\d{1,2})\/(\d{1,2})\/(\d{4})$/', $headerText)) {
-                $this->monthlyPaymentColumns[$i] = [
-                    'date' => $headerText,
-                    'parsed_date' => $this->parseExcelDateFromString($headerText)
-                ];
-                Log::info("Found M/D/YYYY date column at {$i}: {$headerText}");
-            }
-            // Also check for DD.MM.YYYY format (like 30.04.2024)
-            elseif (preg_match('/^(\d{1,2})\.(\d{1,2})\.(\d{4})$/', $headerText)) {
-                $this->monthlyPaymentColumns[$i] = [
-                    'date' => $headerText,
-                    'parsed_date' => $this->parseExcelDateFromString($headerText)
-                ];
-                Log::info("Found DD.MM.YYYY date column at {$i}: {$headerText}");
-            }
-            // Check for Excel serial numbers that represent dates (45412 = April 30, 2024)
-            elseif (is_numeric($headerText) && $headerText > 40000 && $headerText < 50000) {
-                $parsedDate = $this->parseExcelSerialDate($headerText);
-                if ($parsedDate) {
-                    $this->monthlyPaymentColumns[$i] = [
-                        'date' => $parsedDate->format('n/j/Y'),
-                        'parsed_date' => $parsedDate,
-                        'serial' => $headerText
-                    ];
-                    Log::info("Found Excel serial date column at {$i}: {$headerText} = {$parsedDate->format('M d, Y')}");
-                }
-            }
-
-            // Stop when we hit summary columns
-            if (stripos($headerText, 'ЖАМИ') !== false ||
-                stripos($headerText, 'ПЛАН') !== false ||
-                stripos($headerText, 'Реальная') !== false) {
-                break;
-            }
-        }
-
-        Log::info("Monthly payment columns detected", [
-            'count' => count($this->monthlyPaymentColumns),
-            'sample_dates' => array_slice(array_column($this->monthlyPaymentColumns, 'date'), 0, 5)
-        ]);
     }
 
     private function processDataRows($dataRows, $districts, $statuses, $baseAmount)
@@ -388,11 +318,9 @@ class ApzDataSeeder extends Seeder
             Log::info("Row {$rowNumber} extracted data", [
                 'company_name' => $rowData['companyName'],
                 'contract_number' => $rowData['contractNumber'],
-                'contract_amount' => $rowData['contractAmount'],
                 'inn' => $rowData['inn'],
                 'pinfl' => $rowData['pinfl'],
-                'monthly_payments_count' => count($rowData['monthlyPayments']),
-                'total_actual_payment' => $rowData['totalActualPayment']
+                'district' => $rowData['districtName']
             ]);
         }
 
@@ -409,10 +337,8 @@ class ApzDataSeeder extends Seeder
             $object = $this->createObject($subject, $rowData, $districts, $baseAmount, $rowNumber);
             $contract = $this->createContract($subject, $object, $rowData, $statuses, $baseAmount, $rowNumber);
 
-            // Create related data
-            $this->createPaymentSchedule($contract, $rowData, $rowNumber);
-            $this->createActualPayments($contract, $rowData, $rowNumber);
-            $this->createCouncilConclusion($object, $rowData, $rowNumber);
+            // Skip payment-related data creation
+            // No payment schedules, actual payments, or financial calculations
 
             return true;
         } catch (\Exception $e) {
@@ -426,21 +352,7 @@ class ApzDataSeeder extends Seeder
 
     private function extractRowData($row)
     {
-        // Extract monthly payments from date columns
-        $monthlyPayments = [];
-        foreach ($this->monthlyPaymentColumns as $colIndex => $monthInfo) {
-            $payment = $this->parseAmount($row[$colIndex] ?? 0);
-            if ($payment > 0) {
-                $monthlyPayments[$monthInfo['date']] = $payment;
-            }
-        }
-
-        // Calculate total actual payment
-        $totalActualPayment = array_sum($monthlyPayments);
-
         return [
-            'councilConclusion1' => $this->cleanString($row[$this->columnMap['council_conclusion_1']] ?? ''),
-            'councilConclusion2' => $this->cleanString($row[$this->columnMap['council_conclusion_2']] ?? ''),
             'serialNumber' => $this->cleanString($row[$this->columnMap['serial_number']] ?? ''),
             'inn' => $this->cleanString($row[$this->columnMap['inn']] ?? ''),
             'pinfl' => $this->cleanString($row[$this->columnMap['pinfl']] ?? ''),
@@ -451,16 +363,8 @@ class ApzDataSeeder extends Seeder
             'completionDate' => $this->parseExcelDate($row[$this->columnMap['completion_date']] ?? ''),
             'paymentTerms' => $this->cleanString($row[$this->columnMap['payment_terms']] ?? ''),
             'paymentPeriod' => (int)($row[$this->columnMap['payment_period']] ?? 0),
-            'advancePercent' => $this->parsePercent($row[$this->columnMap['advance_percent']] ?? ''),
             'districtName' => $this->cleanString($row[$this->columnMap['district']] ?? ''),
             'area' => $this->parseAmount($row[$this->columnMap['area']] ?? 0),
-            'contractAmount' => $this->parseAmount($row[$this->columnMap['contract_amount']] ?? 0),
-            'installmentPayment' => $this->parseAmount($row[$this->columnMap['installment_payment']] ?? 0),
-            'monthlyPayment' => $this->parseAmount($row[$this->columnMap['monthly_payment']] ?? 0),
-            'totalPayment' => $this->parseAmount($row[$this->columnMap['total_payment']] ?? 0),
-            'remaining' => $this->parseAmount($row[$this->columnMap['remaining']] ?? 0),
-            'monthlyPayments' => $monthlyPayments,
-            'totalActualPayment' => $totalActualPayment
         ];
     }
 
@@ -469,11 +373,6 @@ class ApzDataSeeder extends Seeder
         // Skip completely empty rows
         if (empty($rowData['companyName']) && empty($rowData['inn']) && empty($rowData['pinfl'])) {
             return ['valid' => false, 'reason' => 'Completely empty row'];
-        }
-
-        // Skip cancelled contracts with no amounts
-        if (stripos($rowData['contractStatus'], 'Бекор') !== false && $rowData['contractAmount'] == 0) {
-            return ['valid' => false, 'reason' => 'Cancelled contract with zero amount'];
         }
 
         if (empty($rowData['companyName'])) {
@@ -486,10 +385,6 @@ class ApzDataSeeder extends Seeder
 
         if (empty($rowData['contractNumber'])) {
             return ['valid' => false, 'reason' => 'Missing contract number'];
-        }
-
-        if ($rowData['contractAmount'] <= 0) {
-            return ['valid' => false, 'reason' => 'Invalid contract amount: ' . $rowData['contractAmount']];
         }
 
         // Check for Excel errors
@@ -579,9 +474,8 @@ class ApzDataSeeder extends Seeder
     {
         $district = $this->findDistrict($rowData['districtName'], $districts, $rowNumber);
 
-        $volume = $rowData['area'] > 0 ? $rowData['area'] :
-                 ($rowData['contractAmount'] > 0 && $baseAmount->amount > 0 ?
-                  ($rowData['contractAmount'] / $baseAmount->amount) : 1);
+        // Use area if available, otherwise default to 1
+        $volume = $rowData['area'] > 0 ? $rowData['area'] : 1;
 
         return Objectt::create([
             'subject_id' => $subject->id,
@@ -660,20 +554,12 @@ class ApzDataSeeder extends Seeder
 
     private function createContract($subject, $object, $rowData, $statuses, $baseAmount, $rowNumber)
     {
-        // Parse payment terms (e.g., "20/80", "40/60")
-        $initialPaymentPercent = 20; // Default
+        // Basic payment type determination without amounts
+        $paymentType = 'installment'; // Default
         if (!empty($rowData['paymentTerms'])) {
-            if (preg_match('/(\d+)\/(\d+)/', $rowData['paymentTerms'], $matches)) {
-                $initialPaymentPercent = (int)$matches[1];
-            } elseif (preg_match('/(\d+)/', $rowData['paymentTerms'], $matches)) {
-                $percent = (int)$matches[1];
-                $initialPaymentPercent = $percent > 100 ? 20 : $percent;
+            if (stripos($rowData['paymentTerms'], '100') !== false) {
+                $paymentType = 'full';
             }
-        }
-
-        // Override with advance percent if provided
-        if ($rowData['advancePercent'] > 0) {
-            $initialPaymentPercent = min(100, $rowData['advancePercent']);
         }
 
         $status = $this->getContractStatus($rowData['contractStatus'], $statuses);
@@ -708,22 +594,14 @@ class ApzDataSeeder extends Seeder
             'status_id' => $status->id,
             'base_amount_id' => $baseAmount->id,
             'contract_volume' => $object->construction_volume,
-            'coefficient' => $this->calculateCoefficient($rowData['contractAmount'], $object->construction_volume, $baseAmount->amount),
-            'total_amount' => $rowData['contractAmount'],
-            'payment_type' => $initialPaymentPercent >= 100 ? 'full' : 'installment',
-            'initial_payment_percent' => $initialPaymentPercent,
+            'coefficient' => 1.0, // Default coefficient without calculation
+            'total_amount' => 0, // No amount data
+            'payment_type' => $paymentType,
+            'initial_payment_percent' => 0, // No percentage data
             'construction_period_years' => $constructionPeriodYears,
             'quarters_count' => $quartersCount,
             'is_active' => $isActive,
         ]);
-    }
-
-    private function calculateCoefficient($contractAmount, $volume, $baseAmount)
-    {
-        if ($contractAmount > 0 && $volume > 0 && $baseAmount > 0) {
-            return round($contractAmount / ($volume * $baseAmount), 2);
-        }
-        return 1.0;
     }
 
     private function getContractStatus($contractStatus, $statuses)
@@ -756,148 +634,6 @@ class ApzDataSeeder extends Seeder
             stripos($contractStatus, 'отменен') !== false ||
             stripos($contractStatus, 'cancelled') !== false
         );
-    }
-
-    private function createPaymentSchedule($contract, $rowData, $rowNumber)
-    {
-        if ($contract->payment_type === 'full') {
-            return; // No schedule needed for full payments
-        }
-
-        $remainingAmount = $contract->total_amount * (100 - $contract->initial_payment_percent) / 100;
-
-        // Use best available payment amount
-        if ($rowData['installmentPayment'] > 0) {
-            $remainingAmount = $rowData['installmentPayment'];
-        } elseif ($rowData['totalPayment'] > 0 && $rowData['totalPayment'] < $contract->total_amount) {
-            $remainingAmount = $rowData['totalPayment'];
-        }
-
-        $quarterAmount = $rowData['monthlyPayment'] > 0 ?
-            ($rowData['monthlyPayment'] * 3) :
-            ($remainingAmount / max(1, $contract->quarters_count));
-
-        $this->createPaymentScheduleRecords($contract, $quarterAmount);
-    }
-
-    private function createPaymentScheduleRecords($contract, $quarterAmount)
-    {
-        $startYear = $contract->contract_date->year;
-        $startQuarter = ceil($contract->contract_date->month / 3);
-
-        for ($i = 0; $i < $contract->quarters_count; $i++) {
-            $year = $startYear + floor(($startQuarter + $i - 1) / 4);
-            $quarter = (($startQuarter + $i - 1) % 4) + 1;
-
-            PaymentSchedule::create([
-                'contract_id' => $contract->id,
-                'year' => $year,
-                'quarter' => $quarter,
-                'quarter_amount' => $quarterAmount,
-                'is_active' => true,
-            ]);
-        }
-    }
-
-    private function createActualPayments($contract, $rowData, $rowNumber)
-    {
-        if ($rowData['totalActualPayment'] <= 0) {
-            return;
-        }
-
-        try {
-            if (!empty($rowData['monthlyPayments'])) {
-                $this->createMonthlyActualPayments($contract, $rowData['monthlyPayments']);
-            } else {
-                $this->createSingleActualPayment($contract, $rowData['totalActualPayment']);
-            }
-        } catch (\Exception $e) {
-            Log::error("Failed to create actual payment for row {$rowNumber}", [
-                'contract_id' => $contract->id,
-                'amount' => $rowData['totalActualPayment'],
-                'error' => $e->getMessage()
-            ]);
-            throw $e;
-        }
-    }
-
-    private function createMonthlyActualPayments($contract, $monthlyPayments)
-    {
-        foreach ($monthlyPayments as $monthDate => $monthlyAmount) {
-            if ($monthlyAmount > 0) {
-                $paymentDate = $this->parseExcelDateFromString($monthDate) ?: $contract->contract_date;
-
-                ActualPayment::create([
-                    'contract_id' => $contract->id,
-                    'payment_date' => $paymentDate,
-                    'amount' => $monthlyAmount,
-                    'year' => $paymentDate->year,
-                    'quarter' => ceil($paymentDate->month / 3),
-                    'payment_number' => $this->generatePaymentNumber($contract->id, $paymentDate),
-                    'notes' => 'Импортировано из APZ файла - ' . $monthDate,
-                ]);
-            }
-        }
-    }
-
-    private function createSingleActualPayment($contract, $amount)
-    {
-        ActualPayment::create([
-            'contract_id' => $contract->id,
-            'payment_date' => $contract->contract_date,
-            'amount' => $amount,
-            'year' => $contract->contract_date->year,
-            'quarter' => ceil($contract->contract_date->month / 3),
-            'payment_number' => $this->generatePaymentNumber($contract->id, $contract->contract_date),
-            'notes' => 'Импортировано из APZ файла',
-        ]);
-    }
-
-    private function generatePaymentNumber($contractId, $date)
-    {
-        return 'APZ-' . $contractId . '-' . $date->format('Y-m') . '-' . now()->timestamp;
-    }
-
-    private function createCouncilConclusion($object, $rowData, $rowNumber)
-    {
-        $conclusionText = trim($rowData['councilConclusion1'] . ' ' . $rowData['councilConclusion2']);
-
-        if (empty($conclusionText)) {
-            return;
-        }
-
-        $status = 'pending';
-        if (stripos($conclusionText, 'да') !== false || stripos($conclusionText, 'Да') !== false) {
-            $status = 'approved';
-        } elseif (stripos($conclusionText, 'нет') !== false || stripos($conclusionText, 'Нет') !== false) {
-            $status = 'rejected';
-        }
-
-        try {
-            // Check if CouncilConclusion model has notes field
-            $schema = DB::connection()->getSchemaBuilder();
-            $hasNotesField = $schema->hasColumn('council_conclusions', 'notes');
-
-            $conclusionData = [
-                'object_id' => $object->id,
-                'application_date' => $object->application_date,
-                'conclusion_date' => now(),
-                'status' => $status,
-            ];
-
-            // Only add notes if the field exists
-            if ($hasNotesField) {
-                $conclusionData['notes'] = 'Импортировано из APZ: ' . $conclusionText;
-            }
-
-            CouncilConclusion::create($conclusionData);
-        } catch (\Exception $e) {
-            Log::error("Failed to create council conclusion for row {$rowNumber}", [
-                'object_id' => $object->id,
-                'error' => $e->getMessage()
-            ]);
-            // Don't throw - this is optional data
-        }
     }
 
     // Utility methods for data validation and cleaning
@@ -964,8 +700,7 @@ class ApzDataSeeder extends Seeder
                 'company_name' => $row[$this->columnMap['company_name']] ?? '',
                 'contract_number' => $row[$this->columnMap['contract_number']] ?? '',
                 'inn' => $row[$this->columnMap['inn']] ?? '',
-                'district' => $row[$this->columnMap['district']] ?? '',
-                'amount' => $row[$this->columnMap['contract_amount']] ?? ''
+                'district' => $row[$this->columnMap['district']] ?? ''
             ]
         ];
     }
@@ -973,7 +708,7 @@ class ApzDataSeeder extends Seeder
     private function showImportSummary($processedCount, $skippedCount, $errorCount)
     {
         $this->command->info("\n" . str_repeat("=", 80));
-        $this->command->info("APZ DATA IMPORT SUMMARY");
+        $this->command->info("APZ ESSENTIAL DATA IMPORT SUMMARY");
         $this->command->info(str_repeat("=", 80));
         $this->command->info("✅ Successfully processed: {$processedCount} records");
         $this->command->info("⏭️  Skipped rows: {$skippedCount}");
@@ -1035,6 +770,11 @@ class ApzDataSeeder extends Seeder
         $this->command->info("🔧 To fix unmapped districts, either:");
         $this->command->info("   1. Add missing districts to database, OR");
         $this->command->info("   2. Update Excel file with correct district names");
+        $this->command->info("\n💡 NOTE: This seeder imports only essential data:");
+        $this->command->info("   - Company/Individual information (Subject)");
+        $this->command->info("   - Construction objects with basic details");
+        $this->command->info("   - Contract records without financial amounts");
+        $this->command->info("   - No payment schedules or actual payments created");
         $this->command->info(str_repeat("=", 80));
     }
 
@@ -1198,8 +938,8 @@ class ApzDataSeeder extends Seeder
             }
         }
 
-        // Fill missing columns with empty strings (extend to at least 50 columns to handle all data)
-        for ($i = 0; $i <= max(50, $maxCol); $i++) {
+        // Fill missing columns with empty strings (extend to at least 20 columns for basic data)
+        for ($i = 0; $i <= max(20, $maxCol); $i++) {
             $rowData[] = isset($cells[$i]) ? $cells[$i] : '';
         }
 
@@ -1257,23 +997,6 @@ class ApzDataSeeder extends Seeder
         return trim(preg_replace('/\s+/', ' ', (string)$value));
     }
 
-    private function parseExcelSerialDate($serialNumber)
-    {
-        try {
-            if (!is_numeric($serialNumber) || $serialNumber <= 0) {
-                return null;
-            }
-
-            // Excel epoch starts at January 1, 1900
-            // But Excel incorrectly treats 1900 as a leap year, so we subtract 2 days
-            $excelEpoch = Carbon::create(1900, 1, 1);
-            return $excelEpoch->addDays((int)$serialNumber - 2);
-        } catch (\Exception $e) {
-            Log::warning("Failed to parse Excel serial date: {$serialNumber}");
-            return null;
-        }
-    }
-
     private function parseExcelDate($value)
     {
         if (empty($value) || $value === '-' || $value === '00.01.1900') return null;
@@ -1313,36 +1036,6 @@ class ApzDataSeeder extends Seeder
         }
     }
 
-    private function parseExcelDateFromString($dateString)
-    {
-        try {
-            // Handle M/D/YYYY format (4/30/2024)
-            if (preg_match('/^(\d{1,2})\/(\d{1,2})\/(\d{4})$/', $dateString, $matches)) {
-                return Carbon::createFromFormat('n/j/Y', $dateString);
-            }
-
-            // Handle DD.MM.YYYY format (30.04.2024)
-            if (preg_match('/^(\d{1,2})\.(\d{1,2})\.(\d{4})$/', $dateString, $matches)) {
-                return Carbon::createFromFormat('d.m.Y', $dateString);
-            }
-
-            // Try other common formats
-            $formats = ['n/j/Y', 'd.m.Y', 'd/m/Y', 'Y-m-d', 'm/d/Y'];
-            foreach ($formats as $format) {
-                try {
-                    return Carbon::createFromFormat($format, $dateString);
-                } catch (\Exception $e) {
-                    continue;
-                }
-            }
-
-            return Carbon::parse($dateString);
-        } catch (\Exception $e) {
-            Log::warning("Failed to parse date string: {$dateString}");
-            return null;
-        }
-    }
-
     private function parseAmount($value)
     {
         if (empty($value) || $value === '-' || stripos($value, '#REF') !== false || stripos($value, '#N/A') !== false) {
@@ -1361,22 +1054,6 @@ class ApzDataSeeder extends Seeder
 
         // Handle comma-separated numbers (2,132,715,475,659)
         $cleaned = str_replace(',', '', (string)$value);
-        $cleaned = preg_replace('/[^\d.-]/', '', $cleaned);
-
-        return (float)$cleaned;
-    }
-
-    private function parsePercent($value)
-    {
-        if (empty($value) || $value === '-') return 0;
-
-        // If it's already a decimal (like 0.20 for 20%), convert to percentage
-        if (is_numeric($value) && $value <= 1 && $value > 0) {
-            return $value * 100;
-        }
-
-        // Remove % sign and other characters
-        $cleaned = str_replace(['%', ',', ' '], ['', '.', ''], (string)$value);
         $cleaned = preg_replace('/[^\d.-]/', '', $cleaned);
 
         return (float)$cleaned;

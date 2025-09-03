@@ -31,6 +31,11 @@ Route::get('/dashboard/export', [DashboardController::class, 'export'])->name('d
 Route::get('/dashboard/district/{district}', [DashboardController::class, 'districtDetails'])->name('dashboard.district');
 // Contracts Management
 Route::prefix('contracts')->name('contracts.')->group(function () {
+
+ Route::get('/{contract}/quarterly-breakdown', [ContractController::class, 'getQuarterlyBreakdown'])->name('quarterly_breakdown');
+    Route::post('/{contract}/create-quarterly-schedule', [ContractController::class, 'createQuarterlySchedule'])->name('create_quarterly_schedule');
+
+
     // Main contract routes
     Route::get('/', [ContractController::class, 'index'])->name('index');
     Route::get('/create', [ContractController::class, 'create'])->name('create');
