@@ -1,5 +1,6 @@
 <?php
 
+use App\Http\Controllers\AuthController;
 use App\Http\Controllers\KengashHulosasiController;
 use Illuminate\Support\Facades\Route;
 use App\Http\Controllers\DashboardController;
@@ -19,10 +20,18 @@ use App\Http\Controllers\DocumentController;
 |
 */
 
-// Redirect root to dashboard
 Route::get('/', function () {
-    return redirect()->route('dashboard');
+    return redirect('/login');
 });
+
+// Authentication Routes
+Route::get('/login', [AuthController::class, 'showLoginForm'])->name('login');
+Route::post('/login', [AuthController::class, 'login']);
+Route::post('/logout', [AuthController::class, 'logout'])->name('logout');
+
+
+Route::middleware(['auth'])->group(function () {
+
 
 // Dashboard
 Route::get('/dashboard', [DashboardController::class, 'index'])->name('dashboard');
@@ -475,3 +484,4 @@ Route::get('/zona.kml', function () {
     ]);
 })->name('zona.kml');
 // web.php
+});

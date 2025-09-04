@@ -148,7 +148,7 @@
                 </nav>
 
                 <!-- User Section -->
-                <div class="px-4 py-4 border-t border-gray-200">
+               <div class="px-4 py-4 border-t border-gray-200">
                     <div class="flex items-center space-x-3">
                         <div class="w-8 h-8 bg-gray-300 rounded-lg flex items-center justify-center">
                             <i data-feather="user" class="w-4 h-4 text-gray-600"></i>
@@ -161,9 +161,17 @@
                                 {{ auth()->user()->email ?? 'user@example.com' }}
                             </p>
                         </div>
-                        <button class="text-gray-400 hover:text-gray-600">
-                            <i data-feather="log-out" class="w-4 h-4"></i>
-                        </button>
+
+                        <!-- Fixed Logout Button -->
+                        <form method="POST" action="{{ route('logout') }}" class="inline">
+                            @csrf
+                            <button type="submit"
+                                    class="text-gray-400 hover:text-red-600 transition-colors p-1 rounded"
+                                    title="Чиқиш"
+                                    onclick="return confirm('Тизимдан чиқишни истайсизми?')">
+                                <i data-feather="log-out" class="w-4 h-4"></i>
+                            </button>
+                        </form>
                     </div>
                 </div>
             </div>

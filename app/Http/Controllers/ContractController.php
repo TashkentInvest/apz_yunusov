@@ -590,7 +590,7 @@ class ContractController extends Controller
         return view('contracts.edit', $data);
     }
 
- public function update(Request $request, Contract $contract)
+public function update(Request $request, Contract $contract)
 {
     $request->validate([
         'contract_number' => 'required|string|max:50|unique:contracts,contract_number,' . $contract->id,
@@ -604,6 +604,19 @@ class ContractController extends Controller
     ]);
 
     try {
+        // ✅ Capture old values before update
+        $oldValues = $contract->only([
+            'contract_number',
+            'contract_date',
+            'completion_date',
+            'total_amount',
+            'payment_type',
+            'initial_payment_percent',
+            'construction_period_years',
+            'quarters_count',
+        ]);
+
+        // Perform update
         $contract->update([
             'contract_number' => $request->contract_number,
             'contract_date' => $request->contract_date,
@@ -614,6 +627,29 @@ class ContractController extends Controller
             'construction_period_years' => $request->construction_period_years,
             'quarters_count' => $request->quarters_count,
         ]);
+
+        // ✅ Capture new values after update
+        $newValues = $contract->only([
+            'contract_number',
+            'contract_date',
+            'completion_date',
+            'total_amount',
+            'payment_type',
+            'initial_payment_percent',
+            'construction_period_years',
+            'quarters_count',
+        ]);
+
+        // ✅ Log history
+        \App\Models\PaymentHistory::logAction(
+            $contract->id,
+            'updated',
+            'contracts',
+            $contract->id,
+            $oldValues,
+            $newValues,
+            "Shartnoma ma'lumotlari yangilandi"
+        );
 
         return response()->json([
             'success' => true,
@@ -944,7 +980,7 @@ public function createAmendment(Request $request, Contract $contract)
     /**
      * Update contract basic information
      */
-   public function updateContractInfo(Request $request, Contract $contract)
+public function updateContractInfo(Request $request, Contract $contract)
 {
     $request->validate([
         'contract_number' => 'required|string|max:50|unique:contracts,contract_number,' . $contract->id,
@@ -959,13 +995,14 @@ public function createAmendment(Request $request, Contract $contract)
     try {
         DB::beginTransaction();
 
-        // Store old values for history
+        // Store old values before update
         $oldValues = $contract->only([
             'contract_number', 'contract_date', 'total_amount',
             'initial_payment_percent', 'construction_period_years',
             'quarters_count', 'payment_type'
         ]);
 
+        // Update contract
         $contract->update([
             'contract_number' => $request->contract_number,
             'contract_date' => $request->contract_date,
@@ -976,8 +1013,16 @@ public function createAmendment(Request $request, Contract $contract)
             'payment_type' => $request->payment_type
         ]);
 
-        // Log history
-        PaymentHistory::logAction(
+        // Get new values after update
+        $newValues = $contract->only([
+            'contract_number', 'contract_date', 'total_amount',
+            'initial_payment_percent', 'construction_period_years',
+            'quarters_count', 'payment_type'
+        ]);
+
+        // Try-catch inside to isolate failure
+        try {
+         PaymentHistory::logAction(
             $contract->id,
             'updated',
             'contracts',
@@ -991,6 +1036,14 @@ public function createAmendment(Request $request, Contract $contract)
             'Shartnoma asosiy ma\'lumotlari yangilandi'
         );
 
+        } catch (\Exception $logError) {
+            \Log::error('Failed to log contract history', [
+                'error' => $logError->getMessage(),
+                'contract_id' => $contract->id
+            ]);
+            // Optional: you could throw here to cancel entire transaction
+        }
+
         DB::commit();
 
         return response()->json([
@@ -1001,6 +1054,7 @@ public function createAmendment(Request $request, Contract $contract)
 
     } catch (\Exception $e) {
         DB::rollBack();
+        \Log::error('Contract update failed', ['error' => $e->getMessage()]);
         return response()->json([
             'success' => false,
             'message' => 'Xatolik yuz berdi: ' . $e->getMessage()
@@ -1126,7 +1180,8 @@ public function createAmendment(Request $request, Contract $contract)
     /**
      * Store actual payment with proper quarter calculation
      */
-public function storeFactPayment(Request $request, Contract $contract)
+
+    public function storeFactPayment(Request $request, Contract $contract)
 {
     $request->validate([
         'payment_date' => 'required|date',
@@ -1164,6 +1219,24 @@ public function storeFactPayment(Request $request, Contract $contract)
             'created_by' => auth()->id()
         ]);
 
+        // ✅ Add history log
+        \App\Models\PaymentHistory::logAction(
+            $contract->id,
+            'created',
+            'actual_payments',
+            $factPayment->id,
+            null,
+            [
+                'payment_date' => $factPayment->payment_date,
+                'year' => $factPayment->year,
+                'quarter' => $factPayment->quarter,
+                'amount' => $factPayment->amount,
+                'payment_number' => $factPayment->payment_number,
+                'notes' => $factPayment->notes,
+            ],
+            'Yangi haqiqiy to‘lov qo‘shildi'
+        );
+
         DB::commit();
 
         return response()->json([
@@ -1188,6 +1261,69 @@ public function storeFactPayment(Request $request, Contract $contract)
         ], 500);
     }
 }
+
+// public function storeFactPayment(Request $request, Contract $contract)
+// {
+//     $request->validate([
+//         'payment_date' => 'required|date',
+//         'payment_amount' => 'required|numeric|min:0',
+//         'payment_number' => 'nullable|string|max:50',
+//         'payment_notes' => 'nullable|string'
+//     ]);
+
+//     try {
+//         DB::beginTransaction();
+
+//         $paymentDate = Carbon::parse($request->payment_date);
+//         $year = $paymentDate->year;
+//         $quarter = $this->calculateQuarterFromDate($paymentDate);
+
+//         // Validate payment doesn't exceed contract total
+//         $totalPaid = $contract->actualPayments()->sum('amount');
+//         $newTotal = $totalPaid + $request->payment_amount;
+
+//         if ($newTotal > $contract->total_amount) {
+//             return response()->json([
+//                 'success' => false,
+//                 'message' => 'To\'lov summasi shartnoma summasidan oshib ketmoqda'
+//             ], 400);
+//         }
+
+//         $factPayment = ActualPayment::create([
+//             'contract_id' => $contract->id,
+//             'payment_date' => $request->payment_date,
+//             'year' => $year,
+//             'quarter' => $quarter,
+//             'amount' => $request->payment_amount,
+//             'payment_number' => $request->payment_number,
+//             'notes' => $request->payment_notes,
+//             'created_by' => auth()->id()
+//         ]);
+
+//         DB::commit();
+
+//         return response()->json([
+//             'success' => true,
+//             'message' => 'To\'lov muvaffaqiyatli qo\'shildi',
+//             'payment' => [
+//                 'id' => $factPayment->id,
+//                 'payment_date' => $factPayment->payment_date->format('Y-m-d'),
+//                 'amount' => $factPayment->amount,
+//                 'quarter' => $factPayment->quarter,
+//                 'year' => $factPayment->year
+//             ]
+//         ]);
+
+//     } catch (\Exception $e) {
+//         DB::rollBack();
+//         \Log::error('Error in storeFactPayment: ' . $e->getMessage());
+
+//         return response()->json([
+//             'success' => false,
+//             'message' => 'To\'lov qo\'shishda xatolik: ' . $e->getMessage()
+//         ], 500);
+//     }
+// }
 
 private function calculateQuarterFromDate($date)
 {
@@ -1450,20 +1586,25 @@ public function createQuarterlySchedule(Request $request, Contract $contract)
         $quartersCount = $request->quarters_count;
         $scheduleType = $request->schedule_type;
 
-        // Delete ALL existing schedules for this contract to avoid conflicts
-        PaymentSchedule::where('contract_id', $contract->id)->delete();
-
-        // FIXED: Proper year/quarter distribution logic
         $currentYear = $startYear;
         $currentQuarter = 1;
-        $quarterIndex = 1;
+
+        // 🔄 Save old schedule (for logging)
+        $oldSchedules = PaymentSchedule::where('contract_id', $contract->id)
+            ->get(['year', 'quarter', 'quarter_amount'])
+            ->toArray();
+
+        // ❌ Delete old schedule
+        PaymentSchedule::where('contract_id', $contract->id)->delete();
+
+        // 🆕 New schedules array for logging
+        $newSchedules = [];
 
         if ($scheduleType === 'auto') {
-            // Equal distribution across all quarters
             $quarterAmount = $totalAmount / $quartersCount;
 
             for ($i = 0; $i < $quartersCount; $i++) {
-                PaymentSchedule::create([
+                $schedule = PaymentSchedule::create([
                     'contract_id' => $contract->id,
                     'year' => $currentYear,
                     'quarter' => $currentQuarter,
@@ -1471,7 +1612,12 @@ public function createQuarterlySchedule(Request $request, Contract $contract)
                     'is_active' => true
                 ]);
 
-                // Move to next quarter (proper year progression)
+                $newSchedules[] = [
+                    'year' => $currentYear,
+                    'quarter' => $currentQuarter,
+                    'quarter_amount' => $quarterAmount
+                ];
+
                 $currentQuarter++;
                 if ($currentQuarter > 4) {
                     $currentQuarter = 1;
@@ -1479,22 +1625,26 @@ public function createQuarterlySchedule(Request $request, Contract $contract)
                 }
             }
         } else {
-            // Custom percentage distribution
             for ($i = 1; $i <= $quartersCount; $i++) {
                 $percent = $request->input("quarter_{$i}_percent", 0);
                 if ($percent > 0) {
                     $quarterAmount = ($totalAmount * $percent) / 100;
 
-                    PaymentSchedule::create([
+                    $schedule = PaymentSchedule::create([
                         'contract_id' => $contract->id,
                         'year' => $currentYear,
                         'quarter' => $currentQuarter,
                         'quarter_amount' => $quarterAmount,
                         'is_active' => true
                     ]);
+
+                    $newSchedules[] = [
+                        'year' => $currentYear,
+                        'quarter' => $currentQuarter,
+                        'quarter_amount' => $quarterAmount
+                    ];
                 }
 
-                // Move to next quarter (proper year progression)
                 $currentQuarter++;
                 if ($currentQuarter > 4) {
                     $currentQuarter = 1;
@@ -1502,6 +1652,17 @@ public function createQuarterlySchedule(Request $request, Contract $contract)
                 }
             }
         }
+
+        // ✅ Log payment schedule history
+        \App\Models\PaymentHistory::logAction(
+            $contract->id,
+            'created',
+            'payment_schedules',
+            0, // bulk insert, no single ID
+            $oldSchedules,
+            $newSchedules,
+            "To'lov jadvali yaratildi ({$scheduleType}, {$quartersCount} chorak)"
+        );
 
         DB::commit();
 

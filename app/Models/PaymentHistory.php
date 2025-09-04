@@ -1,5 +1,5 @@
 <?php
-// PaymentHistory Model
+
 namespace App\Models;
 
 use Illuminate\Database\Eloquent\Factories\HasFactory;
@@ -17,7 +17,8 @@ class PaymentHistory extends Model
         'old_values',
         'new_values',
         'description',
-        'user_id'
+        'user_id',
+        'created_at'
     ];
 
     protected $casts = [
@@ -26,11 +27,10 @@ class PaymentHistory extends Model
         'created_at' => 'datetime'
     ];
 
-    public $timestamps = false;
+    // ✅ Laravel will manage timestamps (created_at, updated_at)
+    public $timestamps = true;
 
-    protected $dates = ['created_at'];
-
-    // Relationships
+    // 🧩 Relationships
     public function contract()
     {
         return $this->belongsTo(Contract::class);
@@ -41,23 +41,34 @@ class PaymentHistory extends Model
         return $this->belongsTo(User::class);
     }
 
-    // Static method to log history
+    // ✅ Fixed static logger
     public static function logAction($contractId, $action, $tableName, $recordId, $oldValues = null, $newValues = null, $description = null)
     {
-        return self::create([
-            'contract_id' => $contractId,
-            'action' => $action,
-            'table_name' => $tableName,
-            'record_id' => $recordId,
-            'old_values' => $oldValues,
-            'new_values' => $newValues,
-            'description' => $description,
-            'user_id' => auth()->id(),
-            'created_at' => now()
-        ]);
+        try {
+            $history = self::create([
+                'contract_id' => $contractId,
+                'action' => $action,
+                'table_name' => $tableName,
+                'record_id' => $recordId,
+                'old_values' => $oldValues,
+                'new_values' => $newValues,
+                'description' => $description,
+                'user_id' => auth()->id(), // null if not authenticated
+                'created_at' => now()
+            ]);
+
+            \Log::info('✅ PaymentHistory logged', ['id' => $history->id]);
+
+            return $history;
+        } catch (\Exception $e) {
+            \Log::error('❌ PaymentHistory logAction failed', [
+                'message' => $e->getMessage(),
+                'trace' => $e->getTraceAsString()
+            ]);
+            return null;
+        }
     }
 
-    // Get formatted description
     public function getFormattedDescriptionAttribute()
     {
         if ($this->description) {
@@ -79,7 +90,6 @@ class PaymentHistory extends Model
         return ($tableText[$this->table_name] ?? $this->table_name) . ' ' . ($actionText[$this->action] ?? $this->action);
     }
 
-    // Get changes summary
     public function getChangesSummaryAttribute()
     {
         if (!$this->new_values || !$this->old_values) {

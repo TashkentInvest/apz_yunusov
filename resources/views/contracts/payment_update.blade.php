@@ -304,7 +304,7 @@
     <div class="govt-header rounded-2xl shadow-lg p-8 text-white">
         <div class="flex items-center justify-between">
             <div>
-                <h1 class="text-3xl font-bold mb-2">O'ZBEKISTON RESPUBLIKASI</h1>
+                <h1 class="text-3xl font-bold mb-2">TIC</h1>
                 <p class="text-xl opacity-90">Shartnoma to'lov boshqaruv tizimi</p>
             </div>
             <div class="text-right">
