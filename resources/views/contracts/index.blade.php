@@ -229,21 +229,21 @@
                             <!-- Actions -->
                             <td class="px-6 py-4 text-right">
                                 <div class="flex items-center justify-end space-x-2">
-                                    <a href="{{ route('contracts.show', $contract) }}"
+                                    {{-- <a href="{{ route('contracts.show', $contract) }}"
                                        class="text-gray-400 hover:text-gray-600" title="Просмотр">
                                         <i data-feather="eye" class="w-4 h-4"></i>
-                                    </a>
+                                    </a> --}}
                                     <a href="{{ route('contracts.payment_update', $contract) }}"
                                        class="text-gray-400 hover:text-blue-600" title="Редактировать">
                                         <i data-feather="edit-2" class="w-4 h-4"></i>
                                     </a>
-                                    @if($contract->remaining_debt > 0)
+                                    {{-- @if($contract->remaining_debt > 0)
                                         <button onclick="generateDemandNotice({{ $contract->id }})"
                                                 class="text-gray-400 hover:text-red-600" title="Требование">
                                             <i data-feather="alert-triangle" class="w-4 h-4"></i>
                                         </button>
-                                    @endif
-                                    <div class="relative">
+                                    @endif --}}
+                                    {{-- <div class="relative">
                                         <button onclick="toggleDropdown({{ $contract->id }})"
                                                 class="text-gray-400 hover:text-gray-600" title="Еще">
                                             <i data-feather="more-horizontal" class="w-4 h-4"></i>
@@ -268,7 +268,7 @@
                                                 </button>
                                             </div>
                                         </div>
-                                    </div>
+                                    </div> --}}
                                 </div>
                             </td>
                         </tr>
