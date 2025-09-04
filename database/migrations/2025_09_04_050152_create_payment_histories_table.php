@@ -18,7 +18,7 @@ return new class extends Migration
             $table->json('new_values')->nullable(); // New values
             $table->text('description')->nullable(); // Human readable description
             $table->foreignId('user_id')->constrained()->onDelete('cascade'); // Who made the change
-            $table->timestamp('created_at');
+            $table->timestamps();
 
             $table->index(['contract_id', 'created_at']);
             $table->index(['table_name', 'record_id']);
