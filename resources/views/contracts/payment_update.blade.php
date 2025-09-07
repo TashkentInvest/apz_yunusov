@@ -331,51 +331,69 @@
             @endif
 
             <!-- Basic Contract Information -->
-            <div class="grid grid-cols-1 lg:grid-cols-3 gap-6">
-                <div>
-                    <label class="block text-sm font-semibold text-gray-700 mb-3">Shartnoma raqami *</label>
-                    <input type="text" name="contract_number" required
-                           value="{{ $contract->contract_number ?? '' }}"
-                           class="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 text-lg font-medium">
-                </div>
+    <div class="grid grid-cols-1 lg:grid-cols-3 gap-6">
+    <div>
+        <label class="block text-sm font-semibold text-gray-700 mb-3">Shartnoma raqami *</label>
+        <input type="text" name="contract_number" required
+               value="{{ old('contract_number', $contract->contract_number ?? '') }}"
+               class="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 text-lg font-medium @error('contract_number') border-red-300 @enderror">
+        @error('contract_number')
+            <p class="text-red-500 text-sm mt-1">{{ $message }}</p>
+        @enderror
+    </div>
 
-                <div>
-                    <label class="block text-sm font-semibold text-gray-700 mb-3">Shartnoma sanasi *</label>
-                    <input type="date" name="contract_date" required
-                           value="{{ isset($contract) ? $contract->contract_date->format('Y-m-d') : date('Y-m-d') }}"
-                           class="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 text-lg">
-                </div>
+    <div>
+        <label class="block text-sm font-semibold text-gray-700 mb-3">Shartnoma sanasi *</label>
+        <input type="date" name="contract_date" required
+               value="{{ old('contract_date', isset($contract) ? $contract->contract_date->format('Y-m-d') : date('Y-m-d')) }}"
+               max="{{ date('Y-m-d') }}"
+               class="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 text-lg @error('contract_date') border-red-300 @enderror">
+        @error('contract_date')
+            <p class="text-red-500 text-sm mt-1">{{ $message }}</p>
+        @enderror
+    </div>
 
-                <div>
-                    <label class="block text-sm font-semibold text-gray-700 mb-3">Yakunlash sanasi</label>
-                    <input type="date" name="completion_date"
-                           value="{{ isset($contract) && $contract->completion_date ? $contract->completion_date->format('Y-m-d') : '' }}"
-                           class="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 text-lg">
-                </div>
-            </div>
+    <div>
+        <label class="block text-sm font-semibold text-gray-700 mb-3">Yakunlash sanasi</label>
+        <input type="date" name="completion_date"
+               value="{{ old('completion_date', isset($contract) && $contract->completion_date ? $contract->completion_date->format('Y-m-d') : '') }}"
+               class="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 text-lg @error('completion_date') border-red-300 @enderror">
+        @error('completion_date')
+            <p class="text-red-500 text-sm mt-1">{{ $message }}</p>
+        @enderror
+    </div>
+</div>
 
             <!-- Financial Information -->
             <div class="bg-blue-50 rounded-xl p-6 border-l-4 border-blue-500">
                 <h3 class="text-xl font-bold text-blue-900 mb-6">Moliyaviy ma'lumotlar</h3>
 
-                <div class="grid grid-cols-1 lg:grid-cols-2 gap-6 mb-6">
-                    <div>
-                        <label class="block text-sm font-semibold text-gray-700 mb-3">Jami shartnoma summasi (so'm) *</label>
-                        <input type="number" name="total_amount" required step="0.01" min="0"
-                               value="{{ $contract->total_amount ?? '' }}"
-                               class="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 text-lg font-bold"
-                               onchange="calculatePaymentBreakdown()">
-                    </div>
+            <div class="grid grid-cols-1 lg:grid-cols-2 gap-6 mb-6">
+    <div>
+        <label class="block text-sm font-semibold text-gray-700 mb-3">Jami shartnoma summasi (so'm) *</label>
+        <input type="number" name="total_amount" required step="0.01" min="1"
+               value="{{ old('total_amount', $contract->total_amount ?? '') }}"
+               class="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 text-lg font-bold @error('total_amount') border-red-300 @enderror"
+               onchange="calculatePaymentBreakdown()"
+               placeholder="Masalan: 1000000.00">
+        @error('total_amount')
+            <p class="text-red-500 text-sm mt-1">{{ $message }}</p>
+        @enderror
+    </div>
 
-                    <div>
-                        <label class="block text-sm font-semibold text-gray-700 mb-3">To'lov turi *</label>
-                        <select name="payment_type" required onchange="togglePaymentSettings()"
-                                class="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 text-lg">
-                            <option value="installment" {{ (isset($contract) && $contract->payment_type === 'installment') ? 'selected' : 'selected' }}>Bo'lib to'lash</option>
-                            <option value="full" {{ (isset($contract) && $contract->payment_type === 'full') ? 'selected' : '' }}>To'liq to'lash</option>
-                        </select>
-                    </div>
-                </div>
+    <div>
+        <label class="block text-sm font-semibold text-gray-700 mb-3">To'lov turi *</label>
+        <select name="payment_type" required onchange="togglePaymentSettings()"
+                class="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 text-lg @error('payment_type') border-red-300 @enderror">
+            <option value="">To'lov turini tanlang</option>
+            <option value="installment" {{ old('payment_type', $contract->payment_type ?? '') === 'installment' ? 'selected' : '' }}>Bo'lib to'lash</option>
+            <option value="full" {{ old('payment_type', $contract->payment_type ?? '') === 'full' ? 'selected' : '' }}>To'liq to'lash</option>
+        </select>
+        @error('payment_type')
+            <p class="text-red-500 text-sm mt-1">{{ $message }}</p>
+        @enderror
+    </div>
+</div>
 
                 <!-- Installment Settings -->
                 <div id="installmentSettings" class="space-y-6">
@@ -427,17 +445,17 @@
             </div>
 
             <!-- Action Buttons -->
-            <div class="flex justify-end space-x-4 pt-6 border-t border-gray-200">
-                <button type="button" onclick="resetForm()"
-                        class="px-8 py-3 bg-gray-100 text-gray-700 rounded-lg hover:bg-gray-200 transition-colors font-medium">
-                    Tozalash
-                </button>
-                <button type="submit"
-                        class="px-8 py-3 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors font-medium">
-                    <span id="submitText">{{ isset($contract) ? 'Yangilash' : 'Saqlash' }}</span>
-                    <i data-feather="loader" class="w-4 h-4 ml-2 hidden animate-spin" id="submitLoader"></i>
-                </button>
-            </div>
+           <div class="flex justify-end space-x-4 pt-6 border-t border-gray-200">
+    <button type="button" onclick="resetForm()"
+            class="px-8 py-3 bg-gray-100 text-gray-700 rounded-lg hover:bg-gray-200 transition-colors font-medium">
+        Tozalash
+    </button>
+    <button type="submit" id="contractSubmitBtn"
+            class="px-8 py-3 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors font-medium disabled:opacity-50 disabled:cursor-not-allowed">
+        <span id="submitText">{{ isset($contract) ? 'Yangilash' : 'Saqlash' }}</span>
+        <i data-feather="loader" class="w-4 h-4 ml-2 hidden animate-spin" id="submitLoader"></i>
+    </button>
+</div>
         </form>
     </div>
 
@@ -565,29 +583,88 @@
                     </div>
 
                     <!-- Year and Quarters Selection -->
-                    <div class="grid grid-cols-1 md:grid-cols-3 gap-4">
-                        <div>
-                            <label class="block text-sm font-medium text-gray-700 mb-2">Yil</label>
-                            <select name="schedule_year" class="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500">
-                                @for($y = date('Y') - 1; $y <= date('Y') + 5; $y++)
-                                    <option value="{{ $y }}">{{ $y }} yil</option>
-                                @endfor
-                            </select>
-                        </div>
-                        <div>
-                            <label class="block text-sm font-medium text-gray-700 mb-2">Choraklar soni</label>
-                            <input type="number" name="quarters_count" min="1" max="20" step="1" value="{{$contract->quarters_count ?? 8}}"
-                                   onchange="updateSchedulePreview()"
-                                   class="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500"
-                                   placeholder="1-20 orasida">
-                        </div>
-                        <div>
-                            <label class="block text-sm font-medium text-gray-700 mb-2">Jami summa</label>
-                            <input type="number" name="total_schedule_amount" step="0.01"
-                                   value="{{ isset($contract) ? $contract->remaining_amount : 0 }}"
-                                   class="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500">
-                        </div>
-                    </div>
+              <div class="grid grid-cols-1 md:grid-cols-3 gap-4">
+    <div>
+        <label class="block text-sm font-medium text-gray-700 mb-2">Yil</label>
+        <select name="schedule_year" class="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500">
+            @if(isset($contract))
+                @php
+                    $contractDate = $contract->contract_date;
+                    $contractYear = $contractDate->year;
+                    $contractMonth = $contractDate->month;
+                    $contractQuarter = ceil($contractMonth / 3);
+                    $constructionYears = $contract->construction_period_years ?? 2;
+                    $quartersCount = $contract->quarters_count ?? 8;
+                    
+                    // Calculate how many years needed for all quarters
+                    $remainingQuartersInContractYear = 5 - $contractQuarter; // Quarters left in contract year
+                    $remainingQuarters = max(0, $quartersCount - $remainingQuartersInContractYear);
+                    $additionalYears = ceil($remainingQuarters / 4);
+                    $endYear = $contractYear + $additionalYears;
+                @endphp
+                
+                {{-- Contract year (starting quarter) --}}
+                <option value="{{ $contractYear }}" selected>
+                    {{ $contractYear }} yil ({{ $contractQuarter }}-chorakdan boshlanadi)
+                </option>
+                
+                {{-- Additional years if needed --}}
+                @for($year = $contractYear + 1; $year <= $endYear; $year++)
+                    <option value="{{ $year }}">{{ $year }} yil</option>
+                @endfor
+            @else
+                {{-- Fallback when no contract --}}
+                <option value="{{ date('Y') }}">{{ date('Y') }} yil</option>
+                <option value="{{ date('Y') + 1 }}">{{ date('Y') + 1 }} yil</option>
+            @endif
+        </select>
+        @if(isset($contract))
+            <p class="text-xs text-blue-600 mt-1 font-medium">
+                📅 Shartnoma: {{ $contract->contract_date->format('d.m.Y') }}
+                ({{ $contractQuarter }}-chorak)
+            </p>
+        @endif
+    </div>
+    
+    <div>
+        <label class="block text-sm font-medium text-gray-700 mb-2">Choraklar soni</label>
+        <input type="number" name="quarters_count" min="1" max="20" step="1" 
+               value="{{ isset($contract) ? ($contract->quarters_count ?? 8) : 4 }}"
+               onchange="updateSchedulePreview()"
+               class="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500"
+               placeholder="1-20 orasida">
+        @if(isset($contract))
+            <p class="text-xs text-gray-500 mt-1">
+                Shartnomada {{ $contract->quarters_count ?? 8 }} ta chorak belgilangan
+            </p>
+        @endif
+    </div>
+    
+    <div>
+        <label class="block text-sm font-medium text-gray-700 mb-2">Jami summa (so'm)</label>
+        @if(isset($contract))
+            @php
+                $initialPayment = $contract->total_amount * (($contract->initial_payment_percent ?? 0) / 100);
+                $remainingAmount = $contract->total_amount - $initialPayment;
+            @endphp
+            <input type="number" name="total_schedule_amount" step="0.01" min="0.01"
+                   value="{{ $remainingAmount }}"
+                   class="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500">
+            <p class="text-xs text-green-600 mt-1 font-medium">
+                💰 Qolgan summa: {{ number_format($remainingAmount, 0, '.', ' ') }} so'm
+            </p>
+            <p class="text-xs text-gray-500">
+                (Jami: {{ number_format($contract->total_amount, 0, '.', ' ') }} so'm - 
+                Boshlang'ich: {{ number_format($initialPayment, 0, '.', ' ') }} so'm)
+            </p>
+        @else
+            <input type="number" name="total_schedule_amount" step="0.01" min="0.01"
+                   placeholder="Choraklar uchun taqsimlanadigan summa"
+                   class="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500">
+        @endif
+    </div>
+</div>
+
 
                     <!-- Custom Schedule Grid -->
                     <div id="customScheduleGrid" class="hidden">
@@ -607,19 +684,67 @@
                 </div>
 
                 <div class="px-8 py-6 border-t border-gray-200 flex justify-end space-x-4">
-                    <button type="button" onclick="closePaymentScheduleModal()"
-                            class="px-6 py-3 bg-gray-100 text-gray-700 rounded-lg hover:bg-gray-200 transition-colors">
-                        Bekor qilish
-                    </button>
-                    <button type="submit"
-                            class="px-6 py-3 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors">
-                        Jadvalni saqlash
-                    </button>
+          <button type="button" onclick="closePaymentScheduleModal()"
+            class="px-6 py-3 bg-gray-100 text-gray-700 rounded-lg hover:bg-gray-200 transition-colors">
+        Bekor qilish
+    </button>
+    <button type="submit" id="scheduleSubmitBtn"
+            class="px-6 py-3 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors disabled:opacity-50 disabled:cursor-not-allowed">
+        <i data-feather="calendar" class="w-4 h-4 mr-2"></i>
+        Jadvalni saqlash
+    </button>
                 </div>
             </form>
         </div>
     </div>
 </div>
+
+<style>
+    button[type="submit"] {
+    transition: all 0.2s ease;
+}
+
+button[type="submit"]:disabled {
+    pointer-events: none;
+    opacity: 0.6;
+    cursor: not-allowed;
+}
+
+button[type="submit"]:active {
+    transform: scale(0.98);
+}
+
+/* Visual feedback for clicking */
+.payment-form-submitting {
+    opacity: 0.7;
+    pointer-events: none;
+}
+
+/* Loading state styling */
+.btn-loading {
+    position: relative;
+    color: transparent !important;
+}
+
+.btn-loading::after {
+    content: '';
+    position: absolute;
+    width: 16px;
+    height: 16px;
+    top: 50%;
+    left: 50%;
+    margin-left: -8px;
+    margin-top: -8px;
+    border: 2px solid #ffffff;
+    border-radius: 50%;
+    border-top-color: transparent;
+    animation: spin 1s linear infinite;
+}
+
+@keyframes spin {
+    to { transform: rotate(360deg); }
+}
+</style>
 
 <!-- Add Payment Modal -->
 <div id="paymentModal" class="hidden fixed inset-0 z-50 overflow-y-auto">
@@ -636,43 +761,67 @@
                 </div>
 
                 <div class="px-8 py-6 space-y-4">
-                    <div>
-                        <label class="block text-sm font-medium text-gray-700 mb-2">To'lov sanasi *</label>
-                        <input type="date" name="payment_date" required value="{{ date('Y-m-d') }}"
-                               class="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-green-500">
-                    </div>
+<div>
+    <label class="block text-sm font-medium text-gray-700 mb-2">To'lov sanasi *</label>
+    <input type="date" name="payment_date" required 
+           value="{{ old('payment_date', date('Y-m-d')) }}"
+           min="{{ isset($contract) ? $contract->contract_date->format('Y-m-d') : date('Y-m-d') }}"
+           max="{{ date('Y-m-d') }}"
+           class="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-green-500 @error('payment_date') border-red-300 @enderror">
+    @error('payment_date')
+        <p class="text-red-500 text-sm mt-1">{{ $message }}</p>
+    @enderror
+    @if(isset($contract))
+        <p class="text-xs text-gray-500 mt-1">
+            Eng erta sana: {{ $contract->contract_date->format('d.m.Y') }} 
+            (Shartnoma sanasi)
+        </p>
+    @else
+        <p class="text-xs text-gray-500 mt-1">To'lov sanasi shartnoma sanasidan oldin bo'lishi mumkin emas</p>
+    @endif
+</div>
+    <div>
+        <label class="block text-sm font-medium text-gray-700 mb-2">To'lov summasi (so'm) *</label>
+        <input type="number" name="payment_amount" step="0.01" min="0.01" required
+               value="{{ old('payment_amount') }}"
+               class="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-green-500 text-lg font-medium @error('payment_amount') border-red-300 @enderror"
+               placeholder="0.00">
+        @error('payment_amount')
+            <p class="text-red-500 text-sm mt-1">{{ $message }}</p>
+        @enderror
+    </div>
 
-                    <div>
-                        <label class="block text-sm font-medium text-gray-700 mb-2">To'lov summasi (so'm) *</label>
-                        <input type="number" name="payment_amount" step="0.01" min="0" required
-                               class="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-green-500 text-lg font-medium"
-                               placeholder="0.00">
-                    </div>
+    <div>
+        <label class="block text-sm font-medium text-gray-700 mb-2">Hujjat raqami</label>
+        <input type="text" name="payment_number" maxlength="50"
+               value="{{ old('payment_number') }}"
+               class="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-green-500 @error('payment_number') border-red-300 @enderror"
+               placeholder="Chek, spravka raqami">
+        @error('payment_number')
+            <p class="text-red-500 text-sm mt-1">{{ $message }}</p>
+        @enderror
+    </div>
 
-                    <div>
-                        <label class="block text-sm font-medium text-gray-700 mb-2">Hujjat raqami</label>
-                        <input type="text" name="payment_number" maxlength="50"
-                               class="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-green-500"
-                               placeholder="Chek, spravka raqami">
-                    </div>
-
-                    <div>
-                        <label class="block text-sm font-medium text-gray-700 mb-2">Izoh</label>
-                        <textarea name="payment_notes" rows="3"
-                                  class="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-green-500"
-                                  placeholder="Qo'shimcha ma'lumot"></textarea>
-                    </div>
-                </div>
-
+    <div>
+        <label class="block text-sm font-medium text-gray-700 mb-2">Izoh</label>
+        <textarea name="payment_notes" rows="3"
+                  class="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-green-500 @error('payment_notes') border-red-300 @enderror"
+                  placeholder="Qo'shimcha ma'lumot">{{ old('payment_notes') }}</textarea>
+        @error('payment_notes')
+            <p class="text-red-500 text-sm mt-1">{{ $message }}</p>
+        @enderror
+    </div>
+</div>
                 <div class="px-8 py-6 border-t border-gray-200 flex justify-end space-x-4">
-                    <button type="button" onclick="closePaymentModal()"
-                            class="px-6 py-3 bg-gray-100 text-gray-700 rounded-lg hover:bg-gray-200 transition-colors">
-                        Bekor qilish
-                    </button>
-                    <button type="submit"
-                            class="px-6 py-3 bg-green-600 text-white rounded-lg hover:bg-green-700 transition-colors">
-                        To'lovni qo'shish
-                    </button>
+          <button type="button" onclick="closePaymentModal()"
+            class="px-6 py-3 bg-gray-100 text-gray-700 rounded-lg hover:bg-gray-200 transition-colors">
+        Bekor qilish
+    </button>
+    <button type="submit" id="paymentSubmitBtn"
+            class="px-6 py-3 bg-green-600 text-white rounded-lg hover:bg-green-700 transition-colors disabled:opacity-50 disabled:cursor-not-allowed">
+        <i data-feather="credit-card" class="w-4 h-4 mr-2"></i>
+        To'lovni qo'shish
+    </button>
                 </div>
             </form>
         </div>
@@ -696,6 +845,172 @@
         </div>
     </div>
 </div>
+
+
+{{-- 1. Add this after the Payment Schedule Management section --}}
+@if(isset($contract))
+<!-- Payment History Section -->
+<div class="bg-white rounded-2xl shadow-lg border govt-card">
+    <div class="border-b border-gray-200 p-6">
+        <h2 class="text-2xl font-bold text-gray-900 flex items-center">
+            <i data-feather="clock" class="w-6 h-6 mr-3 text-purple-600"></i>
+            To'lov tarixi
+        </h2>
+    </div>
+    <div class="p-8">
+        <div id="paymentHistoryContainer">
+            <div class="text-center py-8 text-gray-500">
+                <div class="animate-spin rounded-full h-8 w-8 border-b-2 border-purple-600 mx-auto mb-3"></div>
+                <p>Tarix yuklanmoqda...</p>
+            </div>
+        </div>
+    </div>
+</div>
+@endif
+
+{{-- 2. Add Edit Payment Modal after the existing modals --}}
+<!-- Edit Payment Modal -->
+<div id="editPaymentModal" class="hidden fixed inset-0 z-50 overflow-y-auto">
+    <div class="flex items-center justify-center min-h-screen px-4">
+        <div class="fixed inset-0 bg-gray-500 bg-opacity-75"></div>
+        <div class="inline-block bg-white rounded-2xl shadow-xl transform transition-all sm:max-w-lg sm:w-full">
+            <form id="editPaymentForm">
+                @csrf
+                <input type="hidden" name="payment_id" value="">
+                
+                <div class="px-8 py-6 border-b border-gray-200">
+                    <h3 class="text-xl font-semibold text-gray-900 flex items-center">
+                        <i data-feather="edit-2" class="w-5 h-5 mr-2 text-blue-600"></i>
+                        To'lovni tahrirlash
+                    </h3>
+                </div>
+
+                <div class="px-8 py-6 space-y-4">
+                    <div>
+                        <label class="block text-sm font-medium text-gray-700 mb-2">To'lov sanasi *</label>
+                        <input type="date" name="payment_date" required 
+                               min="{{ isset($contract) ? $contract->contract_date->format('Y-m-d') : date('Y-m-d') }}"
+                               class="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500">
+                        @error('payment_date')
+                            <p class="text-red-500 text-sm mt-1">{{ $message }}</p>
+                        @enderror
+                    </div>
+
+                    <div>
+                        <label class="block text-sm font-medium text-gray-700 mb-2">To'lov summasi (so'm) *</label>
+                        <input type="number" name="payment_amount" step="0.01" min="0" required
+                               class="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 text-lg font-medium"
+                               placeholder="0.00">
+                        @error('payment_amount')
+                            <p class="text-red-500 text-sm mt-1">{{ $message }}</p>
+                        @enderror
+                    </div>
+
+                    <div>
+                        <label class="block text-sm font-medium text-gray-700 mb-2">Hujjat raqami</label>
+                        <input type="text" name="payment_number" maxlength="50"
+                               class="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500"
+                               placeholder="Chek, spravka raqami">
+                        @error('payment_number')
+                            <p class="text-red-500 text-sm mt-1">{{ $message }}</p>
+                        @enderror
+                    </div>
+
+                    <div>
+                        <label class="block text-sm font-medium text-gray-700 mb-2">Izoh</label>
+                        <textarea name="payment_notes" rows="3"
+                                  class="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500"
+                                  placeholder="Qo'shimcha ma'lumot"></textarea>
+                        @error('payment_notes')
+                            <p class="text-red-500 text-sm mt-1">{{ $message }}</p>
+                        @enderror
+                    </div>
+                </div>
+
+                <div class="px-8 py-6 border-t border-gray-200 flex justify-end space-x-4">
+                    <button type="button" onclick="closeEditPaymentModal()"
+                            class="px-6 py-3 bg-gray-100 text-gray-700 rounded-lg hover:bg-gray-200 transition-colors">
+                        Bekor qilish
+                    </button>
+                    <button type="submit" id="editPaymentSubmitBtn"
+                            class="px-6 py-3 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors disabled:opacity-50 disabled:cursor-not-allowed">
+                        <span id="editPaymentSubmitText">Yangilash</span>
+                        <i data-feather="loader" class="w-4 h-4 ml-2 hidden animate-spin" id="editPaymentLoader"></i>
+                    </button>
+                </div>
+            </form>
+        </div>
+    </div>
+</div>
+
+{{-- 3. Enhanced meta tags and CSRF protection --}}
+@push('head')
+<meta name="csrf-token" content="{{ csrf_token() }}">
+<meta name="contract-start-date" content="{{ isset($contract) ? $contract->contract_date->format('Y-m-d') : date('Y-m-d') }}">
+@endpush
+
+
+
+@if ($errors->any())
+<div class="bg-red-50 border border-red-200 rounded-lg p-4 mb-6">
+    <div class="flex">
+        <div class="flex-shrink-0">
+            <i data-feather="alert-triangle" class="w-5 h-5 text-red-400"></i>
+        </div>
+        <div class="ml-3">
+            <h3 class="text-sm font-medium text-red-800">Quyidagi xatoliklarni tuzating:</h3>
+            <div class="mt-2 text-sm text-red-700">
+                <ul class="list-disc pl-5 space-y-1">
+                    @foreach ($errors->all() as $error)
+                        <li>{{ $error }}</li>
+                    @endforeach
+                </ul>
+            </div>
+        </div>
+    </div>
+</div>
+@endif
+
+
+{{-- 5. Enhanced success/error flash messages --}}
+@if(session('success'))
+<div class="bg-green-50 border border-green-200 rounded-lg p-4 mb-6" id="successMessage">
+    <div class="flex">
+        <div class="flex-shrink-0">
+            <i data-feather="check-circle" class="w-5 h-5 text-green-400"></i>
+        </div>
+        <div class="ml-3">
+            <p class="text-sm font-medium text-green-800">{{ session('success') }}</p>
+        </div>
+        <div class="ml-auto pl-3">
+            <button onclick="document.getElementById('successMessage').remove()" class="text-green-400 hover:text-green-600">
+                <i data-feather="x" class="w-4 h-4"></i>
+            </button>
+        </div>
+    </div>
+</div>
+@endif
+
+@if(session('error'))
+<div class="bg-red-50 border border-red-200 rounded-lg p-4 mb-6" id="errorMessage">
+    <div class="flex">
+        <div class="flex-shrink-0">
+            <i data-feather="alert-triangle" class="w-5 h-5 text-red-400"></i>
+        </div>
+        <div class="ml-3">
+            <p class="text-sm font-medium text-red-800">{{ session('error') }}</p>
+        </div>
+        <div class="ml-auto pl-3">
+            <button onclick="document.getElementById('errorMessage').remove()" class="text-red-400 hover:text-red-600">
+                <i data-feather="x" class="w-4 h-4"></i>
+            </button>
+        </div>
+    </div>
+</div>
+@endif
+
+
+
 @endsection
 @push('scripts')
 <script src="https://unpkg.com/feather-icons"></script>
@@ -706,6 +1021,10 @@
 const contractData = @json($contract ?? null);
 let quarterlyData = {};
 let currentQuarterData = null;
+
+let isSubmittingPayment = false;
+let isSubmittingSchedule = false; 
+let isSubmittingContract = false;
 
 // Safe feather replace function
 function safeFeatherReplace() {
@@ -720,6 +1039,72 @@ function safeFeatherReplace() {
 
 // Initialize everything when page loads
 document.addEventListener('DOMContentLoaded', function() {
+
+    // Add these at the top of your script:
+
+
+      setTimeout(() => {
+        const successMsg = document.getElementById('successMessage');
+        const errorMsg = document.getElementById('errorMessage');
+        if (successMsg) successMsg.remove();
+        if (errorMsg) errorMsg.remove();
+    }, 5000);
+
+
+     if (document.querySelector('select[name="schedule_year"]')) {
+        document.querySelector('select[name="schedule_year"]').addEventListener('change', updateSchedulePreview);
+    }
+    
+    // Add quarters count change listener
+    if (document.querySelector('input[name="quarters_count"]')) {
+        document.querySelector('input[name="quarters_count"]').addEventListener('change', function() {
+            if (document.querySelector('input[name="schedule_type"]:checked').value === 'custom') {
+                generateQuarterInputs();
+            }
+            updateSchedulePreview();
+        });
+    }
+
+    const totalAmountInput = document.querySelector('input[name="total_amount"]');
+    if (totalAmountInput) {
+        totalAmountInput.addEventListener('input', function() {
+            const value = parseFloat(this.value);
+            if (value && value < 1) {
+                this.setCustomValidity('Shartnoma summasi 1 so\'mdan kam bo\'lishi mumkin emas');
+            } else {
+                this.setCustomValidity('');
+            }
+        });
+    }
+
+      // Contract date validation
+    const contractDateInput = document.querySelector('input[name="contract_date"]');
+    if (contractDateInput) {
+        contractDateInput.addEventListener('change', function() {
+            const selectedDate = new Date(this.value);
+            const today = new Date();
+            today.setHours(0, 0, 0, 0);
+            
+            if (selectedDate > today) {
+                this.setCustomValidity('Shartnoma sanasi bugundan kech bo\'lishi mumkin emas');
+            } else {
+                this.setCustomValidity('');
+            }
+        });
+    }
+
+      const paymentAmountInputs = document.querySelectorAll('input[name="payment_amount"]');
+    paymentAmountInputs.forEach(input => {
+        input.addEventListener('input', function() {
+            const value = parseFloat(this.value);
+            if (value && value <= 0) {
+                this.setCustomValidity('To\'lov summasi 0 dan katta bo\'lishi kerak');
+            } else {
+                this.setCustomValidity('');
+            }
+        });
+    });
+
     safeFeatherReplace();
 
     if (contractData) {
@@ -732,6 +1117,71 @@ document.addEventListener('DOMContentLoaded', function() {
 
     setupEventListeners();
 });
+
+function calculateQuartersFromContractDate() {
+    if (!contractData || !contractData.contract_date) {
+        return {
+            years: [new Date().getFullYear()],
+            startQuarter: 1,
+            contractYear: new Date().getFullYear(),
+            contractQuarter: 1
+        };
+    }
+
+    const contractDate = new Date(contractData.contract_date);
+    const contractYear = contractDate.getFullYear();
+    const contractMonth = contractDate.getMonth() + 1; // 1-12
+    const contractQuarter = Math.ceil(contractMonth / 3); // 1-4
+    
+    const constructionYears = contractData.construction_period_years || 2;
+    const totalQuarters = contractData.quarters_count || 8;
+    
+    // Calculate which years will be needed
+    const years = [];
+    const startingQuartersInYear = 5 - contractQuarter; // Remaining quarters in contract year
+    
+    years.push(contractYear);
+    
+    let remainingQuarters = totalQuarters - startingQuartersInYear;
+    let currentYear = contractYear + 1;
+    
+    while (remainingQuarters > 0) {
+        years.push(currentYear);
+        remainingQuarters -= 4; // 4 quarters per year
+        currentYear++;
+    }
+    
+    return {
+        years: years,
+        startQuarter: contractQuarter,
+        contractYear: contractYear,
+        contractQuarter: contractQuarter,
+        contractMonth: contractMonth
+    };
+}
+
+// Enhanced year options population based on contract date
+function populateYearOptions() {
+    const yearSelect = document.querySelector('select[name="schedule_year"]');
+    if (!yearSelect || !contractData) return;
+
+    const scheduleInfo = calculateQuartersFromContractDate();
+    yearSelect.innerHTML = '';
+    
+    scheduleInfo.years.forEach((year, index) => {
+        const option = document.createElement('option');
+        option.value = year;
+        
+        if (year === scheduleInfo.contractYear) {
+            option.textContent = `${year} yil (Shartnoma yili - ${scheduleInfo.contractQuarter}-chorakdan)`;
+            option.selected = true; // Default to contract year
+        } else {
+            option.textContent = `${year} yil`;
+        }
+        
+        yearSelect.appendChild(option);
+    });
+}
 
 function setupEventListeners() {
     document.querySelector('select[name="payment_type"]').addEventListener('change', togglePaymentSettings);
@@ -1068,6 +1518,25 @@ function getProgressColor(percent) {
 // Modal functions
 function openPaymentScheduleModal() {
     document.getElementById('paymentScheduleModal').classList.remove('hidden');
+    
+    // Populate year options based on contract date
+    populateYearOptions();
+    
+    // Set default values based on contract
+    if (contractData) {
+        const totalScheduleAmount = document.querySelector('input[name="total_schedule_amount"]');
+        if (totalScheduleAmount) {
+            const initialPayment = contractData.total_amount * ((contractData.initial_payment_percent || 0) / 100);
+            const remainingAmount = contractData.total_amount - initialPayment;
+            totalScheduleAmount.value = remainingAmount;
+        }
+        
+        const quartersInput = document.querySelector('input[name="quarters_count"]');
+        if (quartersInput) {
+            quartersInput.value = contractData.quarters_count || 8;
+        }
+    }
+    
     updateSchedulePreview();
 }
 
@@ -1168,6 +1637,53 @@ function generateQuarterInputs() {
     const quartersCount = parseInt(document.querySelector('input[name="quarters_count"]').value) || 4;
     const container = document.getElementById('quarterInputs');
 
+    if (!contractData) {
+        generateStandardQuarterInputs(quartersCount, container);
+        return;
+    }
+
+    // Start from actual contract date
+    const contractDate = new Date(contractData.contract_date);
+    const contractYear = contractDate.getFullYear();
+    const contractMonth = contractDate.getMonth() + 1;
+    const contractQuarter = Math.ceil(contractMonth / 3);
+
+    let html = '';
+    const equalPercent = (100 / quartersCount).toFixed(2);
+
+    const gridClass = quartersCount <= 4 ? 'grid-cols-2' :
+                     quartersCount <= 8 ? 'grid-cols-4' : 'grid-cols-5';
+    container.className = `grid ${gridClass} gap-4`;
+
+    let currentYear = contractYear;
+    let currentQuarter = contractQuarter;
+
+    for (let i = 1; i <= quartersCount; i++) {
+        const isFirst = i === 1;
+        const quarterInfo = isFirst ? ' (Boshlash)' : '';
+        const quarterLabel = `${currentQuarter}-chorak ${currentYear}${quarterInfo}`;
+
+        html += `
+        <div>
+            <label class="block text-sm font-medium text-gray-700 mb-2">${quarterLabel} (%)</label>
+            <input type="number" name="quarter_${i}_percent" min="0" max="100" step="0.01" value="${equalPercent}"
+                   class="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 ${isFirst ? 'ring-2 ring-green-400' : ''}"
+                   onchange="updateSchedulePreview()">
+        </div>
+        `;
+
+        // Move to next quarter
+        currentQuarter++;
+        if (currentQuarter > 4) {
+            currentQuarter = 1;
+            currentYear++;
+        }
+    }
+
+    container.innerHTML = html;
+}
+
+function generateStandardQuarterInputs(quartersCount, container) {
     let html = '';
     const equalPercent = (100 / quartersCount).toFixed(2);
 
@@ -1188,13 +1704,98 @@ function generateQuarterInputs() {
 
     container.innerHTML = html;
 }
-
 function updateSchedulePreview() {
     const quartersCount = parseInt(document.querySelector('input[name="quarters_count"]').value) || 4;
     const totalAmount = parseFloat(document.querySelector('input[name="total_schedule_amount"]').value) || 0;
     const scheduleType = document.querySelector('input[name="schedule_type"]:checked').value;
     const previewGrid = document.getElementById('previewGrid');
 
+    if (!contractData) {
+        generateStandardPreview(quartersCount, totalAmount, scheduleType, previewGrid);
+        return;
+    }
+
+    // CRITICAL: Start from actual contract date, not January
+    const contractDate = new Date(contractData.contract_date);
+    const contractYear = contractDate.getFullYear();
+    const contractMonth = contractDate.getMonth() + 1;
+    const contractQuarter = Math.ceil(contractMonth / 3);
+
+    let html = '';
+    let totalPercent = 0;
+
+    const gridClass = quartersCount <= 4 ? 'grid-cols-2' :
+                     quartersCount <= 8 ? 'grid-cols-4' :
+                     quartersCount <= 12 ? 'grid-cols-6' : 'grid-cols-8';
+    previewGrid.className = `grid ${gridClass} gap-3`;
+
+    // Generate quarters starting from contract quarter
+    let currentYear = contractYear;
+    let currentQuarter = contractQuarter;
+
+    for (let i = 0; i < quartersCount; i++) {
+        let percent, amount;
+
+        if (scheduleType === 'auto') {
+            percent = 100 / quartersCount;
+            amount = totalAmount / quartersCount;
+        } else {
+            const input = document.querySelector(`input[name="quarter_${i + 1}_percent"]`);
+            percent = parseFloat(input ? input.value : 0) || 0;
+            amount = totalAmount * (percent / 100);
+        }
+
+        totalPercent += percent;
+
+        const isFirst = i === 0;
+        const quarterLabel = `${currentQuarter}-chorak ${currentYear}`;
+
+        html += `
+        <div class="bg-white border-2 border-blue-200 rounded-lg p-3 text-center ${isFirst ? 'ring-2 ring-green-400 bg-green-50' : ''}">
+            <div class="text-sm font-medium text-blue-600 mb-1">${quarterLabel}</div>
+            <div class="text-lg font-bold text-blue-900">${formatFullCurrency(amount)}</div>
+            <div class="text-xs text-gray-500">${percent.toFixed(1)}%</div>
+            ${isFirst ? '<div class="text-xs text-green-600 font-bold mt-1">BOSHLASH</div>' : ''}
+        </div>
+        `;
+
+        // Move to next quarter
+        currentQuarter++;
+        if (currentQuarter > 4) {
+            currentQuarter = 1;
+            currentYear++;
+        }
+    }
+
+    // Add summary with contract start info
+    if (scheduleType === 'custom') {
+        const isValidTotal = Math.abs(totalPercent - 100) < 0.1;
+        html += `
+        <div class="col-span-full mt-4 p-4 rounded-lg ${isValidTotal ? 'bg-green-100 text-green-800' : 'bg-red-100 text-red-800'}">
+            <div class="text-center">
+                <div class="font-bold">Jami: ${totalPercent.toFixed(1)}%</div>
+                <div class="text-sm">${isValidTotal ? 'To\'g\'ri' : '100% bo\'lishi kerak'}</div>
+            </div>
+        </div>
+        `;
+    } else {
+        html += `
+        <div class="col-span-full mt-4 p-4 rounded-lg bg-blue-100 text-blue-800">
+            <div class="text-center">
+                <div class="font-bold">Jami: 100%</div>
+                <div class="text-sm">Har bir chorak: ${(100/quartersCount).toFixed(1)}%</div>
+                <div class="text-xs text-gray-600 mt-1">
+                    <strong>Boshlanadi:</strong> ${contractQuarter}-chorak ${contractYear} 
+                    (${contractDate.toLocaleDateString('uz-UZ')})
+                </div>
+            </div>
+        </div>
+        `;
+    }
+
+    previewGrid.innerHTML = html;
+}
+function generateStandardPreview(quartersCount, totalAmount, scheduleType, previewGrid) {
     let html = '';
     let totalPercent = 0;
 
@@ -1222,27 +1823,6 @@ function updateSchedulePreview() {
             <div class="text-sm font-medium text-blue-600 mb-1">${i}-chorak</div>
             <div class="text-lg font-bold text-blue-900">${formatFullCurrency(amount)}</div>
             <div class="text-xs text-gray-500">${percent.toFixed(1)}%</div>
-        </div>
-        `;
-    }
-
-    if (scheduleType === 'custom') {
-        const isValidTotal = Math.abs(totalPercent - 100) < 0.1;
-        html += `
-        <div class="col-span-full mt-4 p-4 rounded-lg ${isValidTotal ? 'bg-green-100 text-green-800' : 'bg-red-100 text-red-800'}">
-            <div class="text-center">
-                <div class="font-bold">Jami: ${totalPercent.toFixed(1)}%</div>
-                <div class="text-sm">${isValidTotal ? 'To\'g\'ri' : '100% bo\'lishi kerak'}</div>
-            </div>
-        </div>
-        `;
-    } else {
-        html += `
-        <div class="col-span-full mt-4 p-4 rounded-lg bg-blue-100 text-blue-800">
-            <div class="text-center">
-                <div class="font-bold">Jami: 100%</div>
-                <div class="text-sm">Har bir chorak: ${(100/quartersCount).toFixed(1)}%</div>
-            </div>
         </div>
         `;
     }
@@ -1314,28 +1894,89 @@ async function handleContractSubmit(e) {
 async function handleScheduleSubmit(e) {
     e.preventDefault();
 
+    if (isSubmittingSchedule) {
+        showNotification('Jadval yaratilmoqda, iltimos kuting...', 'warning');
+        return false;
+    }
+
     if (!contractData) {
         showNotification('Avval shartnomani saqlang', 'error');
-        return;
+        return false;
     }
 
-    const formData = new FormData(e.target);
-    const scheduleType = formData.get('schedule_type');
-    const quartersCount = parseInt(formData.get('quarters_count'));
-
-    if (scheduleType === 'custom') {
-        let totalPercent = 0;
-        for (let i = 1; i <= quartersCount; i++) {
-            totalPercent += parseFloat(formData.get(`quarter_${i}_percent`) || 0);
-        }
-
-        if (Math.abs(totalPercent - 100) > 0.1) {
-            showNotification('Foizlar yig\'indisi 100% bo\'lishi kerak', 'error');
-            return;
-        }
-    }
+    isSubmittingSchedule = true;
+    const submitBtn = e.target.querySelector('button[type="submit"]');
+    const originalText = submitBtn.innerHTML;
+    
+    submitBtn.disabled = true;
+    submitBtn.innerHTML = `
+        <i data-feather="loader" class="w-4 h-4 mr-2 animate-spin"></i>
+        Jadval yaratilmoqda...
+    `;
 
     try {
+        const formData = new FormData(e.target);
+        const scheduleType = formData.get('schedule_type');
+        const quartersCount = parseInt(formData.get('quarters_count'));
+        const totalAmount = parseFloat(formData.get('total_schedule_amount'));
+
+        // CRITICAL: Calculate quarters starting from contract date
+        const contractDate = new Date(contractData.contract_date);
+        const contractYear = contractDate.getFullYear();
+        const contractMonth = contractDate.getMonth() + 1; // 1-12
+        const contractQuarter = Math.ceil(contractMonth / 3); // 1-4
+
+        // Generate the correct quarterly schedule data
+        const quarterlySchedule = [];
+        let currentYear = contractYear;
+        let currentQuarter = contractQuarter;
+
+        for (let i = 0; i < quartersCount; i++) {
+            let quarterAmount;
+            
+            if (scheduleType === 'auto') {
+                quarterAmount = totalAmount / quartersCount;
+            } else {
+                const percent = parseFloat(formData.get(`quarter_${i + 1}_percent`) || 0);
+                quarterAmount = totalAmount * (percent / 100);
+            }
+
+            quarterlySchedule.push({
+                year: currentYear,
+                quarter: currentQuarter,
+                quarter_amount: quarterAmount,
+                sequence: i + 1 // For custom percentage reference
+            });
+
+            // Move to next quarter
+            currentQuarter++;
+            if (currentQuarter > 4) {
+                currentQuarter = 1;
+                currentYear++;
+            }
+        }
+
+        // Validate custom percentages if needed
+        if (scheduleType === 'custom') {
+            let totalPercent = 0;
+            for (let i = 1; i <= quartersCount; i++) {
+                totalPercent += parseFloat(formData.get(`quarter_${i}_percent`) || 0);
+            }
+
+            if (Math.abs(totalPercent - 100) > 0.1) {
+                throw new Error('Foizlar yig\'indisi 100% bo\'lishi kerak');
+            }
+        }
+
+        // Send the properly calculated schedule to backend
+        const scheduleData = new FormData();
+        scheduleData.append('_token', formData.get('_token'));
+        scheduleData.append('schedule_type', scheduleType);
+        scheduleData.append('quarters_count', quartersCount);
+        scheduleData.append('total_schedule_amount', totalAmount);
+        scheduleData.append('contract_start_date', contractData.contract_date);
+        scheduleData.append('quarterly_schedule', JSON.stringify(quarterlySchedule));
+
         const response = await fetch(`/contracts/${contractData.id}/create-quarterly-schedule`, {
             method: 'POST',
             headers: {
@@ -1343,7 +1984,7 @@ async function handleScheduleSubmit(e) {
                 'Accept': 'application/json',
                 'X-Requested-With': 'XMLHttpRequest'
             },
-            body: formData
+            body: scheduleData
         });
 
         if (!response.ok) {
@@ -1361,6 +2002,11 @@ async function handleScheduleSubmit(e) {
         }
     } catch (error) {
         showNotification(error.message, 'error');
+    } finally {
+        isSubmittingSchedule = false;
+        submitBtn.disabled = false;
+        submitBtn.innerHTML = originalText;
+        safeFeatherReplace();
     }
 }
 
@@ -1473,9 +2119,16 @@ function debounce(func, wait) {
 }
 
 function resetForm() {
-    if (confirm('Barcha ma\'lumotlarni tozalashni xohlaysizmi?')) {
+    if (confirm('Barcha ma\'lumotlarni tozalashni xohlaysizmi? Bu amal bekor qilinmaydi.')) {
         document.getElementById('contractForm').reset();
+        
+        // Clear custom validation messages
+        document.querySelectorAll('input, select, textarea').forEach(element => {
+            element.setCustomValidity('');
+        });
+        
         calculatePaymentBreakdown();
+        showNotification('Forma tozalandi', 'info');
     }
 }
 
@@ -1543,14 +2196,37 @@ function renderPaymentsList(payments) {
 function editQuarterPlan(year, quarter) {
     showNotification(`${quarter}-chorak ${year} yil planini tahrirlash funksiyasi ishlab chiqilmoqda`, 'info');
 }
-
 function addQuarterPayment(year, quarter) {
-    openPaymentModal();
-    const month = (quarter - 1) * 3 + 2;
-    const date = new Date(year, month - 1, 15);
-    document.querySelector('input[name="payment_date"]').value = date.toISOString().split('T')[0];
-}
+    if (!contractData) {
+        showNotification('Shartnoma ma\'lumotlari topilmadi', 'error');
+        return;
+    }
 
+    openPaymentModal();
+    
+    // Calculate the middle date of the specific quarter in the specific year
+    const quarterStartMonth = (quarter - 1) * 3 + 1; // 1, 4, 7, 10
+    const quarterMiddleMonth = quarterStartMonth + 1; // 2, 5, 8, 11
+    
+    // Create suggested date for the quarter
+    let suggestedDate = new Date(year, quarterMiddleMonth - 1, 15); // Middle of quarter
+    
+    // Ensure suggested date is not before contract date
+    const contractStartDate = new Date(contractData.contract_date);
+    if (suggestedDate < contractStartDate) {
+        suggestedDate = contractStartDate;
+    }
+    
+    // Ensure suggested date is not in the future
+    const today = new Date();
+    if (suggestedDate > today) {
+        suggestedDate = today;
+    }
+    
+    document.querySelector('input[name="payment_date"]').value = suggestedDate.toISOString().split('T')[0];
+    
+    showNotification(`${quarter}-chorak ${year} yil uchun to'lov qo'shish`, 'info');
+}
 // Close modals on background click
 document.addEventListener('click', function(e) {
     if (e.target.classList.contains('fixed') && e.target.classList.contains('inset-0')) {
@@ -1564,4 +2240,4 @@ document.addEventListener('click', function(e) {
     }
 });
 </script>
-@endpush{{-- Complete Working Shartnoma Payment Management Blade Template --}}
+@endpush

@@ -1181,60 +1181,65 @@ public function updateContractInfo(Request $request, Contract $contract)
      * Store actual payment with proper quarter calculation
      */
 
-    public function storeFactPayment(Request $request, Contract $contract)
+public function storeFactPayment(Request $request, Contract $contract)
 {
-    $request->validate([
-        'payment_date' => 'required|date',
-        'payment_amount' => 'required|numeric|min:0',
-        'payment_number' => 'nullable|string|max:50',
-        'payment_notes' => 'nullable|string'
-    ]);
-
     try {
+        // Enhanced validation with contract date checking
+        $request->validate([
+            'payment_date' => [
+                'required',
+                'date',
+                'before_or_equal:today',
+                function ($attribute, $value, $fail) use ($contract) {
+                    $paymentDate = Carbon::parse($value);
+                    $contractDate = Carbon::parse($contract->contract_date);
+                    
+                    if ($paymentDate < $contractDate) {
+                        $fail("To'lov sanasi shartnoma sanasidan ({$contractDate->format('d.m.Y')}) oldin bo'lishi mumkin emas");
+                    }
+                }
+            ],
+            'payment_amount' => 'required|numeric|min:0.01',
+            'payment_number' => 'nullable|string|max:50',
+            'payment_notes' => 'nullable|string|max:500'
+        ]);
+
         DB::beginTransaction();
 
-        $paymentDate = Carbon::parse($request->payment_date);
-        $year = $paymentDate->year;
-        $quarter = $this->calculateQuarterFromDate($paymentDate);
-
-        // Validate payment doesn't exceed contract total
+        // Check if payment exceeds contract total
         $totalPaid = $contract->actualPayments()->sum('amount');
         $newTotal = $totalPaid + $request->payment_amount;
-
+        
         if ($newTotal > $contract->total_amount) {
             return response()->json([
                 'success' => false,
-                'message' => 'To\'lov summasi shartnoma summasidan oshib ketmoqda'
-            ], 400);
+                'message' => 'To\'lov summasi shartnoma summasidan oshib ketmoqda. Qolgan summa: ' . 
+                           number_format($contract->total_amount - $totalPaid, 0) . ' so\'m'
+            ], 422);
         }
 
-        $factPayment = ActualPayment::create([
+        // Create payment record
+        $payment = ActualPayment::create([
             'contract_id' => $contract->id,
             'payment_date' => $request->payment_date,
-            'year' => $year,
-            'quarter' => $quarter,
             'amount' => $request->payment_amount,
             'payment_number' => $request->payment_number,
             'notes' => $request->payment_notes,
             'created_by' => auth()->id()
         ]);
 
-        // ✅ Add history log
-        \App\Models\PaymentHistory::logAction(
+        // Log payment history with quarter info
+        $paymentDate = Carbon::parse($request->payment_date);
+        $quarter = ceil($paymentDate->month / 3);
+        
+        PaymentHistory::logAction(
             $contract->id,
             'created',
             'actual_payments',
-            $factPayment->id,
+            $payment->id,
             null,
-            [
-                'payment_date' => $factPayment->payment_date,
-                'year' => $factPayment->year,
-                'quarter' => $factPayment->quarter,
-                'amount' => $factPayment->amount,
-                'payment_number' => $factPayment->payment_number,
-                'notes' => $factPayment->notes,
-            ],
-            'Yangi haqiqiy to‘lov qo‘shildi'
+            $payment->toArray(),
+            "Yangi to'lov qo'shildi: " . number_format($payment->amount, 0) . " so'm ({$quarter}-chorak {$paymentDate->year})"
         );
 
         DB::commit();
@@ -1242,88 +1247,27 @@ public function updateContractInfo(Request $request, Contract $contract)
         return response()->json([
             'success' => true,
             'message' => 'To\'lov muvaffaqiyatli qo\'shildi',
-            'payment' => [
-                'id' => $factPayment->id,
-                'payment_date' => $factPayment->payment_date->format('Y-m-d'),
-                'amount' => $factPayment->amount,
-                'quarter' => $factPayment->quarter,
-                'year' => $factPayment->year
+            'payment' => $payment,
+            'quarter_info' => [
+                'year' => $paymentDate->year,
+                'quarter' => $quarter
             ]
         ]);
 
     } catch (\Exception $e) {
         DB::rollBack();
-        \Log::error('Error in storeFactPayment: ' . $e->getMessage());
+        \Log::error('Error storing fact payment', [
+            'contract_id' => $contract->id,
+            'error' => $e->getMessage(),
+            'contract_date' => $contract->contract_date
+        ]);
 
         return response()->json([
             'success' => false,
-            'message' => 'To\'lov qo\'shishda xatolik: ' . $e->getMessage()
+            'message' => 'To\'lovni saqlashda xatolik: ' . $e->getMessage()
         ], 500);
     }
 }
-
-// public function storeFactPayment(Request $request, Contract $contract)
-// {
-//     $request->validate([
-//         'payment_date' => 'required|date',
-//         'payment_amount' => 'required|numeric|min:0',
-//         'payment_number' => 'nullable|string|max:50',
-//         'payment_notes' => 'nullable|string'
-//     ]);
-
-//     try {
-//         DB::beginTransaction();
-
-//         $paymentDate = Carbon::parse($request->payment_date);
-//         $year = $paymentDate->year;
-//         $quarter = $this->calculateQuarterFromDate($paymentDate);
-
-//         // Validate payment doesn't exceed contract total
-//         $totalPaid = $contract->actualPayments()->sum('amount');
-//         $newTotal = $totalPaid + $request->payment_amount;
-
-//         if ($newTotal > $contract->total_amount) {
-//             return response()->json([
-//                 'success' => false,
-//                 'message' => 'To\'lov summasi shartnoma summasidan oshib ketmoqda'
-//             ], 400);
-//         }
-
-//         $factPayment = ActualPayment::create([
-//             'contract_id' => $contract->id,
-//             'payment_date' => $request->payment_date,
-//             'year' => $year,
-//             'quarter' => $quarter,
-//             'amount' => $request->payment_amount,
-//             'payment_number' => $request->payment_number,
-//             'notes' => $request->payment_notes,
-//             'created_by' => auth()->id()
-//         ]);
-
-//         DB::commit();
-
-//         return response()->json([
-//             'success' => true,
-//             'message' => 'To\'lov muvaffaqiyatli qo\'shildi',
-//             'payment' => [
-//                 'id' => $factPayment->id,
-//                 'payment_date' => $factPayment->payment_date->format('Y-m-d'),
-//                 'amount' => $factPayment->amount,
-//                 'quarter' => $factPayment->quarter,
-//                 'year' => $factPayment->year
-//             ]
-//         ]);
-
-//     } catch (\Exception $e) {
-//         DB::rollBack();
-//         \Log::error('Error in storeFactPayment: ' . $e->getMessage());
-
-//         return response()->json([
-//             'success' => false,
-//             'message' => 'To\'lov qo\'shishda xatolik: ' . $e->getMessage()
-//         ], 500);
-//     }
-// }
 
 private function calculateQuarterFromDate($date)
 {
@@ -1428,23 +1372,50 @@ private function calculateQuarterFromDate($date)
     /**
      * Delete actual payment
      */
-    public function deleteFactPayment($id)
-    {
-        try {
-            $factPayment = ActualPayment::findOrFail($id);
-            $factPayment->delete();
+public function deleteFactPayment(Contract $contract, $paymentId)
+{
+    try {
+        $payment = ActualPayment::where('contract_id', $contract->id)
+                                ->findOrFail($paymentId);
 
-            return response()->json([
-                'success' => true,
-                'message' => 'Тўлов ўчирилди'
-            ]);
-        } catch (\Exception $e) {
-            return response()->json([
-                'success' => false,
-                'message' => 'Хатолик: ' . $e->getMessage()
-            ], 500);
-        }
+        $oldValues = $payment->toArray();
+
+        DB::beginTransaction();
+
+        // Log before deletion
+        PaymentHistory::logAction(
+            $contract->id,
+            'deleted',
+            'actual_payments',
+            $payment->id,
+            $oldValues,
+            null,
+            "To'lov o'chirildi: " . number_format($payment->amount, 0) . " so'm"
+        );
+
+        $payment->delete();
+
+        DB::commit();
+
+        return response()->json([
+            'success' => true,
+            'message' => 'To\'lov muvaffaqiyatli o\'chirildi'
+        ]);
+
+    } catch (\Exception $e) {
+        DB::rollBack();
+        \Log::error('Error deleting payment', [
+            'contract_id' => $contract->id,
+            'payment_id' => $paymentId,
+            'error' => $e->getMessage()
+        ]);
+
+        return response()->json([
+            'success' => false,
+            'message' => 'To\'lovni o\'chirishda xatolik yuz berdi: ' . $e->getMessage()
+        ], 500);
     }
+}
 
     /**
      * Get contract statistics
@@ -1494,157 +1465,169 @@ private function calculateQuarterFromDate($date)
 public function getQuarterlyBreakdown(Contract $contract)
 {
     try {
-        // Get only quarters that have actual schedule data (not empty quarters)
-        $schedules = $contract->paymentSchedules()
-            ->where('is_active', true)
-            ->where('quarter_amount', '>', 0) // Only quarters with actual amounts
-            ->get()
-            ->groupBy('year');
+        // Get payment schedules ordered properly
+        $schedules = PaymentSchedule::where('contract_id', $contract->id)
+                                   ->where('is_active', true)
+                                   ->orderBy('year')
+                                   ->orderBy('quarter')
+                                   ->get();
 
-        $payments = $contract->actualPayments()
-            ->get()
-            ->groupBy('year');
+        // Get actual payments
+        $payments = ActualPayment::where('contract_id', $contract->id)
+                                ->orderBy('payment_date')
+                                ->get();
 
-        $quarterlyData = [];
+        $breakdown = [];
+        $currentDate = now();
+        $contractDate = Carbon::parse($contract->contract_date);
 
-        foreach ($schedules as $year => $yearSchedules) {
-            $yearData = [];
-            $yearPayments = $payments->get($year, collect())->groupBy('quarter');
+        foreach ($schedules as $schedule) {
+            $year = $schedule->year;
+            $quarter = $schedule->quarter;
 
-            foreach ($yearSchedules as $schedule) {
-                $quarter = $schedule->quarter;
-                $quarterPayments = $yearPayments->get($quarter, collect());
-
-                $factTotal = $quarterPayments->sum('amount');
-                $planAmount = $schedule->quarter_amount;
-                $debt = $planAmount - $factTotal;
-
-                $yearData[$quarter] = [
-                    'plan' => $schedule,
-                    'plan_amount' => $planAmount,
-                    'fact_total' => $factTotal,
-                    'debt' => $debt,
-                    'payment_percent' => $planAmount > 0 ? ($factTotal / $planAmount) * 100 : 0,
-                    'is_overdue' => $this->isQuarterOverdue($year, $quarter),
-                    'payments' => $quarterPayments->map(function($payment) {
-                        return [
-                            'id' => $payment->id,
-                            'payment_date' => $payment->payment_date->format('Y-m-d'),
-                            'amount' => $payment->amount,
-                            'payment_number' => $payment->payment_number,
-                            'notes' => $payment->notes
-                        ];
-                    })->values()
-                ];
+            // Initialize year if not exists
+            if (!isset($breakdown[$year])) {
+                $breakdown[$year] = [];
             }
 
-            if (!empty($yearData)) {
-                $quarterlyData[$year] = $yearData;
-            }
+            // Get quarter date range
+            $quarterDates = $this->getQuarterDateRangeFromContract($year, $quarter, $contractDate);
+            
+            // Check if quarter is overdue (past end date and has unpaid balance)
+            $isOverdue = $currentDate > $quarterDates['end'];
+
+            // Calculate payments for this specific quarter
+            $quarterPayments = $payments->filter(function ($payment) use ($year, $quarter) {
+                return $payment->year == $year && $payment->quarter == $quarter;
+            });
+
+            $factTotal = $quarterPayments->sum('amount');
+            $planAmount = $schedule->quarter_amount;
+            $debt = $planAmount - $factTotal;
+            $paymentPercent = $planAmount > 0 ? ($factTotal / $planAmount) * 100 : 0;
+
+            $breakdown[$year][$quarter] = [
+                'year' => $year,
+                'quarter' => $quarter,
+                'plan_amount' => $planAmount,
+                'fact_total' => $factTotal,
+                'debt' => $debt,
+                'payment_percent' => min(100, $paymentPercent),
+                'is_overdue' => $isOverdue && $debt > 0,
+                'quarter_start' => $quarterDates['start_formatted'],
+                'quarter_end' => $quarterDates['end_formatted'],
+                'contract_quarter_info' => [
+                    'is_contract_start_quarter' => ($year == $contractDate->year && $quarter == ceil($contractDate->month / 3)),
+                    'contract_start_date' => $contractDate->format('d.m.Y')
+                ],
+                'payments' => $quarterPayments->map(function ($payment) {
+                    return [
+                        'id' => $payment->id,
+                        'payment_date' => $payment->payment_date->format('Y-m-d'),
+                        'amount' => $payment->amount,
+                        'payment_number' => $payment->payment_number,
+                        'notes' => $payment->notes
+                    ];
+                })->values()->toArray()
+            ];
         }
 
-        // If no scheduled quarters exist, return empty data (not fake quarters)
-        return response()->json($quarterlyData);
+        return response()->json($breakdown);
 
     } catch (\Exception $e) {
-        \Log::error('Error in getQuarterlyBreakdown: ' . $e->getMessage());
-        return response()->json(['error' => 'Ma\'lumotlarni yuklashda xatolik'], 500);
+        \Log::error('Error getting quarterly breakdown', [
+            'contract_id' => $contract->id,
+            'error' => $e->getMessage(),
+            'contract_date' => $contract->contract_date
+        ]);
+
+        return response()->json([]);
     }
+}
+
+private function getQuarterDateRangeFromContract($year, $quarter, $contractDate)
+{
+    $startMonth = ($quarter - 1) * 3 + 1;
+    $endMonth = $quarter * 3;
+
+    $start = Carbon::create($year, $startMonth, 1)->startOfDay();
+    $end = Carbon::create($year, $endMonth, 1)->endOfMonth()->endOfDay();
+
+    // If this is the contract start quarter and year, adjust start date
+    if ($year == $contractDate->year && $quarter == ceil($contractDate->month / 3)) {
+        $start = $contractDate->copy()->startOfDay();
+    }
+
+    return [
+        'start' => $start,
+        'end' => $end,
+        'start_formatted' => $start->format('d.m.Y'),
+        'end_formatted' => $end->format('d.m.Y')
+    ];
 }
 
 public function createQuarterlySchedule(Request $request, Contract $contract)
 {
-    $request->validate([
-        'schedule_year' => 'required|integer|min:2020|max:2050',
-        'total_schedule_amount' => 'required|numeric|min:0',
-        'schedule_type' => 'required|in:auto,custom',
-        'quarters_count' => 'required|integer|min:1|max:20',
-    ]);
-
-    if ($request->schedule_type === 'custom') {
-        $quartersCount = $request->quarters_count;
-        $totalPercent = 0;
-
-        for ($i = 1; $i <= $quartersCount; $i++) {
-            $percent = $request->input("quarter_{$i}_percent", 0);
-            $totalPercent += $percent;
-        }
-
-        if (abs($totalPercent - 100) > 0.1) {
-            return response()->json([
-                'success' => false,
-                'message' => 'Foizlar yig\'indisi 100% bo\'lishi kerak'
-            ], 422);
-        }
-    }
-
     try {
+        $request->validate([
+            'schedule_type' => 'required|in:auto,custom',
+            'quarters_count' => 'required|integer|min:1|max:20',
+            'total_schedule_amount' => 'required|numeric|min:0.01',
+            'quarterly_schedule' => 'sometimes|json' // New: Pre-calculated schedule data
+        ]);
+
         DB::beginTransaction();
 
-        $startYear = $request->schedule_year;
-        $totalAmount = $request->total_schedule_amount;
-        $quartersCount = $request->quarters_count;
         $scheduleType = $request->schedule_type;
+        $quartersCount = $request->quarters_count;
+        $totalAmount = $request->total_schedule_amount;
 
-        $currentYear = $startYear;
-        $currentQuarter = 1;
+        // CRITICAL: Calculate quarters starting from contract date, not year start
+        $contractDate = Carbon::parse($contract->contract_date);
+        $contractYear = $contractDate->year;
+        $contractMonth = $contractDate->month;
+        $contractQuarter = ceil($contractMonth / 3); // 1-4
 
-        // 🔄 Save old schedule (for logging)
-        $oldSchedules = PaymentSchedule::where('contract_id', $contract->id)
-            ->get(['year', 'quarter', 'quarter_amount'])
-            ->toArray();
-
-        // ❌ Delete old schedule
+        // Delete existing schedules for this contract
         PaymentSchedule::where('contract_id', $contract->id)->delete();
 
-        // 🆕 New schedules array for logging
-        $newSchedules = [];
-
-        if ($scheduleType === 'auto') {
-            $quarterAmount = $totalAmount / $quartersCount;
+        // Handle pre-calculated schedule from frontend
+        if ($request->has('quarterly_schedule')) {
+            $quarterlySchedule = json_decode($request->quarterly_schedule, true);
+            
+            foreach ($quarterlySchedule as $scheduleItem) {
+                PaymentSchedule::create([
+                    'contract_id' => $contract->id,
+                    'year' => $scheduleItem['year'],
+                    'quarter' => $scheduleItem['quarter'],
+                    'quarter_amount' => round($scheduleItem['quarter_amount'], 2),
+                    'is_active' => true,
+                    'created_by' => auth()->id()
+                ]);
+            }
+        } else {
+            // Fallback: Generate schedule in backend
+            $currentYear = $contractYear;
+            $currentQuarter = $contractQuarter;
 
             for ($i = 0; $i < $quartersCount; $i++) {
-                $schedule = PaymentSchedule::create([
+                if ($scheduleType === 'auto') {
+                    $quarterAmount = $totalAmount / $quartersCount;
+                } else {
+                    $percent = (float) $request->input("quarter_" . ($i + 1) . "_percent", 0);
+                    $quarterAmount = $totalAmount * ($percent / 100);
+                }
+
+                PaymentSchedule::create([
                     'contract_id' => $contract->id,
                     'year' => $currentYear,
                     'quarter' => $currentQuarter,
-                    'quarter_amount' => $quarterAmount,
-                    'is_active' => true
+                    'quarter_amount' => round($quarterAmount, 2),
+                    'is_active' => true,
+                    'created_by' => auth()->id()
                 ]);
 
-                $newSchedules[] = [
-                    'year' => $currentYear,
-                    'quarter' => $currentQuarter,
-                    'quarter_amount' => $quarterAmount
-                ];
-
-                $currentQuarter++;
-                if ($currentQuarter > 4) {
-                    $currentQuarter = 1;
-                    $currentYear++;
-                }
-            }
-        } else {
-            for ($i = 1; $i <= $quartersCount; $i++) {
-                $percent = $request->input("quarter_{$i}_percent", 0);
-                if ($percent > 0) {
-                    $quarterAmount = ($totalAmount * $percent) / 100;
-
-                    $schedule = PaymentSchedule::create([
-                        'contract_id' => $contract->id,
-                        'year' => $currentYear,
-                        'quarter' => $currentQuarter,
-                        'quarter_amount' => $quarterAmount,
-                        'is_active' => true
-                    ]);
-
-                    $newSchedules[] = [
-                        'year' => $currentYear,
-                        'quarter' => $currentQuarter,
-                        'quarter_amount' => $quarterAmount
-                    ];
-                }
-
+                // Move to next quarter
                 $currentQuarter++;
                 if ($currentQuarter > 4) {
                     $currentQuarter = 1;
@@ -1653,31 +1636,46 @@ public function createQuarterlySchedule(Request $request, Contract $contract)
             }
         }
 
-        // ✅ Log payment schedule history
-        \App\Models\PaymentHistory::logAction(
+        // Log schedule creation with proper contract date info
+        PaymentHistory::logAction(
             $contract->id,
             'created',
             'payment_schedules',
-            0, // bulk insert, no single ID
-            $oldSchedules,
-            $newSchedules,
-            "To'lov jadvali yaratildi ({$scheduleType}, {$quartersCount} chorak)"
+            null,
+            null,
+            [
+                'quarters_count' => $quartersCount,
+                'total_amount' => $totalAmount,
+                'contract_start_date' => $contract->contract_date->format('Y-m-d'),
+                'start_quarter' => $contractQuarter,
+                'start_year' => $contractYear
+            ],
+            "Shartnoma sanasidan boshlanadigan {$quartersCount} ta choraklik to'lov jadvali yaratildi ({$contractQuarter}-chorak {$contractYear} dan)"
         );
 
         DB::commit();
 
         return response()->json([
             'success' => true,
-            'message' => "{$quartersCount} chorak uchun to'lov jadvali muvaffaqiyatli yaratildi"
+            'message' => "To'lov jadvali muvaffaqiyatli yaratildi ({$contractQuarter}-chorak {$contractYear} dan boshlanadi)",
+            'start_info' => [
+                'start_quarter' => $contractQuarter,
+                'start_year' => $contractYear,
+                'contract_date' => $contract->contract_date->format('d.m.Y')
+            ]
         ]);
 
     } catch (\Exception $e) {
         DB::rollBack();
-        \Log::error('Error in createQuarterlySchedule: ' . $e->getMessage());
+        \Log::error('Error creating quarterly schedule', [
+            'contract_id' => $contract->id,
+            'error' => $e->getMessage(),
+            'contract_date' => $contract->contract_date
+        ]);
 
         return response()->json([
             'success' => false,
-            'message' => 'To\'lov jadvali yaratishda xatolik: ' . $e->getMessage()
+            'message' => 'Jadval yaratishda xatolik: ' . $e->getMessage()
         ], 500);
     }
 }
@@ -1699,43 +1697,254 @@ private function isQuarterOverdue($year, $quarter)
     /**
      * Get contract payment summary with initial payment calculations
      */
-    public function getContractPaymentSummary(Contract $contract)
-    {
-        // Calculate initial payment based on contract percentage
-        $initialPaymentAmount = ($contract->total_amount * $contract->initial_payment_percent) / 100;
-        $remainingAmount = $contract->total_amount - $initialPaymentAmount;
-
-        // Get all planned payments
-        $plannedTotal = $contract->paymentSchedules()
-            ->where('is_active', true)
-            ->sum('quarter_amount');
-
-        // Get all actual payments
-        $actualTotal = $contract->actualPayments()->sum('amount');
-
-        // Calculate debts
-        $totalDebt = $contract->total_amount - $actualTotal;
-        $remainingDebt = $remainingAmount - ($actualTotal - $initialPaymentAmount);
-
-        // Calculate payment percentages
-        $overallPaymentPercent = $contract->total_amount > 0 ? ($actualTotal / $contract->total_amount) * 100 : 0;
-        $remainingPaymentPercent = $remainingAmount > 0 ? (($actualTotal - $initialPaymentAmount) / $remainingAmount) * 100 : 0;
+   public function getContractPaymentSummary(Contract $contract)
+{
+    try {
+        $totalPaid = $contract->actualPayments()->sum('amount');
+        $totalPlan = PaymentSchedule::where('contract_id', $contract->id)
+                                   ->where('is_active', true)
+                                   ->sum('quarter_amount');
+        
+        $overduePayments = $this->getOverduePaymentsForContract($contract);
+        $upcomingPayments = $this->getUpcomingPaymentsForContract($contract);
+        
+        $completionPercentage = $contract->total_amount > 0 
+            ? ($totalPaid / $contract->total_amount) * 100 
+            : 0;
 
         return response()->json([
-            'contract_total' => $contract->total_amount,
-            'initial_payment_percent' => $contract->initial_payment_percent,
-            'initial_payment_amount' => $initialPaymentAmount,
-            'remaining_amount' => $remainingAmount,
-            'planned_total' => $plannedTotal,
-            'actual_total' => $actualTotal,
-            'total_debt' => $totalDebt,
-            'remaining_debt' => max(0, $remainingDebt),
-            'overall_payment_percent' => $overallPaymentPercent,
-            'remaining_payment_percent' => max(0, $remainingPaymentPercent),
-            'is_fully_paid' => $totalDebt <= 0,
-            'initial_payment_made' => $actualTotal >= $initialPaymentAmount
+            'success' => true,
+            'summary' => [
+                'contract_total' => $contract->total_amount,
+                'total_paid' => $totalPaid,
+                'total_plan' => $totalPlan,
+                'remaining_amount' => $contract->total_amount - $totalPaid,
+                'completion_percentage' => round($completionPercentage, 2),
+                'overdue_debt' => $overduePayments['total_debt'],
+                'overdue_count' => $overduePayments['count'],
+                'upcoming_payments' => $upcomingPayments,
+                'last_payment_date' => $contract->actualPayments()
+                                               ->orderBy('payment_date', 'desc')
+                                               ->value('payment_date'),
+                'average_payment' => $contract->actualPayments()->avg('amount') ?? 0,
+                'payment_count' => $contract->actualPayments()->count()
+            ]
         ]);
+
+    } catch (\Exception $e) {
+        \Log::error('Error getting payment summary', [
+            'contract_id' => $contract->id,
+            'error' => $e->getMessage()
+        ]);
+
+        return response()->json([
+            'success' => false,
+            'message' => 'Hisobot olishda xatolik yuz berdi'
+        ], 500);
     }
+}
+
+/**
+ * Helper method to get upcoming payments for a contract
+ */
+private function getUpcomingPaymentsForContract(Contract $contract)
+{
+    $currentDate = now();
+    $upcomingPayments = [];
+
+    $schedules = PaymentSchedule::where('contract_id', $contract->id)
+                               ->where('is_active', true)
+                               ->orderBy('year')
+                               ->orderBy('quarter')
+                               ->get();
+
+    foreach ($schedules as $schedule) {
+        $quarterDates = ActualPayment::getQuarterDateRange($schedule->year, $schedule->quarter);
+        
+        if ($currentDate <= $quarterDates['end']) {
+            $quarterPaid = ActualPayment::where('contract_id', $contract->id)
+                                       ->where('year', $schedule->year)
+                                       ->where('quarter', $schedule->quarter)
+                                       ->sum('amount');
+            
+            $remaining = $schedule->quarter_amount - $quarterPaid;
+            if ($remaining > 0) {
+                $upcomingPayments[] = [
+                    'year' => $schedule->year,
+                    'quarter' => $schedule->quarter,
+                    'due_date' => $quarterDates['end_formatted'],
+                    'planned_amount' => $schedule->quarter_amount,
+                    'paid_amount' => $quarterPaid,
+                    'remaining_amount' => $remaining,
+                    'days_remaining' => $currentDate->diffInDays($quarterDates['end'], false)
+                ];
+            }
+        }
+    }
+
+    return collect($upcomingPayments)->take(5)->values();
+}
+
+public function validatePaymentDate(Request $request)
+{
+    $request->validate([
+        'payment_date' => 'required|date',
+        'contract_id' => 'required|exists:contracts,id'
+    ]);
+
+    try {
+        $contract = Contract::findOrFail($request->contract_id);
+        $paymentDate = Carbon::parse($request->payment_date);
+        $contractDate = $contract->contract_date;
+
+        $errors = [];
+
+        // Check if payment date is before contract date
+        if ($paymentDate < $contractDate) {
+            $errors[] = 'To\'lov sanasi shartnoma sanasidan oldin bo\'lishi mumkin emas';
+        }
+
+        // Check if payment date is in the future
+        if ($paymentDate > now()) {
+            $errors[] = 'To\'lov sanasi kelajakda bo\'lishi mumkin emas';
+        }
+
+        return response()->json([
+            'valid' => empty($errors),
+            'errors' => $errors,
+            'quarter_info' => [
+                'year' => $paymentDate->year,
+                'quarter' => ActualPayment::calculateQuarterFromDate($paymentDate),
+                'quarter_name' => ActualPayment::calculateQuarterFromDate($paymentDate) . '-chorak ' . $paymentDate->year . ' yil'
+            ]
+        ]);
+
+    } catch (\Exception $e) {
+        return response()->json([
+            'valid' => false,
+            'errors' => ['Sanani tekshirishda xatolik yuz berdi'],
+            'quarter_info' => null
+        ], 500);
+    }
+}
+
+
+public function editPayment(Request $request, Contract $contract, $paymentId)
+{
+    try {
+        $payment = ActualPayment::where('contract_id', $contract->id)
+                                ->findOrFail($paymentId);
+
+        $oldValues = $payment->toArray();
+
+        // Enhanced validation
+        $request->validate([
+            'payment_date' => [
+                'required',
+                'date',
+                'before_or_equal:today',
+                'after_or_equal:' . $contract->contract_date->format('Y-m-d')
+            ],
+            'payment_amount' => 'required|numeric|min:0.01',
+            'payment_number' => 'nullable|string|max:50',
+            'payment_notes' => 'nullable|string|max:500'
+        ], [
+            'payment_date.after_or_equal' => 'To\'lov sanasi shartnoma sanasidan oldin bo\'lishi mumkin emas',
+            'payment_date.before_or_equal' => 'To\'lov sanasi bugundan kech bo\'lishi mumkin emas',
+            'payment_amount.min' => 'To\'lov summasi 0 dan katta bo\'lishi kerak'
+        ]);
+
+        DB::beginTransaction();
+
+        // Check if updated payment exceeds contract total
+        $totalPaidExcludingThis = $contract->actualPayments()
+                                          ->where('id', '!=', $payment->id)
+                                          ->sum('amount');
+        $newTotal = $totalPaidExcludingThis + $request->payment_amount;
+        
+        if ($newTotal > $contract->total_amount) {
+            return response()->json([
+                'success' => false,
+                'message' => 'Yangilangan to\'lov summasi shartnoma summasidan oshib ketmoqda'
+            ], 422);
+        }
+
+        // Update payment
+        $payment->update([
+            'payment_date' => $request->payment_date,
+            'amount' => $request->payment_amount,
+            'payment_number' => $request->payment_number,
+            'notes' => $request->payment_notes
+        ]);
+
+        // Log payment history
+        PaymentHistory::logAction(
+            $contract->id,
+            'updated',
+            'actual_payments',
+            $payment->id,
+            $oldValues,
+            $payment->fresh()->toArray(),
+            "To'lov yangilandi: " . number_format($payment->amount, 0) . " so'm"
+        );
+
+        DB::commit();
+
+        return response()->json([
+            'success' => true,
+            'message' => 'To\'lov muvaffaqiyatli yangilandi',
+            'payment' => $payment->fresh()
+        ]);
+
+    } catch (\Exception $e) {
+        DB::rollBack();
+        \Log::error('Error updating payment', [
+            'contract_id' => $contract->id,
+            'payment_id' => $paymentId,
+            'error' => $e->getMessage()
+        ]);
+
+        return response()->json([
+            'success' => false,
+            'message' => 'To\'lovni yangilashda xatolik yuz berdi: ' . $e->getMessage()
+        ], 500);
+    }
+}
+/**
+ * Helper method to get overdue payments for a contract
+ */
+private function getOverduePaymentsForContract(Contract $contract)
+{
+    $currentDate = now();
+    $overdueDebt = 0;
+    $overdueCount = 0;
+
+    $schedules = PaymentSchedule::where('contract_id', $contract->id)
+                               ->where('is_active', true)
+                               ->get();
+
+    foreach ($schedules as $schedule) {
+        $quarterDates = ActualPayment::getQuarterDateRange($schedule->year, $schedule->quarter);
+        
+        if ($currentDate > $quarterDates['end']) {
+            $quarterPaid = ActualPayment::where('contract_id', $contract->id)
+                                       ->where('year', $schedule->year)
+                                       ->where('quarter', $schedule->quarter)
+                                       ->sum('amount');
+            
+            $debt = $schedule->quarter_amount - $quarterPaid;
+            if ($debt > 0) {
+                $overdueDebt += $debt;
+                $overdueCount++;
+            }
+        }
+    }
+
+    return [
+        'total_debt' => $overdueDebt,
+        'count' => $overdueCount
+    ];
+}
 
     /**
      * Calculate remaining amount after initial payment
@@ -2144,17 +2353,46 @@ private function isQuarterOverdue($year, $quarter)
         ];
     }
 
-public function getPaymentHistory(Contract $contract, Request $request)
+public function getPaymentHistory(Contract $contract)
 {
-    return response()->json([
-        'success' => true,
-        'histories' => [],
-        'pagination' => [
-            'current_page' => 1,
-            'last_page' => 1,
-            'per_page' => 20,
-            'total' => 0
-        ]
-    ]);
+    try {
+        $history = PaymentHistory::where('contract_id', $contract->id)
+                                ->with('user:id,name')
+                                ->orderBy('created_at', 'desc')
+                                ->get();
+
+        // Transform history data
+        $transformedHistory = $history->map(function ($item) {
+            return [
+                'id' => $item->id,
+                'action' => $item->action,
+                'table_name' => $item->table_name,
+                'record_id' => $item->record_id,
+                'description' => $item->description,
+                'formatted_description' => $item->formatted_description,
+                'changes_summary' => $item->changes_summary,
+                'user' => $item->user,
+                'created_at' => $item->created_at->toISOString(),
+                'created_at_formatted' => $item->created_at->format('d.m.Y H:i')
+            ];
+        });
+
+        return response()->json([
+            'success' => true,
+            'history' => $transformedHistory
+        ]);
+
+    } catch (\Exception $e) {
+        \Log::error('Error fetching payment history', [
+            'contract_id' => $contract->id,
+            'error' => $e->getMessage()
+        ]);
+
+        return response()->json([
+            'success' => false,
+            'message' => 'Tarixni yuklashda xatolik yuz berdi',
+            'history' => []
+        ]);
+    }
 }
 }

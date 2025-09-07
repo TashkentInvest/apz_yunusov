@@ -71,6 +71,17 @@ Route::prefix('contracts')->name('contracts.')->group(function () {
     // Payment Management Routes
     Route::prefix('{contract}')->group(function () {
         // Payment update page
+
+         Route::get('/payment-history', [ContractController::class, 'getPaymentHistory'])->name('payment_history');
+        
+        // Enhanced payment validation
+        Route::post('/validate-payment-date', [ContractController::class, 'validatePaymentDate'])->name('validate_payment_date');
+        
+        // Batch operations
+        Route::post('/batch-update-payments', [ContractController::class, 'batchUpdatePayments'])->name('batch_update_payments');
+        Route::post('/batch-delete-payments', [ContractController::class, 'batchDeletePayments'])->name('batch_delete_payments');
+
+
         Route::get('/payment-update', [ContractController::class, 'payment_update'])->name('payment_update');
 
         // Payment summary and analytics
@@ -99,6 +110,9 @@ Route::prefix('contracts')->name('contracts.')->group(function () {
         Route::get('/export-payment-schedule', [ContractController::class, 'exportPaymentSchedule'])->name('export_payment_schedule');
         Route::get('/export-actual-payments', [ContractController::class, 'exportActualPayments'])->name('export_actual_payments');
     });
+
+    Route::post('/validate-payment-date', [ContractController::class, 'validatePaymentDate'])->name('global_validate_payment_date');
+
 
     // Bulk payment operations (outside of specific contract context)
     Route::prefix('payments')->name('payments.')->group(function () {
