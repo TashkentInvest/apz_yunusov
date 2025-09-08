@@ -1038,33 +1038,27 @@ function safeFeatherReplace() {
     }
 }
 
-
 // Initialize everything when page loads
 document.addEventListener('DOMContentLoaded', function() {
-
-    // Add these at the top of your script:
     disableEnterKeySubmissions();
-
     setupFormValidation();
+    removeDateRestrictions(); // NEW: Remove date restrictions
 
-
-
-      setTimeout(() => {
+    setTimeout(() => {
         const successMsg = document.getElementById('successMessage');
         const errorMsg = document.getElementById('errorMessage');
         if (successMsg) successMsg.remove();
         if (errorMsg) errorMsg.remove();
     }, 5000);
 
-
-     if (document.querySelector('select[name="schedule_year"]')) {
+    if (document.querySelector('select[name="schedule_year"]')) {
         document.querySelector('select[name="schedule_year"]').addEventListener('change', updateSchedulePreview);
     }
 
-    // Add quarters count change listener
     if (document.querySelector('input[name="quarters_count"]')) {
         document.querySelector('input[name="quarters_count"]').addEventListener('change', function() {
-            if (document.querySelector('input[name="schedule_type"]:checked').value === 'custom') {
+            if (document.querySelector('input[name="schedule_type"]:checked') &&
+                document.querySelector('input[name="schedule_type"]:checked').value === 'custom') {
                 generateQuarterInputs();
             }
             updateSchedulePreview();
@@ -1083,7 +1077,6 @@ document.addEventListener('DOMContentLoaded', function() {
         });
     }
 
-      // Contract date validation
     const contractDateInput = document.querySelector('input[name="contract_date"]');
     if (contractDateInput) {
         contractDateInput.addEventListener('change', function() {
@@ -1099,18 +1092,6 @@ document.addEventListener('DOMContentLoaded', function() {
         });
     }
 
-      const paymentAmountInputs = document.querySelectorAll('input[name="payment_amount"]');
-    paymentAmountInputs.forEach(input => {
-        input.addEventListener('input', function() {
-            const value = parseFloat(this.value);
-            if (value && value <= 0) {
-                this.setCustomValidity('To\'lov summasi 0 dan katta bo\'lishi kerak');
-            } else {
-                this.setCustomValidity('');
-            }
-        });
-    });
-
     safeFeatherReplace();
 
     if (contractData) {
@@ -1124,20 +1105,38 @@ document.addEventListener('DOMContentLoaded', function() {
     setupEventListeners();
 });
 
+// NEW: Remove restrictive date validations
+function removeDateRestrictions() {
+    const paymentDateInputs = document.querySelectorAll('input[name="payment_date"]');
+    paymentDateInputs.forEach(input => {
+        // Remove max attribute that restricts future dates
+        input.removeAttribute('max');
+
+        // Update validation to only check contract date minimum
+        input.addEventListener('change', function() {
+            if (!contractData) return;
+
+            const selectedDate = new Date(this.value);
+            const contractDate = new Date(contractData.contract_date);
+
+            // Only validate against contract start date
+            if (selectedDate < contractDate) {
+                this.setCustomValidity('To\'lov sanasi shartnoma sanasidan oldin bo\'lishi mumkin emas');
+            } else {
+                this.setCustomValidity(''); // Clear any validation errors
+            }
+        });
+    });
+}
+
 function disableEnterKeySubmissions() {
     document.addEventListener('keydown', function(e) {
-        // Disable Enter key for all form inputs except textareas
         if (e.key === 'Enter' && e.target.tagName !== 'TEXTAREA') {
-            // Allow Enter in specific cases like select dropdowns
             if (e.target.tagName === 'SELECT') {
                 return;
             }
-
-            // Prevent Enter key submission for all other inputs
             e.preventDefault();
             e.stopPropagation();
-
-            // Show warning message
             showNotification('Form submit qilish uchun tugmadan foydalaning, Enter tugmasi ishlamaydi', 'warning');
             return false;
         }
@@ -1145,12 +1144,10 @@ function disableEnterKeySubmissions() {
 }
 
 function setupFormValidation() {
-    // Prevent double clicks on all submit buttons
     document.addEventListener('click', function(e) {
         if (e.target.type === 'submit' || e.target.closest('button[type="submit"]')) {
             const button = e.target.type === 'submit' ? e.target : e.target.closest('button[type="submit"]');
 
-            // Check if already processing
             if (button.disabled || button.classList.contains('processing')) {
                 e.preventDefault();
                 e.stopPropagation();
@@ -1158,7 +1155,6 @@ function setupFormValidation() {
                 return false;
             }
 
-            // Mark as processing
             button.classList.add('processing');
             setTimeout(() => {
                 button.classList.remove('processing');
@@ -1166,7 +1162,6 @@ function setupFormValidation() {
         }
     });
 }
-
 
 function calculateQuartersFromContractDate() {
     if (!contractData || !contractData.contract_date) {
@@ -1180,15 +1175,14 @@ function calculateQuartersFromContractDate() {
 
     const contractDate = new Date(contractData.contract_date);
     const contractYear = contractDate.getFullYear();
-    const contractMonth = contractDate.getMonth() + 1; // 1-12
-    const contractQuarter = Math.ceil(contractMonth / 3); // 1-4
+    const contractMonth = contractDate.getMonth() + 1;
+    const contractQuarter = Math.ceil(contractMonth / 3);
 
     const constructionYears = contractData.construction_period_years || 2;
     const totalQuarters = contractData.quarters_count || 8;
 
-    // Calculate which years will be needed
     const years = [];
-    const startingQuartersInYear = 5 - contractQuarter; // Remaining quarters in contract year
+    const startingQuartersInYear = 5 - contractQuarter;
 
     years.push(contractYear);
 
@@ -1197,7 +1191,7 @@ function calculateQuartersFromContractDate() {
 
     while (remainingQuarters > 0) {
         years.push(currentYear);
-        remainingQuarters -= 4; // 4 quarters per year
+        remainingQuarters -= 4;
         currentYear++;
     }
 
@@ -1210,7 +1204,6 @@ function calculateQuartersFromContractDate() {
     };
 }
 
-// Enhanced year options population based on contract date
 function populateYearOptions() {
     const yearSelect = document.querySelector('select[name="schedule_year"]');
     if (!yearSelect || !contractData) return;
@@ -1224,7 +1217,7 @@ function populateYearOptions() {
 
         if (year === scheduleInfo.contractYear) {
             option.textContent = `${year} yil (Shartnoma yili - ${scheduleInfo.contractQuarter}-chorakdan)`;
-            option.selected = true; // Default to contract year
+            option.selected = true;
         } else {
             option.textContent = `${year} yil`;
         }
@@ -1234,18 +1227,44 @@ function populateYearOptions() {
 }
 
 function setupEventListeners() {
-    document.querySelector('select[name="payment_type"]').addEventListener('change', togglePaymentSettings);
-    document.querySelector('input[name="total_amount"]').addEventListener('input', debounce(calculatePaymentBreakdown, 500));
-    document.querySelector('input[name="initial_payment_percent"]').addEventListener('input', debounce(calculatePaymentBreakdown, 500));
-    document.querySelector('input[name="quarters_count"]').addEventListener('input', debounce(calculatePaymentBreakdown, 500));
+    const paymentTypeSelect = document.querySelector('select[name="payment_type"]');
+    if (paymentTypeSelect) {
+        paymentTypeSelect.addEventListener('change', togglePaymentSettings);
+    }
+
+    const totalAmountInput = document.querySelector('input[name="total_amount"]');
+    if (totalAmountInput) {
+        totalAmountInput.addEventListener('input', debounce(calculatePaymentBreakdown, 500));
+    }
+
+    const initialPaymentInput = document.querySelector('input[name="initial_payment_percent"]');
+    if (initialPaymentInput) {
+        initialPaymentInput.addEventListener('input', debounce(calculatePaymentBreakdown, 500));
+    }
+
+    const quartersCountInput = document.querySelector('input[name="quarters_count"]');
+    if (quartersCountInput) {
+        quartersCountInput.addEventListener('input', debounce(calculatePaymentBreakdown, 500));
+    }
 
     document.querySelectorAll('input[name="schedule_type"]').forEach(radio => {
         radio.addEventListener('change', toggleCustomScheduleGrid);
     });
 
-    document.getElementById('contractForm').addEventListener('submit', handleContractSubmit);
-    document.getElementById('paymentScheduleForm').addEventListener('submit', handleScheduleSubmit);
-    document.getElementById('paymentForm').addEventListener('submit', handlePaymentSubmit);
+    const contractForm = document.getElementById('contractForm');
+    if (contractForm) {
+        contractForm.addEventListener('submit', handleContractSubmit);
+    }
+
+    const paymentScheduleForm = document.getElementById('paymentScheduleForm');
+    if (paymentScheduleForm) {
+        paymentScheduleForm.addEventListener('submit', handleScheduleSubmit);
+    }
+
+    const paymentForm = document.getElementById('paymentForm');
+    if (paymentForm) {
+        paymentForm.addEventListener('submit', handlePaymentSubmit);
+    }
 }
 
 function togglePaymentSettings() {
@@ -1275,15 +1294,21 @@ function calculatePaymentBreakdown() {
     const remainingAmount = totalAmount - initialAmount;
     const quarterlyAmount = quartersCount > 0 ? remainingAmount / quartersCount : 0;
 
-    document.getElementById('initialAmount').textContent = formatFullCurrency(initialAmount);
-    document.getElementById('remainingAmount').textContent = formatFullCurrency(remainingAmount);
-    document.getElementById('quarterlyAmount').textContent = formatFullCurrency(quarterlyAmount);
+    const initialAmountEl = document.getElementById('initialAmount');
+    const remainingAmountEl = document.getElementById('remainingAmount');
+    const quarterlyAmountEl = document.getElementById('quarterlyAmount');
+
+    if (initialAmountEl) initialAmountEl.textContent = formatFullCurrency(initialAmount);
+    if (remainingAmountEl) remainingAmountEl.textContent = formatFullCurrency(remainingAmount);
+    if (quarterlyAmountEl) quarterlyAmountEl.textContent = formatFullCurrency(quarterlyAmount);
 
     const previewDiv = document.getElementById('paymentPreview');
-    if (paymentType === 'full') {
-        previewDiv.style.display = 'none';
-    } else {
-        previewDiv.style.display = 'block';
+    if (previewDiv) {
+        if (paymentType === 'full') {
+            previewDiv.style.display = 'none';
+        } else {
+            previewDiv.style.display = 'block';
+        }
     }
 }
 
@@ -1304,7 +1329,6 @@ function loadQuarterlyData() {
         });
 }
 
-// FIXED: Helper function to safely calculate year totals
 function calculateYearTotals(quarterEntries) {
     let yearPlanTotal = 0, yearPaidTotal = 0, yearDebtTotal = 0;
 
@@ -1326,7 +1350,6 @@ function calculateYearTotals(quarterEntries) {
     };
 }
 
-// FIXED: Render quarterly breakdown with proper error handling
 function renderQuarterlyBreakdown() {
     const container = document.getElementById('quarterlyBreakdown');
 
@@ -1342,22 +1365,19 @@ function renderQuarterlyBreakdown() {
         const quarters = quarterlyData[year];
 
         if (!quarters || typeof quarters !== 'object') {
-            return; // Skip invalid year data
+            return;
         }
 
-        // Only get quarters that actually exist in the data (no fake quarters)
         const quarterEntries = Object.entries(quarters)
             .filter(([quarter, data]) => {
                 const planAmount = parseFloat(data.plan_amount) || 0;
                 const factTotal = parseFloat(data.fact_total) || 0;
-                return planAmount > 0 || factTotal > 0; // Only real quarters
+                return planAmount > 0 || factTotal > 0;
             })
             .sort((a, b) => parseInt(a[0]) - parseInt(b[0]));
 
-        // Skip years with no real quarter data
         if (quarterEntries.length === 0) return;
 
-        // Calculate year totals safely
         const totals = calculateYearTotals(quarterEntries);
 
         html += `
@@ -1391,7 +1411,6 @@ function renderQuarterlyBreakdown() {
                 <div class="quarters-grid">`;
 
         quarterEntries.forEach(([quarter, quarterData]) => {
-            // Safely parse all quarter data
             const planAmount = parseFloat(quarterData.plan_amount) || 0;
             const factTotal = parseFloat(quarterData.fact_total) || 0;
             const debt = parseFloat(quarterData.debt) || 0;
@@ -1472,6 +1491,8 @@ function renderQuarterlyBreakdown() {
 
 function renderEmptyQuarterlyBreakdown() {
     const container = document.getElementById('quarterlyBreakdown');
+    if (!container) return;
+
     container.innerHTML = `
     <div class="empty-state">
         <div class="empty-icon">
@@ -1489,16 +1510,13 @@ function renderEmptyQuarterlyBreakdown() {
     safeFeatherReplace();
 }
 
-// FIXED: Safe summary cards update
 function updateSummaryCards() {
     let totalPlan = 0, totalPaid = 0, currentDebt = 0, overdueDebt = 0;
 
-    // Check if quarterlyData exists and has data
     if (quarterlyData && typeof quarterlyData === 'object') {
         Object.values(quarterlyData).forEach(quarters => {
             if (quarters && typeof quarters === 'object') {
                 Object.values(quarters).forEach(quarter => {
-                    // Safely parse numbers and handle null/undefined values
                     const planAmount = parseFloat(quarter.plan_amount) || 0;
                     const factTotal = parseFloat(quarter.fact_total) || 0;
                     const debt = parseFloat(quarter.debt) || 0;
@@ -1519,13 +1537,11 @@ function updateSummaryCards() {
         });
     }
 
-    // Ensure all values are valid numbers before formatting
     totalPlan = isNaN(totalPlan) ? 0 : totalPlan;
     totalPaid = isNaN(totalPaid) ? 0 : totalPaid;
     currentDebt = isNaN(currentDebt) ? 0 : currentDebt;
     overdueDebt = isNaN(overdueDebt) ? 0 : overdueDebt;
 
-    // Update the DOM elements safely
     const totalPlanElement = document.getElementById('totalPlan');
     const totalPaidElement = document.getElementById('totalPaid');
     const currentDebtElement = document.getElementById('currentDebt');
@@ -1565,14 +1581,10 @@ function getProgressColor(percent) {
     return 'stroke-gray-300';
 }
 
-// Modal functions
 function openPaymentScheduleModal() {
     document.getElementById('paymentScheduleModal').classList.remove('hidden');
-
-    // Populate year options based on contract date
     populateYearOptions();
 
-    // Set default values based on contract
     if (contractData) {
         const totalScheduleAmount = document.querySelector('input[name="total_schedule_amount"]');
         if (totalScheduleAmount) {
@@ -1602,6 +1614,11 @@ function openPaymentModal() {
 function closePaymentModal() {
     document.getElementById('paymentModal').classList.add('hidden');
     document.getElementById('paymentForm').reset();
+
+    const existingNote = document.querySelector('#quarterPaymentNote');
+    if (existingNote) {
+        existingNote.remove();
+    }
 }
 
 function openHistoryModal() {
@@ -1670,10 +1687,12 @@ function closeQuarterDetailsModal() {
 }
 
 function toggleCustomScheduleGrid() {
-    const scheduleType = document.querySelector('input[name="schedule_type"]:checked').value;
+    const scheduleType = document.querySelector('input[name="schedule_type"]:checked');
+    if (!scheduleType) return;
+
     const customGrid = document.getElementById('customScheduleGrid');
 
-    if (scheduleType === 'custom') {
+    if (scheduleType.value === 'custom') {
         customGrid.classList.remove('hidden');
         generateQuarterInputs();
     } else {
@@ -1692,7 +1711,6 @@ function generateQuarterInputs() {
         return;
     }
 
-    // Start from actual contract date
     const contractDate = new Date(contractData.contract_date);
     const contractYear = contractDate.getFullYear();
     const contractMonth = contractDate.getMonth() + 1;
@@ -1722,7 +1740,6 @@ function generateQuarterInputs() {
         </div>
         `;
 
-        // Move to next quarter
         currentQuarter++;
         if (currentQuarter > 4) {
             currentQuarter = 1;
@@ -1754,18 +1771,20 @@ function generateStandardQuarterInputs(quartersCount, container) {
 
     container.innerHTML = html;
 }
+
 function updateSchedulePreview() {
     const quartersCount = parseInt(document.querySelector('input[name="quarters_count"]').value) || 4;
     const totalAmount = parseFloat(document.querySelector('input[name="total_schedule_amount"]').value) || 0;
-    const scheduleType = document.querySelector('input[name="schedule_type"]:checked').value;
+    const scheduleType = document.querySelector('input[name="schedule_type"]:checked');
     const previewGrid = document.getElementById('previewGrid');
 
+    if (!scheduleType || !previewGrid) return;
+
     if (!contractData) {
-        generateStandardPreview(quartersCount, totalAmount, scheduleType, previewGrid);
+        generateStandardPreview(quartersCount, totalAmount, scheduleType.value, previewGrid);
         return;
     }
 
-    // CRITICAL: Start from actual contract date, not January
     const contractDate = new Date(contractData.contract_date);
     const contractYear = contractDate.getFullYear();
     const contractMonth = contractDate.getMonth() + 1;
@@ -1779,14 +1798,13 @@ function updateSchedulePreview() {
                      quartersCount <= 12 ? 'grid-cols-6' : 'grid-cols-8';
     previewGrid.className = `grid ${gridClass} gap-3`;
 
-    // Generate quarters starting from contract quarter
     let currentYear = contractYear;
     let currentQuarter = contractQuarter;
 
     for (let i = 0; i < quartersCount; i++) {
         let percent, amount;
 
-        if (scheduleType === 'auto') {
+        if (scheduleType.value === 'auto') {
             percent = 100 / quartersCount;
             amount = totalAmount / quartersCount;
         } else {
@@ -1809,7 +1827,6 @@ function updateSchedulePreview() {
         </div>
         `;
 
-        // Move to next quarter
         currentQuarter++;
         if (currentQuarter > 4) {
             currentQuarter = 1;
@@ -1817,8 +1834,7 @@ function updateSchedulePreview() {
         }
     }
 
-    // Add summary with contract start info
-    if (scheduleType === 'custom') {
+    if (scheduleType.value === 'custom') {
         const isValidTotal = Math.abs(totalPercent - 100) < 0.1;
         html += `
         <div class="col-span-full mt-4 p-4 rounded-lg ${isValidTotal ? 'bg-green-100 text-green-800' : 'bg-red-100 text-red-800'}">
@@ -1845,6 +1861,7 @@ function updateSchedulePreview() {
 
     previewGrid.innerHTML = html;
 }
+
 function generateStandardPreview(quartersCount, totalAmount, scheduleType, previewGrid) {
     let html = '';
     let totalPercent = 0;
@@ -1880,7 +1897,6 @@ function generateStandardPreview(quartersCount, totalAmount, scheduleType, previ
     previewGrid.innerHTML = html;
 }
 
-// Form submission handlers
 async function handleContractSubmit(e) {
     e.preventDefault();
 
@@ -1899,7 +1915,6 @@ async function handleContractSubmit(e) {
     try {
         const formData = new FormData(e.target);
 
-        // Validation
         const contractNumber = formData.get('contract_number');
         const totalAmount = parseFloat(formData.get('total_amount'));
         const contractDate = formData.get('contract_date');
@@ -1975,7 +1990,6 @@ async function handleContractSubmit(e) {
     }
 }
 
-
 async function handleScheduleSubmit(e) {
     e.preventDefault();
 
@@ -2005,7 +2019,6 @@ async function handleScheduleSubmit(e) {
         const quartersCount = parseInt(formData.get('quarters_count'));
         const totalAmount = parseFloat(formData.get('total_schedule_amount'));
 
-        // Validation
         if (!quartersCount || quartersCount < 1 || quartersCount > 20) {
             throw new Error('Choraklar soni 1-20 orasida bo\'lishi kerak');
         }
@@ -2014,7 +2027,6 @@ async function handleScheduleSubmit(e) {
             throw new Error('Jadval summasi 0 dan katta bo\'lishi kerak');
         }
 
-        // Calculate quarters starting from contract date
         const contractDate = new Date(contractData.contract_date);
         const contractYear = contractDate.getFullYear();
         const contractMonth = contractDate.getMonth() + 1;
@@ -2041,7 +2053,6 @@ async function handleScheduleSubmit(e) {
                 sequence: i + 1
             });
 
-            // Move to next quarter
             currentQuarter++;
             if (currentQuarter > 4) {
                 currentQuarter = 1;
@@ -2049,7 +2060,6 @@ async function handleScheduleSubmit(e) {
             }
         }
 
-        // Validate custom percentages
         if (scheduleType === 'custom') {
             let totalPercent = 0;
             for (let i = 1; i <= quartersCount; i++) {
@@ -2104,6 +2114,7 @@ async function handleScheduleSubmit(e) {
     }
 }
 
+// ENHANCED: Payment submission with debug and quarter detection
 async function handlePaymentSubmit(e) {
     e.preventDefault();
 
@@ -2121,7 +2132,6 @@ async function handlePaymentSubmit(e) {
     const submitBtn = e.target.querySelector('button[type="submit"]');
     const originalText = submitBtn.innerHTML;
 
-    // Lock the button
     submitBtn.disabled = true;
     submitBtn.innerHTML = `
         <i data-feather="loader" class="w-4 h-4 mr-2 animate-spin"></i>
@@ -2133,7 +2143,6 @@ async function handlePaymentSubmit(e) {
         const paymentDate = formData.get('payment_date');
         const paymentAmount = parseFloat(formData.get('payment_amount'));
 
-        // CRITICAL: Validate payment date and amount
         if (!paymentDate) {
             throw new Error('To\'lov sanasini kiriting');
         }
@@ -2142,19 +2151,124 @@ async function handlePaymentSubmit(e) {
             throw new Error('To\'lov summasini to\'g\'ri kiriting');
         }
 
-        // CRITICAL: Calculate correct quarter from payment date
-        const targetQuarter = calculateQuarterFromDate(paymentDate);
+        console.log('=== PAYMENT QUARTER CALCULATION DEBUG ===');
+        console.log('Payment Date:', paymentDate);
+        console.log('Contract Data:', contractData);
+        console.log('Quarterly Data:', quarterlyData);
 
-        if (!targetQuarter) {
-            throw new Error('To\'lov sanasi shartnoma muddatidan tashqarida');
+        const paymentDateObj = new Date(paymentDate);
+        const paymentYear = paymentDateObj.getFullYear();
+        const paymentMonth = paymentDateObj.getMonth() + 1;
+        const calculatedQuarter = Math.ceil(paymentMonth / 3);
+
+        console.log('Date Analysis:');
+        console.log('- Payment Year:', paymentYear);
+        console.log('- Payment Month:', paymentMonth);
+        console.log('- Calculated Quarter:', calculatedQuarter);
+
+        console.log('Available Quarters in Schedule:');
+        if (quarterlyData && typeof quarterlyData === 'object') {
+            Object.keys(quarterlyData).forEach(year => {
+                if (quarterlyData[year] && typeof quarterlyData[year] === 'object') {
+                    Object.keys(quarterlyData[year]).forEach(quarter => {
+                        const planAmount = parseFloat(quarterlyData[year][quarter].plan_amount) || 0;
+                        if (planAmount > 0) {
+                            console.log(`- ${quarter}-chorak ${year}: Plan ${planAmount} so'm`);
+                        }
+                    });
+                }
+            });
         }
 
-        // Add calculated quarter info to form data
+        let targetQuarter;
+        if (quarterlyData &&
+            quarterlyData[paymentYear] &&
+            quarterlyData[paymentYear][calculatedQuarter] &&
+            parseFloat(quarterlyData[paymentYear][calculatedQuarter].plan_amount) > 0) {
+
+            targetQuarter = {
+                year: paymentYear,
+                quarter: calculatedQuarter,
+                date: paymentDateObj,
+                isValid: true,
+                source: 'direct_calculation'
+            };
+
+            console.log('✅ Direct quarter found:', targetQuarter);
+        } else {
+            console.log('❌ Direct quarter not found, searching for alternatives...');
+
+            const availableQuarters = [];
+            if (quarterlyData && typeof quarterlyData === 'object') {
+                Object.keys(quarterlyData).forEach(year => {
+                    if (quarterlyData[year] && typeof quarterlyData[year] === 'object') {
+                        Object.keys(quarterlyData[year]).forEach(quarter => {
+                            const planAmount = parseFloat(quarterlyData[year][quarter].plan_amount) || 0;
+                            if (planAmount > 0) {
+                                availableQuarters.push({
+                                    year: parseInt(year),
+                                    quarter: parseInt(quarter),
+                                    planAmount: planAmount
+                                });
+                            }
+                        });
+                    }
+                });
+            }
+
+            console.log('Available quarters for fallback:', availableQuarters);
+
+            if (availableQuarters.length > 0) {
+                let closest = availableQuarters[0];
+                let minDiff = Math.abs(getQuarterMiddleDate(closest.year, closest.quarter) - paymentDateObj);
+
+                availableQuarters.forEach(quarter => {
+                    const quarterMiddle = getQuarterMiddleDate(quarter.year, quarter.quarter);
+                    const diff = Math.abs(quarterMiddle - paymentDateObj);
+
+                    if (diff < minDiff) {
+                        minDiff = diff;
+                        closest = quarter;
+                    }
+                });
+
+                targetQuarter = {
+                    year: closest.year,
+                    quarter: closest.quarter,
+                    date: paymentDateObj,
+                    isValid: true,
+                    source: 'closest_available',
+                    originalCalculation: {
+                        year: paymentYear,
+                        quarter: calculatedQuarter
+                    }
+                };
+
+                console.log('✅ Closest quarter found:', targetQuarter);
+                showNotification(`To'lov ${calculatedQuarter}-chorak ${paymentYear} o'rniga ${closest.quarter}-chorak ${closest.year} ga tayinlanadi`, 'warning');
+            } else {
+                throw new Error('Hech qanday to\'lov jadvali mavjud emas');
+            }
+        }
+
+        console.log('=== FINAL QUARTER ASSIGNMENT ===');
+        console.log('Target Quarter:', targetQuarter);
+
         formData.append('target_year', targetQuarter.year);
         formData.append('target_quarter', targetQuarter.quarter);
         formData.append('quarter_validation', 'true');
+        formData.append('calculation_debug', JSON.stringify({
+            paymentDate: paymentDate,
+            calculatedYear: paymentYear,
+            calculatedQuarter: calculatedQuarter,
+            assignedYear: targetQuarter.year,
+            assignedQuarter: targetQuarter.quarter,
+            source: targetQuarter.source
+        }));
 
-        console.log('Payment will be assigned to:', targetQuarter);
+        console.log('Form data being sent:');
+        console.log('- target_year:', targetQuarter.year);
+        console.log('- target_quarter:', targetQuarter.quarter);
 
         const response = await fetch(`/contracts/${contractData.id}/store-fact-payment`, {
             method: 'POST',
@@ -2166,12 +2280,16 @@ async function handlePaymentSubmit(e) {
             body: formData
         });
 
+        console.log('Backend response status:', response.status);
+
         if (!response.ok) {
             const errorData = await response.json();
+            console.log('Backend error response:', errorData);
             throw new Error(errorData.message || `Server error: ${response.status}`);
         }
 
         const result = await response.json();
+        console.log('Backend success response:', result);
 
         if (result.success) {
             closePaymentModal();
@@ -2180,7 +2298,10 @@ async function handlePaymentSubmit(e) {
                 'success'
             );
             loadQuarterlyData();
-            loadPaymentHistory(); // Refresh payment history if exists
+
+            if (typeof loadPaymentHistory === 'function') {
+                loadPaymentHistory();
+            }
         } else {
             throw new Error(result.message || 'To\'lov qo\'shishda xatolik');
         }
@@ -2195,124 +2316,117 @@ async function handlePaymentSubmit(e) {
     }
 }
 
-
-function calculateQuarterFromDate(paymentDateString) {
-    if (!contractData || !paymentDateString) {
-        return null;
-    }
-
-    const paymentDate = new Date(paymentDateString);
-    const contractStartDate = new Date(contractData.contract_date);
-
-    // Validate payment date is not before contract start
-    if (paymentDate < contractStartDate) {
-        throw new Error('To\'lov sanasi shartnoma sanasidan oldin bo\'lishi mumkin emas');
-    }
-
-    const paymentYear = paymentDate.getFullYear();
-    const paymentMonth = paymentDate.getMonth() + 1; // 1-12
-    const paymentQuarter = Math.ceil(paymentMonth / 3); // 1-4
-
-    // Additional validation: check if this quarter exists in the contract schedule
-    if (quarterlyData && quarterlyData[paymentYear] && quarterlyData[paymentYear][paymentQuarter]) {
-        return {
-            year: paymentYear,
-            quarter: paymentQuarter,
-            date: paymentDate,
-            isValid: true
-        };
-    }
-
-    // If quarter doesn't exist in schedule, find the closest available quarter
-    const availableQuarters = findAvailableQuarters();
-    const closestQuarter = findClosestQuarter(paymentDate, availableQuarters);
-
-    if (closestQuarter) {
-        console.warn(`Quarter ${paymentQuarter}-${paymentYear} not found, using closest: ${closestQuarter.quarter}-${closestQuarter.year}`);
-        return closestQuarter;
-    }
-
-    return {
-        year: paymentYear,
-        quarter: paymentQuarter,
-        date: paymentDate,
-        isValid: false
-    };
-}
-
-// Helper: Find all available quarters in the schedule
-function findAvailableQuarters() {
-    const available = [];
-
-    if (quarterlyData && typeof quarterlyData === 'object') {
-        Object.keys(quarterlyData).forEach(year => {
-            Object.keys(quarterlyData[year]).forEach(findClosestQuarterquarter => {
-                available.push({
-                    year: parseInt(year),
-                    quarter: parseInt(quarter),
-                    planAmount: parseFloat(quarterlyData[year][quarter].plan_amount) || 0
-                });
-            });
-        });
-    }
-
-    return available.filter(q => q.planAmount > 0);
-}
-
-function findClosestQuarter(paymentDate, availableQuarters) {
-    if (!availableQuarters || availableQuarters.length === 0) {
-        return null;
-    }
-
-    let closest = availableQuarters[0];
-    let minDiff = Math.abs(getQuarterMiddleDate(closest.year, closest.quarter) - paymentDate);
-
-    availableQuarters.forEach(quarter => {
-        const quarterMiddle = getQuarterMiddleDate(quarter.year, quarter.quarter);
-        const diff = Math.abs(quarterMiddle - paymentDate);
-
-        if (diff < minDiff) {
-            minDiff = diff;
-            closest = quarter;
-        }
-    });
-
-    return {
-        year: closest.year,
-        quarter: closest.quarter,
-        date: paymentDate,
-        isValid: true,
-        isClosest: true
-    };
-}
-
+// Helper function for quarter middle date calculation
 function getQuarterMiddleDate(year, quarter) {
-    const quarterStartMonth = (quarter - 1) * 3 + 1; // 1, 4, 7, 10
-    const quarterMiddleMonth = quarterStartMonth + 1; // 2, 5, 8, 11
+    const quarterStartMonth = (quarter - 1) * 3 + 1;
+    const quarterMiddleMonth = quarterStartMonth + 1;
     return new Date(year, quarterMiddleMonth - 1, 15);
 }
 
-// Utility functions
+// FIXED: Add payment for specific quarter with proper date suggestion
+function addQuarterPayment(year, quarter) {
+    console.log('=== ADD QUARTER PAYMENT DEBUG ===');
+    console.log('Requested year:', year);
+    console.log('Requested quarter:', quarter);
+
+    if (!contractData) {
+        showNotification('Shartnoma ma\'lumotlari topilmadi', 'error');
+        return;
+    }
+
+    if (!quarterlyData || !quarterlyData[year] || !quarterlyData[year][quarter]) {
+        showNotification(`${quarter}-chorak ${year} yil uchun jadval mavjud emas`, 'error');
+        return;
+    }
+
+    openPaymentModal();
+
+    // FIXED: Calculate proper date for the requested quarter
+    const quarterStartMonth = (quarter - 1) * 3 + 1; // 1, 4, 7, 10
+    const quarterMiddleMonth = quarterStartMonth + 1; // 2, 5, 8, 11
+    const quarterEndMonth = quarter * 3; // 3, 6, 9, 12
+
+    console.log('Quarter month calculation:', {
+        quarter: quarter,
+        startMonth: quarterStartMonth,
+        middleMonth: quarterMiddleMonth,
+        endMonth: quarterEndMonth
+    });
+
+    // FIXED: Use proper date for the quarter without restrictive validations
+    let suggestedDate = new Date(year, quarterMiddleMonth - 1, 15); // Middle of quarter
+
+    // ONLY check contract date constraint (not future date constraint)
+    const contractStartDate = new Date(contractData.contract_date);
+    if (suggestedDate < contractStartDate) {
+        const quarterStartDate = new Date(year, quarterStartMonth - 1, 1);
+        if (contractStartDate <= new Date(year, quarterEndMonth, 0)) {
+            suggestedDate = contractStartDate;
+        } else {
+            suggestedDate = quarterStartDate;
+        }
+    }
+
+    console.log('Final suggested date:', suggestedDate.toISOString().split('T')[0]);
+    console.log('Date verification:', {
+        suggestedDate: suggestedDate.toISOString().split('T')[0],
+        suggestedMonth: suggestedDate.getMonth() + 1,
+        calculatedQuarter: Math.ceil((suggestedDate.getMonth() + 1) / 3),
+        requestedQuarter: quarter,
+        matches: Math.ceil((suggestedDate.getMonth() + 1) / 3) === quarter
+    });
+
+    const dateInput = document.querySelector('input[name="payment_date"]');
+    if (dateInput) {
+        dateInput.value = suggestedDate.toISOString().split('T')[0];
+        dateInput.removeAttribute('max');
+
+        const existingNote = document.querySelector('#quarterPaymentNote');
+        if (existingNote) {
+            existingNote.remove();
+        }
+
+        const noteDiv = document.createElement('div');
+        noteDiv.id = 'quarterPaymentNote';
+        noteDiv.className = 'mt-2 p-3 bg-blue-50 border border-blue-200 rounded-lg';
+
+        const verificationQuarter = Math.ceil((suggestedDate.getMonth() + 1) / 3);
+        const isCorrectQuarter = verificationQuarter === quarter;
+
+        noteDiv.innerHTML = `
+            <div class="flex items-center">
+                <i data-feather="info" class="w-4 h-4 mr-2 text-blue-600"></i>
+                <span class="text-sm font-medium text-blue-800">
+                    Bu to'lov ${quarter}-chorak ${year} yil uchun qo'shiladi
+                    ${!isCorrectQuarter ? `(Diqqat: Tanlangan sana ${verificationQuarter}-chorakka mos keladi)` : ''}
+                </span>
+            </div>
+        `;
+
+        dateInput.parentNode.appendChild(noteDiv);
+        safeFeatherReplace();
+    }
+
+    showNotification(`${quarter}-chorak ${year} yil uchun to'lov qo'shish`, 'info');
+}
+
 function toggleSubmitState(button, textElement, loaderElement, isLoading) {
     if (isLoading) {
         button.disabled = true;
-        textElement.classList.add('hidden');
-        loaderElement.classList.remove('hidden');
+        if (textElement) textElement.classList.add('hidden');
+        if (loaderElement) loaderElement.classList.remove('hidden');
     } else {
         button.disabled = false;
-        textElement.classList.remove('hidden');
-        loaderElement.classList.add('hidden');
+        if (textElement) textElement.classList.remove('hidden');
+        if (loaderElement) loaderElement.classList.add('hidden');
     }
 }
 
-// FIXED: Proper currency formatting - no NaN errors
 function formatFullCurrency(amount) {
-    // Handle NaN, undefined, null, or invalid numbers
     if (isNaN(amount) || amount === null || amount === undefined) {
         amount = 0;
     }
 
-    // Convert to number if it's a string
     if (typeof amount === 'string') {
         amount = parseFloat(amount) || 0;
     }
@@ -2371,9 +2485,11 @@ function debounce(func, wait) {
 
 function resetForm() {
     if (confirm('Barcha ma\'lumotlarni tozalashni xohlaysizmi? Bu amal bekor qilinmaydi.')) {
-        document.getElementById('contractForm').reset();
+        const contractForm = document.getElementById('contractForm');
+        if (contractForm) {
+            contractForm.reset();
+        }
 
-        // Clear custom validation messages
         document.querySelectorAll('input, select, textarea').forEach(element => {
             element.setCustomValidity('');
         });
@@ -2448,69 +2564,6 @@ function editQuarterPlan(year, quarter) {
     showNotification(`${quarter}-chorak ${year} yil planini tahrirlash funksiyasi ishlab chiqilmoqda`, 'info');
 }
 
-function addQuarterPayment(year, quarter) {
-    if (!contractData) {
-        showNotification('Shartnoma ma\'lumotlari topilmadi', 'error');
-        return;
-    }
-
-    // Check if the quarter exists in the schedule
-    if (!quarterlyData || !quarterlyData[year] || !quarterlyData[year][quarter]) {
-        showNotification(`${quarter}-chorak ${year} yil uchun jadval mavjud emas`, 'error');
-        return;
-    }
-
-    openPaymentModal();
-
-    // Calculate suggested date for the specific quarter
-    const quarterStartMonth = (quarter - 1) * 3 + 1; // 1, 4, 7, 10
-    const quarterMiddleMonth = quarterStartMonth + 1; // 2, 5, 8, 11
-
-    let suggestedDate = new Date(year, quarterMiddleMonth - 1, 15); // Middle of quarter
-
-    // Ensure suggested date is not before contract date
-    const contractStartDate = new Date(contractData.contract_date);
-    if (suggestedDate < contractStartDate) {
-        suggestedDate = contractStartDate;
-    }
-
-    // Ensure suggested date is not in the future
-    const today = new Date();
-    if (suggestedDate > today) {
-        suggestedDate = today;
-    }
-
-    // Set the suggested date
-    const dateInput = document.querySelector('input[name="payment_date"]');
-    if (dateInput) {
-        dateInput.value = suggestedDate.toISOString().split('T')[0];
-
-        // Add a note about which quarter this payment will be assigned to
-        const existingNote = document.querySelector('#quarterPaymentNote');
-        if (existingNote) {
-            existingNote.remove();
-        }
-
-        const noteDiv = document.createElement('div');
-        noteDiv.id = 'quarterPaymentNote';
-        noteDiv.className = 'mt-2 p-3 bg-blue-50 border border-blue-200 rounded-lg';
-        noteDiv.innerHTML = `
-            <div class="flex items-center">
-                <i data-feather="info" class="w-4 h-4 mr-2 text-blue-600"></i>
-                <span class="text-sm font-medium text-blue-800">
-                    Bu to'lov ${quarter}-chorak ${year} yil uchun qo'shiladi
-                </span>
-            </div>
-        `;
-
-        dateInput.parentNode.appendChild(noteDiv);
-        safeFeatherReplace();
-    }
-
-    showNotification(`${quarter}-chorak ${year} yil uchun to'lov qo'shish`, 'info');
-}
-
-
 // Close modals on background click
 document.addEventListener('click', function(e) {
     if (e.target.classList.contains('fixed') && e.target.classList.contains('inset-0')) {
@@ -2523,5 +2576,67 @@ document.addEventListener('click', function(e) {
         });
     }
 });
+
+// Optional loadPaymentHistory function
+function loadPaymentHistory() {
+    const historyContainer = document.getElementById('paymentHistoryContainer');
+    if (historyContainer && contractData) {
+        fetch(`/contracts/${contractData.id}/payment-history`)
+            .then(response => response.json())
+            .then(data => {
+                if (data.success) {
+                    historyContainer.innerHTML = renderPaymentHistory(data.payments);
+                } else {
+                    historyContainer.innerHTML = '<p class="text-gray-500 text-center py-8">To\'lovlar tarixi mavjud emas</p>';
+                }
+            })
+            .catch(error => {
+                console.error('Error loading payment history:', error);
+                historyContainer.innerHTML = '<p class="text-red-500 text-center py-8">Tarix yuklashda xatolik</p>';
+            });
+    }
+}
+
+function renderPaymentHistory(payments) {
+    if (!payments || payments.length === 0) {
+        return '<p class="text-gray-500 text-center py-8">Hali to\'lovlar mavjud emas</p>';
+    }
+
+    let html = '<div class="space-y-4">';
+
+    payments.forEach(payment => {
+        html += `
+        <div class="bg-white rounded-lg p-4 border border-gray-200 hover:shadow-md transition-shadow">
+            <div class="flex justify-between items-center">
+                <div class="flex-1">
+                    <div class="flex items-center justify-between mb-2">
+                        <div class="font-medium text-gray-900">
+                            ${payment.payment_number || 'To\'lov #' + payment.id}
+                        </div>
+                        <div class="text-sm text-gray-500">
+                            ${payment.quarter || 1}-chorak ${payment.year || new Date().getFullYear()}
+                        </div>
+                    </div>
+                    <div class="text-sm text-gray-600">
+                        Sana: ${new Date(payment.payment_date).toLocaleDateString('uz-UZ')}
+                    </div>
+                    ${payment.notes ? `<div class="text-sm text-gray-500 mt-1">${payment.notes}</div>` : ''}
+                </div>
+                <div class="text-right ml-4">
+                    <div class="font-bold text-green-600 text-lg">
+                        ${formatFullCurrency(payment.amount)}
+                    </div>
+                    <div class="text-xs text-gray-400">
+                        ${new Date(payment.created_at).toLocaleDateString('uz-UZ')}
+                    </div>
+                </div>
+            </div>
+        </div>
+        `;
+    });
+
+    html += '</div>';
+    return html;
+}
 </script>
 @endpush
