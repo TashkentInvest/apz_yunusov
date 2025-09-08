@@ -2410,25 +2410,58 @@ public function getPaymentHistory(Contract $contract)
                                 ->orderBy('created_at', 'desc')
                                 ->get();
 
-        // Transform history data
+        // Transform history data with better formatting
         $transformedHistory = $history->map(function ($item) {
+            $formattedChanges = null;
+
+            // Format changes for display
+            if ($item->old_values && $item->new_values && is_array($item->old_values) && is_array($item->new_values)) {
+                $changes = [];
+                foreach ($item->new_values as $field => $newValue) {
+                    $oldValue = $item->old_values[$field] ?? null;
+                    if ($oldValue !== $newValue) {
+                        $changes[] = [
+                            'field' => $this->translateFieldName($field),
+                            'old' => $this->formatFieldValue($field, $oldValue),
+                            'new' => $this->formatFieldValue($field, $newValue),
+                            'field_key' => $field
+                        ];
+                    }
+                }
+                $formattedChanges = $changes;
+            }
+
             return [
                 'id' => $item->id,
                 'action' => $item->action,
+                'action_text' => $this->getActionText($item->action),
                 'table_name' => $item->table_name,
+                'table_text' => $this->getTableText($item->table_name),
                 'record_id' => $item->record_id,
                 'description' => $item->description,
                 'formatted_description' => $item->formatted_description,
-                'changes_summary' => $item->changes_summary,
-                'user' => $item->user,
+                'changes' => $formattedChanges,
+                'user' => $item->user ? [
+                    'id' => $item->user->id,
+                    'name' => $item->user->name
+                ] : null,
                 'created_at' => $item->created_at->toISOString(),
-                'created_at_formatted' => $item->created_at->format('d.m.Y H:i')
+                'created_at_formatted' => $item->created_at->format('d.m.Y H:i'),
+                'created_at_human' => $item->created_at->diffForHumans(),
+                'icon' => $this->getActionIcon($item->action, $item->table_name),
+                'color' => $this->getActionColor($item->action)
             ];
         });
 
         return response()->json([
             'success' => true,
-            'history' => $transformedHistory
+            'history' => $transformedHistory,
+            'total_count' => $history->count(),
+            'contract_info' => [
+                'id' => $contract->id,
+                'contract_number' => $contract->contract_number,
+                'contract_date' => $contract->contract_date->format('d.m.Y')
+            ]
         ]);
 
     } catch (\Exception $e) {
@@ -2441,7 +2474,206 @@ public function getPaymentHistory(Contract $contract)
             'success' => false,
             'message' => 'Tarixni yuklashda xatolik yuz berdi',
             'history' => []
+        ], 500);
+    }
+}
+
+public function getRecentPaymentActivities($limit = 20)
+{
+    try {
+        $activities = PaymentHistory::with(['contract:id,contract_number', 'user:id,name'])
+                                   ->orderBy('created_at', 'desc')
+                                   ->limit($limit)
+                                   ->get();
+
+        $formattedActivities = $activities->map(function ($item) {
+            return [
+                'id' => $item->id,
+                'contract_number' => $item->contract->contract_number ?? 'N/A',
+                'contract_id' => $item->contract_id,
+                'action_text' => $this->getActionText($item->action),
+                'table_text' => $this->getTableText($item->table_name),
+                'description' => $item->description,
+                'user_name' => $item->user->name ?? 'Tizim',
+                'created_at_formatted' => $item->created_at->format('d.m.Y H:i'),
+                'created_at_human' => $item->created_at->diffForHumans(),
+                'icon' => $this->getActionIcon($item->action, $item->table_name),
+                'color' => $this->getActionColor($item->action)
+            ];
+        });
+
+        return response()->json([
+            'success' => true,
+            'activities' => $formattedActivities
+        ]);
+
+    } catch (\Exception $e) {
+        \Log::error('Error fetching recent activities', [
+            'error' => $e->getMessage()
+        ]);
+
+        return response()->json([
+            'success' => false,
+            'activities' => []
         ]);
     }
+}
+public function getPaymentHistoryStats(Contract $contract)
+{
+    try {
+        $stats = [
+            'total_actions' => PaymentHistory::where('contract_id', $contract->id)->count(),
+            'payment_actions' => PaymentHistory::where('contract_id', $contract->id)
+                                              ->where('table_name', 'actual_payments')
+                                              ->count(),
+            'schedule_actions' => PaymentHistory::where('contract_id', $contract->id)
+                                               ->where('table_name', 'payment_schedules')
+                                               ->count(),
+            'contract_actions' => PaymentHistory::where('contract_id', $contract->id)
+                                               ->where('table_name', 'contracts')
+                                               ->count(),
+            'recent_activity' => PaymentHistory::where('contract_id', $contract->id)
+                                              ->where('created_at', '>=', now()->subDays(7))
+                                              ->count(),
+            'action_breakdown' => PaymentHistory::where('contract_id', $contract->id)
+                                               ->selectRaw('action, COUNT(*) as count')
+                                               ->groupBy('action')
+                                               ->pluck('count', 'action')
+                                               ->toArray(),
+            'last_activity' => PaymentHistory::where('contract_id', $contract->id)
+                                            ->latest()
+                                            ->first()?->created_at?->diffForHumans()
+        ];
+
+        return response()->json([
+            'success' => true,
+            'stats' => $stats
+        ]);
+
+    } catch (\Exception $e) {
+        return response()->json([
+            'success' => false,
+            'stats' => []
+        ]);
+    }
+}
+
+
+private function translateFieldName($field)
+{
+    $translations = [
+        'amount' => 'Summa',
+        'payment_date' => 'To\'lov sanasi',
+        'payment_number' => 'To\'lov raqami',
+        'notes' => 'Izoh',
+        'year' => 'Yil',
+        'quarter' => 'Chorak',
+        'quarter_amount' => 'Chorak summasi',
+        'total_amount' => 'Jami summa',
+        'contract_number' => 'Shartnoma raqami',
+        'contract_date' => 'Shartnoma sanasi',
+        'payment_type' => 'To\'lov turi',
+        'initial_payment_percent' => 'Boshlang\'ich to\'lov foizi',
+        'quarters_count' => 'Choraklar soni'
+    ];
+
+    return $translations[$field] ?? $field;
+}
+
+private function formatFieldValue($field, $value)
+{
+    if (is_null($value)) {
+        return 'Bo\'sh';
+    }
+
+    switch ($field) {
+        case 'amount':
+        case 'quarter_amount':
+        case 'total_amount':
+            return number_format((float)$value, 0, '.', ' ') . ' so\'m';
+
+        case 'payment_date':
+        case 'contract_date':
+            try {
+                return \Carbon\Carbon::parse($value)->format('d.m.Y');
+            } catch (\Exception $e) {
+                return $value;
+            }
+
+        case 'payment_type':
+            return $value === 'installment' ? 'Bo\'lib to\'lash' : 'To\'liq to\'lash';
+
+        case 'initial_payment_percent':
+            return $value . '%';
+
+        case 'quarter':
+            return $value . '-chorak';
+
+        default:
+            return $value;
+    }
+}
+
+private function getActionText($action)
+{
+    $actions = [
+        'created' => 'Yaratildi',
+        'updated' => 'Yangilandi',
+        'deleted' => 'O\'chirildi'
+    ];
+
+    return $actions[$action] ?? ucfirst($action);
+}
+
+private function getTableText($tableName)
+{
+    $tables = [
+        'contracts' => 'Shartnoma',
+        'payment_schedules' => 'To\'lov jadvali',
+        'actual_payments' => 'Haqiqiy to\'lov',
+        'contract_amendments' => 'Shartnoma qo\'shimchasi'
+    ];
+
+    return $tables[$tableName] ?? $tableName;
+}
+
+private function getActionIcon($action, $tableName)
+{
+    if ($tableName === 'actual_payments') {
+        switch ($action) {
+            case 'created': return 'plus-circle';
+            case 'updated': return 'edit-2';
+            case 'deleted': return 'trash-2';
+        }
+    }
+
+    if ($tableName === 'payment_schedules') {
+        switch ($action) {
+            case 'created': return 'calendar';
+            case 'updated': return 'edit';
+            case 'deleted': return 'x-circle';
+        }
+    }
+
+    if ($tableName === 'contracts') {
+        switch ($action) {
+            case 'created': return 'file-plus';
+            case 'updated': return 'file-text';
+            case 'deleted': return 'file-x';
+        }
+    }
+
+    return 'activity';
+}
+
+private function getActionColor($action)
+{
+    $colors = [
+        'created' => 'green',
+        'updated' => 'blue',
+        'deleted' => 'red'
+    ];
+
+    return $colors[$action] ?? 'gray';
 }
 }

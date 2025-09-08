@@ -2580,63 +2580,328 @@ document.addEventListener('click', function(e) {
 // Optional loadPaymentHistory function
 function loadPaymentHistory() {
     const historyContainer = document.getElementById('paymentHistoryContainer');
-    if (historyContainer && contractData) {
-        fetch(`/contracts/${contractData.id}/payment-history`)
-            .then(response => response.json())
-            .then(data => {
-                if (data.success) {
-                    historyContainer.innerHTML = renderPaymentHistory(data.payments);
-                } else {
-                    historyContainer.innerHTML = '<p class="text-gray-500 text-center py-8">To\'lovlar tarixi mavjud emas</p>';
-                }
-            })
-            .catch(error => {
-                console.error('Error loading payment history:', error);
-                historyContainer.innerHTML = '<p class="text-red-500 text-center py-8">Tarix yuklashda xatolik</p>';
-            });
-    }
+    if (!historyContainer || !contractData) return;
+
+    // Show loading state
+    historyContainer.innerHTML = `
+        <div class="text-center py-8">
+            <div class="animate-spin rounded-full h-8 w-8 border-b-2 border-purple-600 mx-auto mb-3"></div>
+            <p class="text-gray-500">Tarix yuklanmoqda...</p>
+        </div>
+    `;
+
+    fetch(`/contracts/${contractData.id}/payment-history`)
+        .then(response => response.json())
+        .then(data => {
+            if (data.success && data.history && data.history.length > 0) {
+                historyContainer.innerHTML = renderPaymentHistoryDetail(data.history, data.contract_info);
+            } else {
+                historyContainer.innerHTML = renderEmptyHistory();
+            }
+        })
+        .catch(error => {
+            console.error('Error loading payment history:', error);
+            historyContainer.innerHTML = renderHistoryError();
+        });
 }
 
-function renderPaymentHistory(payments) {
-    if (!payments || payments.length === 0) {
-        return '<p class="text-gray-500 text-center py-8">Hali to\'lovlar mavjud emas</p>';
-    }
-
-    let html = '<div class="space-y-4">';
-
-    payments.forEach(payment => {
-        html += `
-        <div class="bg-white rounded-lg p-4 border border-gray-200 hover:shadow-md transition-shadow">
-            <div class="flex justify-between items-center">
-                <div class="flex-1">
-                    <div class="flex items-center justify-between mb-2">
-                        <div class="font-medium text-gray-900">
-                            ${payment.payment_number || 'To\'lov #' + payment.id}
-                        </div>
-                        <div class="text-sm text-gray-500">
-                            ${payment.quarter || 1}-chorak ${payment.year || new Date().getFullYear()}
-                        </div>
+function renderPaymentHistoryDetail(history, contractInfo) {
+    let html = `
+        <div class="space-y-4">
+            <!-- History Header -->
+            <div class="bg-purple-50 rounded-lg p-4 border border-purple-200">
+                <div class="flex items-center justify-between">
+                    <div class="flex items-center">
+                        <i data-feather="clock" class="w-5 h-5 text-purple-600 mr-2"></i>
+                        <h4 class="font-bold text-purple-900">To'lovlar tarixi</h4>
                     </div>
-                    <div class="text-sm text-gray-600">
-                        Sana: ${new Date(payment.payment_date).toLocaleDateString('uz-UZ')}
+                    <div class="text-sm text-purple-700">
+                        Jami: ${history.length} ta faoliyat
                     </div>
-                    ${payment.notes ? `<div class="text-sm text-gray-500 mt-1">${payment.notes}</div>` : ''}
                 </div>
-                <div class="text-right ml-4">
-                    <div class="font-bold text-green-600 text-lg">
-                        ${formatFullCurrency(payment.amount)}
+                <div class="text-xs text-purple-600 mt-1">
+                    Shartnoma: ${contractInfo.contract_number} (${contractInfo.contract_date})
+                </div>
+            </div>
+
+            <!-- History Timeline -->
+            <div class="relative">
+                <!-- Timeline line -->
+                <div class="absolute left-6 top-0 bottom-0 w-0.5 bg-gray-200"></div>
+
+                <div class="space-y-4">
+    `;
+
+    history.forEach((item, index) => {
+        const isLast = index === history.length - 1;
+        html += renderHistoryItem(item, isLast);
+    });
+
+    html += `
+                </div>
+            </div>
+        </div>
+    `;
+
+    safeFeatherReplace();
+    return html;
+}
+
+function renderHistoryItem(item, isLast) {
+    const colorClasses = {
+        green: 'bg-green-100 text-green-800 border-green-200',
+        blue: 'bg-blue-100 text-blue-800 border-blue-200',
+        red: 'bg-red-100 text-red-800 border-red-200',
+        gray: 'bg-gray-100 text-gray-800 border-gray-200'
+    };
+
+    const iconColors = {
+        green: 'text-green-600 bg-green-100',
+        blue: 'text-blue-600 bg-blue-100',
+        red: 'text-red-600 bg-red-100',
+        gray: 'text-gray-600 bg-gray-100'
+    };
+
+    const colorClass = colorClasses[item.color] || colorClasses.gray;
+    const iconColor = iconColors[item.color] || iconColors.gray;
+
+    return `
+        <div class="relative flex items-start space-x-4">
+            <!-- Timeline dot -->
+            <div class="flex-shrink-0 w-12 h-12 ${iconColor} rounded-full flex items-center justify-center z-10 border-2 border-white shadow-sm">
+                <i data-feather="${item.icon}" class="w-5 h-5"></i>
+            </div>
+
+            <!-- Content -->
+            <div class="flex-1 min-w-0 pb-4">
+                <div class="bg-white rounded-lg border border-gray-200 p-4 shadow-sm hover:shadow-md transition-shadow">
+                    <!-- Header -->
+                    <div class="flex items-center justify-between mb-2">
+                        <div class="flex items-center space-x-2">
+                            <span class="px-2 py-1 text-xs font-medium rounded-full ${colorClass}">
+                                ${item.action_text}
+                            </span>
+                            <span class="text-sm font-medium text-gray-900">
+                                ${item.table_text}
+                            </span>
+                        </div>
+                        <div class="text-xs text-gray-500">
+                            ${item.created_at_human}
+                        </div>
                     </div>
-                    <div class="text-xs text-gray-400">
-                        ${new Date(payment.created_at).toLocaleDateString('uz-UZ')}
+
+                    <!-- Description -->
+                    <div class="text-sm text-gray-700 mb-2">
+                        ${item.description || item.formatted_description}
+                    </div>
+
+                    <!-- Changes details -->
+                    ${item.changes && item.changes.length > 0 ? renderChangesDetail(item.changes) : ''}
+
+                    <!-- Footer -->
+                    <div class="flex items-center justify-between text-xs text-gray-500 mt-3 pt-3 border-t border-gray-100">
+                        <div class="flex items-center">
+                            <i data-feather="user" class="w-3 h-3 mr-1"></i>
+                            ${item.user ? item.user.name : 'Tizim'}
+                        </div>
+                        <div class="flex items-center">
+                            <i data-feather="calendar" class="w-3 h-3 mr-1"></i>
+                            ${item.created_at_formatted}
+                        </div>
                     </div>
                 </div>
             </div>
         </div>
+    `;
+}
+
+function renderChangesDetail(changes) {
+    if (!changes || changes.length === 0) return '';
+
+    let html = `
+        <div class="bg-gray-50 rounded-md p-3 mt-2">
+            <div class="text-xs font-medium text-gray-700 mb-2">O'zgarishlar:</div>
+            <div class="space-y-1">
+    `;
+
+    changes.forEach(change => {
+        html += `
+            <div class="flex items-center justify-between text-xs">
+                <span class="font-medium text-gray-600">${change.field}:</span>
+                <div class="flex items-center space-x-2">
+                    <span class="text-red-600 line-through">${change.old}</span>
+                    <span class="text-gray-400">→</span>
+                    <span class="text-green-600 font-medium">${change.new}</span>
+                </div>
+            </div>
         `;
     });
 
-    html += '</div>';
+    html += `
+            </div>
+        </div>
+    `;
+
     return html;
 }
+
+// Render empty history state
+function renderEmptyHistory() {
+    return `
+        <div class="text-center py-12">
+            <div class="w-16 h-16 bg-gray-100 rounded-full flex items-center justify-center mx-auto mb-4">
+                <i data-feather="clock" class="w-8 h-8 text-gray-400"></i>
+            </div>
+            <h4 class="text-lg font-medium text-gray-900 mb-2">Tarix mavjud emas</h4>
+            <p class="text-gray-500 max-w-sm mx-auto">
+                Hali hech qanday to'lov yoki o'zgarish tarixi mavjud emas.
+                To'lov qo'shganingizdan so'ng bu yerda ko'rinadi.
+            </p>
+        </div>
+    `;
+}
+
+// Render history error state
+function renderHistoryError() {
+    return `
+        <div class="text-center py-8">
+            <div class="w-12 h-12 bg-red-100 rounded-full flex items-center justify-center mx-auto mb-4">
+                <i data-feather="alert-triangle" class="w-6 h-6 text-red-500"></i>
+            </div>
+            <h4 class="text-lg font-medium text-gray-900 mb-2">Tarixni yuklashda xatolik</h4>
+            <p class="text-gray-500 mb-4">Ma'lumotlarni yuklashda muammo yuz berdi</p>
+            <button onclick="loadPaymentHistory()"
+                    class="px-4 py-2 bg-purple-600 text-white rounded-lg hover:bg-purple-700 transition-colors">
+                <i data-feather="refresh-cw" class="w-4 h-4 mr-2"></i>
+                Qaytadan urinish
+            </button>
+        </div>
+    `;
+}
+
+// Load payment history stats (optional)
+function loadPaymentHistoryStats() {
+    if (!contractData) return;
+
+    fetch(`/contracts/${contractData.id}/payment-history-stats`)
+        .then(response => response.json())
+        .then(data => {
+            if (data.success) {
+                updateHistoryStats(data.stats);
+            }
+        })
+        .catch(error => {
+            console.error('Error loading history stats:', error);
+        });
+}
+
+// Update history statistics display
+function updateHistoryStats(stats) {
+    const statsContainer = document.getElementById('historyStatsContainer');
+    if (!statsContainer) return;
+
+    statsContainer.innerHTML = `
+        <div class="grid grid-cols-2 md:grid-cols-4 gap-4 mb-6">
+            <div class="bg-white rounded-lg p-4 border border-gray-200 text-center">
+                <div class="text-2xl font-bold text-purple-600">${stats.total_actions || 0}</div>
+                <div class="text-xs text-gray-500">Jami faoliyat</div>
+            </div>
+            <div class="bg-white rounded-lg p-4 border border-gray-200 text-center">
+                <div class="text-2xl font-bold text-green-600">${stats.payment_actions || 0}</div>
+                <div class="text-xs text-gray-500">To'lov amallar</div>
+            </div>
+            <div class="bg-white rounded-lg p-4 border border-gray-200 text-center">
+                <div class="text-2xl font-bold text-blue-600">${stats.schedule_actions || 0}</div>
+                <div class="text-xs text-gray-500">Jadval amallar</div>
+            </div>
+            <div class="bg-white rounded-lg p-4 border border-gray-200 text-center">
+                <div class="text-2xl font-bold text-orange-600">${stats.recent_activity || 0}</div>
+                <div class="text-xs text-gray-500">Haftalik faoliyat</div>
+            </div>
+        </div>
+    `;
+}
+
+// Export payment history
+function exportPaymentHistory() {
+    if (!contractData) {
+        showNotification('Shartnoma ma\'lumotlari topilmadi', 'error');
+        return;
+    }
+
+    showNotification('Tarix eksport qilinmoqda...', 'info');
+
+    fetch(`/contracts/${contractData.id}/export-payment-history`, {
+        method: 'GET',
+        headers: {
+            'Accept': 'application/json',
+            'X-Requested-With': 'XMLHttpRequest'
+        }
+    })
+    .then(response => {
+        if (response.ok) {
+            return response.blob();
+        }
+        throw new Error('Export failed');
+    })
+    .then(blob => {
+        const url = window.URL.createObjectURL(blob);
+        const a = document.createElement('a');
+        a.href = url;
+        a.download = `shartnoma_${contractData.contract_number}_tarix.xlsx`;
+        document.body.appendChild(a);
+        a.click();
+        document.body.removeChild(a);
+        window.URL.revokeObjectURL(url);
+        showNotification('Tarix muvaffaqiyatli yuklab olindi', 'success');
+    })
+    .catch(error => {
+        console.error('Export error:', error);
+        showNotification('Eksportda xatolik yuz berdi', 'error');
+    });
+}
+
+// Filter payment history
+function filterPaymentHistory(filterType) {
+    const historyContainer = document.getElementById('paymentHistoryContainer');
+    if (!historyContainer || !contractData) return;
+
+    let url = `/contracts/${contractData.id}/payment-history`;
+    if (filterType && filterType !== 'all') {
+        url += `?filter=${filterType}`;
+    }
+
+    historyContainer.innerHTML = `
+        <div class="text-center py-8">
+            <div class="animate-spin rounded-full h-8 w-8 border-b-2 border-purple-600 mx-auto mb-3"></div>
+            <p class="text-gray-500">Filterlash...</p>
+        </div>
+    `;
+
+    fetch(url)
+        .then(response => response.json())
+        .then(data => {
+            if (data.success && data.history && data.history.length > 0) {
+                historyContainer.innerHTML = renderPaymentHistoryDetail(data.history, data.contract_info);
+            } else {
+                historyContainer.innerHTML = renderEmptyHistory();
+            }
+        })
+        .catch(error => {
+            console.error('Error filtering history:', error);
+            historyContainer.innerHTML = renderHistoryError();
+        });
+}
+
+// Initialize payment history when page loads
+document.addEventListener('DOMContentLoaded', function() {
+    // Auto-load payment history if container exists
+    setTimeout(() => {
+        if (document.getElementById('paymentHistoryContainer') && contractData) {
+            loadPaymentHistory();
+            loadPaymentHistoryStats();
+        }
+    }, 1000); // Load after other components
+});
 </script>
 @endpush
