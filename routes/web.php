@@ -45,38 +45,35 @@ Route::prefix('contracts')->name('contracts.')->group(function () {
     Route::post('/{contract}/create-quarterly-schedule', [ContractController::class, 'createQuarterlySchedule'])->name('create_quarterly_schedule');
 
 
-    // Main contract routes
-    Route::get('/', [ContractController::class, 'index'])->name('index');
+   Route::get('/', [ContractController::class, 'index'])->name('index');
     Route::get('/create', [ContractController::class, 'create'])->name('create');
     Route::post('/store', [ContractController::class, 'store'])->name('store');
     Route::get('/{contract}', [ContractController::class, 'show'])->name('show');
     Route::get('/{contract}/edit', [ContractController::class, 'edit'])->name('edit');
-    Route::put('/{contract}', [ContractController::class, 'update'])->name('contracts.update');
-
+    Route::put('/{contract}', [ContractController::class, 'update'])->name('update');
     Route::delete('/{contract}', [ContractController::class, 'destroy'])->name('destroy');
-
-    // Zone detection
-    Route::post('/detect-zone', [ContractController::class, 'getZoneByCoordinates'])->name('detect-zone');
-
-    // Contract amendments
-    Route::post('/{contract}/amendments', [ContractController::class, 'createAmendment'])->name('amendments.store');
 
     // AJAX routes for creating subjects and objects
     Route::post('/create-subject', [ContractController::class, 'createSubject'])->name('createSubject');
     Route::post('/create-object', [ContractController::class, 'createObject'])->name('createObject');
-    Route::get('/objects-by-subject/{subject}', [ContractController::class, 'getObjectsBySubject']);
-    Route::post('/calculate-coefficients', [ContractController::class, 'calculateCoefficients']);
-    Route::post('/validate-volumes', [ContractController::class, 'validateObjectVolumes']);
+
+    // Additional helper routes
+    Route::get('/objects-by-subject/{subject}', [ContractController::class, 'getObjectsBySubject'])->name('objects_by_subject');
+    Route::post('/calculate-coefficients', [ContractController::class, 'calculateCoefficients'])->name('calculate_coefficients');
+    Route::post('/validate-volumes', [ContractController::class, 'validateObjectVolumes'])->name('validate_volumes');
+
+
+
 
     // Payment Management Routes
     Route::prefix('{contract}')->group(function () {
         // Payment update page
 
          Route::get('/payment-history', [ContractController::class, 'getPaymentHistory'])->name('payment_history');
-        
+
         // Enhanced payment validation
         Route::post('/validate-payment-date', [ContractController::class, 'validatePaymentDate'])->name('validate_payment_date');
-        
+
         // Batch operations
         Route::post('/batch-update-payments', [ContractController::class, 'batchUpdatePayments'])->name('batch_update_payments');
         Route::post('/batch-delete-payments', [ContractController::class, 'batchDeletePayments'])->name('batch_delete_payments');

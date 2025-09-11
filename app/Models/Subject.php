@@ -6,8 +6,6 @@ use Illuminate\Database\Eloquent\Model;
 
 class Subject extends Model
 {
-    // Removed SoftDeletes trait since the table doesn't have deleted_at column
-
     protected $fillable = [
         // Common fields
         'is_legal_entity',
@@ -79,14 +77,6 @@ class Subject extends Model
     public function getIdentifierAttribute()
     {
         return $this->is_legal_entity ? $this->inn : $this->pinfl;
-    }
-
-    /**
-     * Relationship with organization form
-     */
-    public function orgForm()
-    {
-        return $this->belongsTo(OrgForm::class);
     }
 
     /**
