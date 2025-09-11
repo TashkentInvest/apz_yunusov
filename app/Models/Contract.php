@@ -12,24 +12,11 @@ class Contract extends Model
     use SoftDeletes;
 
     protected $fillable = [
-        'contract_number',
-        'object_id',
-        'subject_id',
-        'contract_date',
-        'completion_date',
-        'status_id',
-        'base_amount_id',
-        'contract_volume',
-        'coefficient',
-        'total_amount',
-        'formula',
-        'payment_type',
-        'initial_payment_percent',
-        'construction_period_years',
-        'quarters_count',
-        'is_active'
+        'contract_number', 'object_id', 'subject_id', 'contract_date',
+        'completion_date', 'status_id', 'base_amount_id', 'contract_volume',
+        'coefficient', 'total_amount', 'payment_type', 'initial_payment_percent',
+        'construction_period_years', 'quarters_count', 'is_active'
     ];
-
     protected $casts = [
         'contract_date' => 'date',
         'completion_date' => 'date',

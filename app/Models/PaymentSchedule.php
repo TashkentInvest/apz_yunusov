@@ -13,7 +13,7 @@ class PaymentSchedule extends Model
         'year',
         'quarter',
         'quarter_amount',
-        'is_active',
+        'is_active'
     ];
 
     protected $casts = [
@@ -118,10 +118,10 @@ class PaymentSchedule extends Model
 
 
 
-//===================
+    //===================
 
 
-  public function contract()
+    public function contract()
     {
         return $this->belongsTo(Contract::class);
     }

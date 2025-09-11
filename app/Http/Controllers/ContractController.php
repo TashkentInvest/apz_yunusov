@@ -56,164 +56,136 @@ class ContractController extends Controller
         return view('contracts.create', $data);
     }
 
-    public function store(Request $request)
-    {
-        // Comprehensive validation including all fields
-        $validated = $request->validate([
-            // Basic contract information
-            'contract_number' => 'required|string|max:50|unique:contracts',
-            'object_id' => 'required|exists:objects,id',
-            'subject_id' => 'required|exists:subjects,id',
-            'contract_date' => 'required|date',
-            'completion_date' => 'nullable|date|after:contract_date',
-            'status_id' => 'required|exists:contract_statuses,id',
 
-            // Calculation fields
-            'base_amount_id' => 'required|exists:base_calculation_amounts,id',
-            'contract_volume' => 'required|numeric|min:0.01',
-            'calculated_bh' => 'required|numeric|min:0',
+public function store(Request $request)
+{
+    // Basic validation
+    $validated = $request->validate([
+        'contract_number' => 'required|string|max:50|unique:contracts',
+        'object_id' => 'required|exists:objects,id',
+        'subject_id' => 'required|exists:subjects,id',
+        'contract_date' => 'required|date',
+        'completion_date' => 'nullable|date|after:contract_date',
+        'status_id' => 'required|exists:contract_statuses,id',
+        'base_amount_id' => 'required|exists:base_calculation_amounts,id',
+        'contract_volume' => 'required|numeric|min:0.01',
+        'calculated_bh' => 'required|numeric|min:0',
+        'payment_type' => 'required|in:full,installment',
+        'initial_payment_percent' => 'required|integer|min:0|max:100',
+        'construction_period_years' => 'required|integer|min:1|max:10',
+    ]);
 
-            // Payment terms
-            'payment_type' => 'required|in:full,installment',
-            'initial_payment_percent' => 'required|integer|min:0|max:100',
-            'construction_period_years' => 'required|integer|min:1|max:10',
+    DB::beginTransaction();
+    try {
+        // Get models
+        $object = Objectt::findOrFail($validated['object_id']);
+        $baseAmount = BaseCalculationAmount::findOrFail($validated['base_amount_id']);
+
+        // Calculate total amount using existing calculated_bh from frontend
+        $totalAmount = $validated['calculated_bh'] * $validated['contract_volume'];
+
+        // Calculate quarters
+        $quartersCount = $validated['construction_period_years'] * 4;
+
+        // Create contract
+        $contract = Contract::create([
+            'contract_number' => $validated['contract_number'],
+            'object_id' => $validated['object_id'],
+            'subject_id' => $validated['subject_id'],
+            'contract_date' => $validated['contract_date'],
+            'completion_date' => $validated['completion_date'],
+            'status_id' => $validated['status_id'],
+            'base_amount_id' => $validated['base_amount_id'],
+            'contract_volume' => $validated['contract_volume'],
+            'coefficient' => $validated['calculated_bh'] / $baseAmount->amount, // Back-calculate coefficient
+            'total_amount' => $totalAmount,
+            'payment_type' => $validated['payment_type'],
+            'initial_payment_percent' => $validated['initial_payment_percent'],
+            'construction_period_years' => $validated['construction_period_years'],
+            'quarters_count' => $quartersCount,
+            'is_active' => true,
         ]);
 
-        DB::beginTransaction();
-        try {
-            // Get related models with all relationships
-            $object = Objectt::with([
-                'subject',
-                'district',
-                'constructionType',
-                'objectType',
-                'territorialZone',
-                'permitType',
-                'issuingAuthority'
-            ])->findOrFail($validated['object_id']);
+        // Generate basic payment schedule
+        $this->generateBasicPaymentSchedule($contract);
 
-            $subject = Subject::with('orgForm')->findOrFail($validated['subject_id']);
-            $baseAmount = BaseCalculationAmount::findOrFail($validated['base_amount_id']);
-            $status = ContractStatus::findOrFail($validated['status_id']);
+        DB::commit();
 
-            // Use calculator service for precise calculations
-            $calculatorService = new CoefficientCalculatorService();
-
-            // Get coefficient breakdown for transparency
-            $coefficients = $calculatorService->getCoefficientBreakdown($object);
-
-            // Calculate total amount using proper formula
-            $totalAmount = $calculatorService->calculateTotalAmount(
-                $object,
-                $baseAmount,
-                $validated['contract_volume']
-            );
-
-            // Build formula string for documentation
-            $formulaString = $calculatorService->buildFormulaString(
-                $object,
-                $baseAmount,
-                $validated['contract_volume'],
-                $coefficients
-            );
-
-            // Calculate quarters count
-            $quartersCount = $validated['construction_period_years'] * 4;
-
-            // Create the contract with all data
-            $contract = Contract::create([
-                // Basic information
-                'contract_number' => $validated['contract_number'],
-                'object_id' => $validated['object_id'],
-                'subject_id' => $validated['subject_id'],
-                'contract_date' => $validated['contract_date'],
-                'completion_date' => $validated['completion_date'],
-                'status_id' => $validated['status_id'],
-
-                // Financial calculations
-                'base_amount_id' => $validated['base_amount_id'],
-                'contract_volume' => $validated['contract_volume'],
-                'coefficient' => $coefficients['total_coefficient'],
-                'total_amount' => $totalAmount,
-                'formula' => $formulaString,
-
-                // Payment terms
-                'payment_type' => $validated['payment_type'],
-                'initial_payment_percent' => $validated['initial_payment_percent'],
-                'construction_period_years' => $validated['construction_period_years'],
-                'quarters_count' => $quartersCount,
-
-                // System fields
-                'is_active' => true,
-                'created_by' => auth()->id(), // if using authentication
+        if ($request->ajax()) {
+            return response()->json([
+                'success' => true,
+                'message' => 'Shartnoma muvaffaqiyatli yaratildi',
+                'redirect' => route('contracts.show', $contract)
             ]);
+        }
 
-            // Generate payment schedule based on payment type
-            $this->generatePaymentSchedule($contract, $calculatorService);
+        return redirect()
+            ->route('contracts.show', $contract)
+            ->with('success', 'Shartnoma muvaffaqiyatli yaratildi');
 
-            // Log the creation for audit trail
-            Log::info('Contract created successfully', [
-                'contract_id' => $contract->id,
-                'contract_number' => $contract->contract_number,
-                'total_amount' => $totalAmount,
-                'created_by' => auth()->id()
+    } catch (\Exception $e) {
+        DB::rollback();
+
+        Log::error('Contract creation failed', [
+            'error' => $e->getMessage(),
+            'request_data' => $request->except(['_token'])
+        ]);
+
+        if ($request->ajax()) {
+            return response()->json([
+                'success' => false,
+                'message' => 'Shartnoma yaratishda xato: ' . $e->getMessage()
+            ], 500);
+        }
+
+        return back()->withInput()->with('error', 'Shartnoma yaratishda xato yuz berdi');
+    }
+}
+
+private function generateBasicPaymentSchedule(Contract $contract)
+{
+    // Clear any existing schedules
+    $contract->paymentSchedules()->delete();
+
+    if ($contract->payment_type === 'full') {
+        // Single payment
+        $contract->paymentSchedules()->create([
+            'year' => date('Y', strtotime($contract->contract_date)),
+            'quarter' => ceil(date('n', strtotime($contract->contract_date)) / 3),
+            'quarter_amount' => $contract->total_amount,
+            'is_active' => true
+        ]);
+    } else {
+        // Installment payments
+        $initialAmount = ($contract->total_amount * $contract->initial_payment_percent) / 100;
+        $remainingAmount = $contract->total_amount - $initialAmount;
+        $quarterlyAmount = $remainingAmount / $contract->quarters_count;
+
+        $startYear = date('Y', strtotime($contract->contract_date));
+        $startQuarter = ceil(date('n', strtotime($contract->contract_date)) / 3);
+
+        // Initial payment
+        $contract->paymentSchedules()->create([
+            'year' => $startYear,
+            'quarter' => $startQuarter,
+            'quarter_amount' => $initialAmount,
+            'is_active' => true
+        ]);
+
+        // Quarterly payments
+        for ($i = 0; $i < $contract->quarters_count; $i++) {
+            $currentQuarter = (($startQuarter - 1 + $i) % 4) + 1;
+            $currentYear = $startYear + intval(($startQuarter - 1 + $i) / 4);
+
+            $contract->paymentSchedules()->create([
+                'year' => $currentYear,
+                'quarter' => $currentQuarter,
+                'quarter_amount' => $quarterlyAmount,
+                'is_active' => true
             ]);
-
-            DB::commit();
-
-            // Return appropriate response based on request type
-            if ($request->ajax()) {
-                return response()->json([
-                    'success' => true,
-                    'message' => 'Shartnoma muvaffaqiyatli yaratildi',
-                    'contract' => [
-                        'id' => $contract->id,
-                        'contract_number' => $contract->contract_number,
-                        'total_amount' => $totalAmount
-                    ],
-                    'redirect' => route('contracts.show', $contract)
-                ]);
-            }
-
-            return redirect()
-                ->route('contracts.show', $contract)
-                ->with('success', 'Shartnoma muvaffaqiyatli yaratildi');
-        } catch (\Illuminate\Validation\ValidationException $e) {
-            DB::rollback();
-
-            if ($request->ajax()) {
-                return response()->json([
-                    'success' => false,
-                    'message' => 'Validatsiya xatosi',
-                    'errors' => $e->errors()
-                ], 422);
-            }
-
-            throw $e;
-        } catch (\Exception $e) {
-            DB::rollback();
-
-            // Log the error for debugging
-            Log::error('Contract creation failed', [
-                'error' => $e->getMessage(),
-                'trace' => $e->getTraceAsString(),
-                'request_data' => $request->except(['_token'])
-            ]);
-
-            $errorMessage = 'Shartnoma yaratishda xato yuz berdi';
-
-            if ($request->ajax()) {
-                return response()->json([
-                    'success' => false,
-                    'message' => $errorMessage . ': ' . $e->getMessage()
-                ], 500);
-            }
-
-            return back()
-                ->withInput()
-                ->with('error', $errorMessage);
         }
     }
+}
 
     /**
      * Generate payment schedule for the contract
@@ -272,60 +244,79 @@ class ContractController extends Controller
      */
     public function createSubject(Request $request)
     {
-        // Dynamic validation based on entity type
-        $baseRules = [
-            'is_legal_entity' => 'required|boolean',
-            'phone' => 'nullable|string|max:20',
-            'email' => 'nullable|email|max:100',
-            'physical_address' => 'nullable|string|max:1000'
-        ];
-
-        if ($request->input('is_legal_entity')) {
-            // Legal entity validation
-            $rules = array_merge($baseRules, [
-                'company_name' => 'required|string|max:300',
-                'inn' => 'required|string|size:9|unique:subjects,inn',
-                'org_form_id' => 'nullable|exists:org_forms,id',
-                'bank_name' => 'nullable|string|max:200',
-                'bank_code' => 'nullable|string|max:10',
-                'bank_account' => 'nullable|string|max:30',
-                'legal_address' => 'nullable|string|max:1000',
-                'oked' => 'nullable|string|max:10',
-                'is_resident' => 'boolean',
-                'country_code' => 'nullable|string|max:3'
-            ]);
-        } else {
-            // Physical person validation
-            $rules = array_merge($baseRules, [
-                'document_type' => 'required|string|max:50',
-                'document_series' => 'nullable|string|max:10',
-                'document_number' => 'required|string|max:20',
-                'issued_by' => 'nullable|string|max:200',
-                'issued_date' => 'nullable|date|before:today',
-                'pinfl' => 'required|string|size:14|unique:subjects,pinfl'
-            ]);
-        }
-
         try {
+            // Base validation rules
+            $rules = [
+                'is_legal_entity' => 'required|boolean',
+                'phone' => 'nullable|string|max:20',
+                'email' => 'nullable|email|max:100',
+                'physical_address' => 'nullable|string|max:1000'
+            ];
+
+            // Dynamic validation based on entity type
+            if ($request->input('is_legal_entity') == '1') {
+                // Legal entity validation
+                $rules = array_merge($rules, [
+                    'company_name' => 'required|string|max:300',
+                    'inn' => 'required|string|size:9|unique:subjects,inn',
+                    'bank_name' => 'nullable|string|max:200',
+                    'bank_code' => 'nullable|string|max:10',
+                    'bank_account' => 'nullable|string|max:30',
+                ]);
+            } else {
+                // Physical person validation
+                $rules = array_merge($rules, [
+                    'document_type' => 'required|string|max:50',
+                    'document_series' => 'nullable|string|max:10',
+                    'document_number' => 'required|string|max:20',
+                    'pinfl' => 'required|string|size:14|unique:subjects,pinfl'
+                ]);
+            }
+
             $validated = $request->validate($rules);
 
-            // Create subject with all validated data
-            $subject = Subject::create(array_merge($validated, [
+            // Create subject
+            $subjectData = [
+                'is_legal_entity' => $validated['is_legal_entity'],
+                'phone' => $validated['phone'],
+                'email' => $validated['email'],
+                'physical_address' => $validated['physical_address'],
                 'is_active' => true
-            ]));
+            ];
 
-            // Prepare response data
-            $displayName = $subject->is_legal_entity
-                ? $subject->company_name
-                : ($subject->document_series . $subject->document_number);
+            if ($validated['is_legal_entity']) {
+                // Legal entity fields
+                $subjectData = array_merge($subjectData, [
+                    'company_name' => $validated['company_name'],
+                    'inn' => $validated['inn'],
+                    'bank_name' => $validated['bank_name'] ?? null,
+                    'bank_code' => $validated['bank_code'] ?? null,
+                    'bank_account' => $validated['bank_account'] ?? null,
+                ]);
+            } else {
+                // Physical person fields
+                $subjectData = array_merge($subjectData, [
+                    'document_type' => $validated['document_type'],
+                    'document_series' => $validated['document_series'] ?? null,
+                    'document_number' => $validated['document_number'],
+                    'pinfl' => $validated['pinfl'],
+                ]);
+            }
 
-            $identifier = $subject->is_legal_entity
-                ? $subject->inn
-                : $subject->pinfl;
+            $subject = Subject::create($subjectData);
+
+            // Prepare response
+            if ($subject->is_legal_entity) {
+                $displayName = $subject->company_name;
+                $identifier = $subject->inn;
+            } else {
+                $displayName = ($subject->document_series ? $subject->document_series . ' ' : '') . $subject->document_number;
+                $identifier = $subject->pinfl;
+            }
 
             return response()->json([
                 'success' => true,
-                'message' => 'Buyurtmachi muvaffaqiyatli yaratildi',
+                'message' => 'Mulk egasi muvaffaqiyatli yaratildi',
                 'subject' => [
                     'id' => $subject->id,
                     'text' => $displayName . ' (' . $identifier . ')',
@@ -333,18 +324,20 @@ class ContractController extends Controller
                     'identifier' => $identifier
                 ]
             ]);
+
         } catch (\Illuminate\Validation\ValidationException $e) {
             return response()->json([
                 'success' => false,
                 'message' => 'Validatsiya xatosi',
                 'errors' => $e->errors()
             ], 422);
+
         } catch (\Exception $e) {
-            Log::error('Subject creation error: ' . $e->getMessage());
+            \Log::error('Subject creation error: ' . $e->getMessage());
 
             return response()->json([
                 'success' => false,
-                'message' => 'Buyurtmachi yaratishda xato: ' . $e->getMessage()
+                'message' => 'Mulk egasi yaratishda xato: ' . $e->getMessage()
             ], 500);
         }
     }

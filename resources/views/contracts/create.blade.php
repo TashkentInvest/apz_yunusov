@@ -1139,128 +1139,180 @@ function selectSearchResult(option, type) {
 // =======================
 // CALCULATION FUNCTIONS
 // =======================
+
 function calculateTotal() {
-    const baseAmountSelect = document.querySelector('select[name="base_amount_id"]');
-    const volumeInput = document.querySelector('input[name="contract_volume"]');
-    const calculatedBhInput = document.querySelector('input[name="calculated_bh"]');
-    const totalDisplay = document.getElementById('total_amount_display');
-    const formulaDisplay = document.getElementById('formula_display');
+    try {
+        const baseAmountSelect = document.querySelector('select[name="base_amount_id"]');
+        const volumeInput = document.querySelector('input[name="contract_volume"]');
+        const calculatedBhInput = document.querySelector('input[name="calculated_bh"]');
+        const totalDisplay = document.getElementById('total_amount_display');
 
-    if (!baseAmountSelect || !volumeInput || !totalDisplay) return;
-
-    const selectedOption = baseAmountSelect.options[baseAmountSelect.selectedIndex];
-    const baseAmount = selectedOption ? parseFloat(selectedOption.dataset.amount) : 0;
-    const volume = parseFloat(volumeInput.value) || 0;
-
-    let calculatedBh = 0;
-    if (calculatedBhInput) {
-        calculatedBh = parseFloat(calculatedBhInput.value) || 0;
-    } else {
-        calculatedBh = baseAmount;
-    }
-
-    const totalAmount = calculatedBh * volume;
-
-    totalDisplay.textContent = formatNumber(totalAmount) + ' so\'m';
-
-    if (formulaDisplay) {
-        if (calculatedBh && volume) {
-            formulaDisplay.textContent =
-                `Ti = ${formatNumber(calculatedBh)} × ${formatNumber(volume)} m³ = ${formatNumber(totalAmount)} so'm`;
-        } else {
-            formulaDisplay.textContent = 'Ti = Hisobga olinadigan Bh × Hisoblash hajmi';
+        if (!baseAmountSelect || !volumeInput || !totalDisplay) {
+            console.warn('Required elements not found for calculation');
+            return;
         }
-    }
 
-    calculatePaymentSchedule();
+        // Get base amount
+        const selectedOption = baseAmountSelect.options[baseAmountSelect.selectedIndex];
+        const baseAmount = selectedOption && selectedOption.dataset.amount ?
+                          parseFloat(selectedOption.dataset.amount) : 0;
+
+        // Get volume
+        const volume = parseFloat(volumeInput.value) || 0;
+
+        // Get total coefficient
+        const totalCoefElement = document.getElementById('display_total_coef');
+        const totalCoef = totalCoefElement ? parseFloat(totalCoefElement.textContent) || 1 : 1;
+
+        // Calculate: Bh × total_coefficient
+        const calculatedBh = baseAmount * totalCoef;
+        if (calculatedBhInput) {
+            calculatedBhInput.value = calculatedBh.toFixed(2);
+        }
+
+        // Calculate total: calculated_bh × volume
+        const totalAmount = calculatedBh * volume;
+
+        // Display total with proper formatting
+        totalDisplay.textContent = formatNumber(totalAmount) + ' so\'m';
+
+        console.log('Calculation successful:', {
+            baseAmount,
+            totalCoef,
+            calculatedBh,
+            volume,
+            totalAmount
+        });
+
+    } catch (error) {
+        console.error('Error in calculateTotal:', error);
+        showNotification('Hisoblashda xatolik yuz berdi', 'error');
+    }
 }
 
 function updateObjectVolume() {
     const objectSelect = document.querySelector('select[name="object_id"]');
-    if (!objectSelect) return;
+    if (!objectSelect || !objectSelect.value) {
+        resetCalculationDisplays();
+        return;
+    }
 
     const selectedOption = objectSelect.options[objectSelect.selectedIndex];
 
-    if (selectedOption && selectedOption.dataset.volume) {
-        // Display object volumes
+    try {
+        // Get volume data with proper defaults
         const hb = parseFloat(selectedOption.dataset.volume) || 0;
         const hyu = parseFloat(selectedOption.dataset.abovePermit) || 0;
         const ha = parseFloat(selectedOption.dataset.parking) || 0;
         const ht = parseFloat(selectedOption.dataset.technical) || 0;
         const hu = parseFloat(selectedOption.dataset.common) || 0;
 
-        const displayElements = {
-            'display_hb': hb,
-            'display_hyu': hyu,
-            'display_ha': ha,
-            'display_ht': ht,
-            'display_hu': hu
-        };
-
-        Object.keys(displayElements).forEach(id => {
-            const element = document.getElementById(id);
-            if (element) element.textContent = formatNumber(displayElements[id]) + ' m³';
-        });
+        // Update volume displays
+        updateVolumeDisplays(hb, hyu, ha, ht, hu);
 
         // Calculate contract volume: (Hb + Hyu) - (Ha + Ht + Hu)
         const contractVolume = Math.max(0, (hb + hyu) - (ha + ht + hu));
-        const displayCalcVolume = document.getElementById('display_calculated_volume');
-        if (displayCalcVolume) {
-            displayCalcVolume.textContent = formatNumber(contractVolume) + ' m³';
-        }
-
         const volumeInput = document.querySelector('input[name="contract_volume"]');
         if (volumeInput) {
             volumeInput.value = contractVolume.toFixed(2);
         }
 
-        // Calculate coefficients
-        const constructionType = selectedOption.dataset.constructionType;
-        const objectType = selectedOption.dataset.objectType;
-        const zone = selectedOption.dataset.zone;
-        const location = selectedOption.dataset.location;
+        // Calculate and display coefficients
+        calculateAndDisplayCoefficients(selectedOption);
 
-        const kt = coefficients.construction_type[constructionType] || 1.0;
-        const ko = coefficients.object_type[objectType] || 1.0;
-        const kz = coefficients.territorial_zone[zone] || 1.0;
-
-        let kj = 1.0;
-        if (location === 'metro_radius_200m_outside') {
-            kj = coefficients.location['metro_radius_200m_outside'];
-        } else {
-            kj = coefficients.location['other_locations'];
-        }
-
-        const totalCoef = kt * ko * kz * kj;
-
-        // Display coefficients
-        const coefficientElements = {
-            'display_kt': kt.toFixed(2),
-            'display_ko': ko.toFixed(2),
-            'display_kz': kz.toFixed(2),
-            'display_kj': kj.toFixed(2),
-            'display_total_coef': totalCoef.toFixed(2)
-        };
-
-        Object.keys(coefficientElements).forEach(id => {
-            const element = document.getElementById(id);
-            if (element) element.textContent = coefficientElements[id];
-        });
-
-        // Calculate Bh with coefficient
-        const baseAmountSelect = document.querySelector('select[name="base_amount_id"]');
-        const calculatedBhInput = document.querySelector('input[name="calculated_bh"]');
-
-        if (baseAmountSelect && calculatedBhInput) {
-            const selectedBaseOption = baseAmountSelect.options[baseAmountSelect.selectedIndex];
-            const baseAmount = selectedBaseOption ? parseFloat(selectedBaseOption.dataset.amount) : 0;
-            const calculatedBh = baseAmount * totalCoef;
-            calculatedBhInput.value = calculatedBh.toFixed(2);
-        }
-
+        // Recalculate total
         calculateTotal();
+
+    } catch (error) {
+        console.error('Error updating object volume:', error);
+        showNotification('Obyekt ma\'lumotlarini yangilashda xatolik', 'error');
     }
 }
+
+
+function resetCalculationDisplays() {
+    const displays = [
+        'display_hb', 'display_hyu', 'display_ha', 'display_ht', 'display_hu',
+        'display_kt', 'display_ko', 'display_kz', 'display_kj', 'display_total_coef'
+    ];
+
+    displays.forEach(id => {
+        const element = document.getElementById(id);
+        if (element) {
+            element.textContent = id.includes('display_k') ? '1.0' : '0 m³';
+        }
+    });
+
+    const totalDisplay = document.getElementById('total_amount_display');
+    if (totalDisplay) {
+        totalDisplay.textContent = '0 so\'m';
+    }
+
+    const volumeInput = document.querySelector('input[name="contract_volume"]');
+    if (volumeInput) {
+        volumeInput.value = '';
+    }
+
+    const calculatedBhInput = document.querySelector('input[name="calculated_bh"]');
+    if (calculatedBhInput) {
+        calculatedBhInput.value = '';
+    }
+}
+
+
+
+function updateVolumeDisplays(hb, hyu, ha, ht, hu) {
+    const displays = {
+        'display_hb': hb,
+        'display_hyu': hyu,
+        'display_ha': ha,
+        'display_ht': ht,
+        'display_hu': hu
+    };
+
+    Object.keys(displays).forEach(id => {
+        const element = document.getElementById(id);
+        if (element) {
+            element.textContent = formatNumber(displays[id]) + ' m³';
+        }
+    });
+}
+
+
+function calculateAndDisplayCoefficients(selectedOption) {
+    // Get coefficient values with defaults
+    const constructionType = selectedOption.dataset.constructionType || '1';
+    const objectType = selectedOption.dataset.objectType || '5';
+    const zone = selectedOption.dataset.zone || '3';
+    const location = selectedOption.dataset.location || 'other_locations';
+
+    // Calculate coefficients
+    const kt = coefficients.construction_type[constructionType] || 1.0;
+    const ko = coefficients.object_type[objectType] || 1.0;
+    const kz = coefficients.territorial_zone[zone] || 1.0;
+    const kj = coefficients.location[location] || 1.0;
+    const totalCoef = kt * ko * kz * kj;
+
+    // Display coefficients
+    const coefficientDisplays = {
+        'display_kt': kt,
+        'display_ko': ko,
+        'display_kz': kz,
+        'display_kj': kj,
+        'display_total_coef': totalCoef
+    };
+
+    Object.keys(coefficientDisplays).forEach(id => {
+        const element = document.getElementById(id);
+        if (element) {
+            element.textContent = coefficientDisplays[id].toFixed(2);
+        }
+    });
+}
+
+
+
+
 
 // =======================
 // PAYMENT FUNCTIONS
@@ -1365,29 +1417,38 @@ function calculatePaymentSchedule() {
         }
     }
 }
-
 function togglePaymentFields() {
-    const paymentTypeSelect = document.querySelector('select[name="payment_type"]');
-    if (!paymentTypeSelect) return;
+    try {
+        const paymentTypeSelect = document.querySelector('select[name="payment_type"]');
+        if (!paymentTypeSelect) return;
 
-    const paymentType = paymentTypeSelect.value;
-    const initialPaymentField = document.getElementById('initial_payment_field');
-    const constructionPeriodField = document.getElementById('construction_period_field');
-    const initialPercentInput = document.querySelector('input[name="initial_payment_percent"]');
+        const paymentType = paymentTypeSelect.value;
+        const initialPaymentField = document.getElementById('initial_payment_field');
+        const constructionPeriodField = document.getElementById('construction_period_field');
+        const initialPercentInput = document.querySelector('input[name="initial_payment_percent"]');
 
-    if (paymentType === 'full') {
-        if (initialPaymentField) initialPaymentField.style.display = 'none';
-        if (constructionPeriodField) constructionPeriodField.style.display = 'none';
-        if (initialPercentInput) initialPercentInput.value = 100;
-    } else {
-        if (initialPaymentField) initialPaymentField.style.display = 'block';
-        if (constructionPeriodField) constructionPeriodField.style.display = 'block';
-        if (initialPercentInput && initialPercentInput.value == 100) {
-            initialPercentInput.value = 20;
+        if (paymentType === 'full') {
+            // Hide installment fields
+            if (initialPaymentField) initialPaymentField.style.display = 'none';
+            if (constructionPeriodField) constructionPeriodField.style.display = 'none';
+            if (initialPercentInput) initialPercentInput.value = 100;
+        } else {
+            // Show installment fields
+            if (initialPaymentField) initialPaymentField.style.display = 'block';
+            if (constructionPeriodField) constructionPeriodField.style.display = 'block';
+            if (initialPercentInput && initialPercentInput.value == 100) {
+                initialPercentInput.value = 20;
+            }
         }
+
+        // Recalculate after changing payment type
+        calculateTotal();
+
+    } catch (error) {
+        console.error('Error toggling payment fields:', error);
     }
-    calculatePaymentSchedule();
 }
+
 
 // =======================
 // UI FUNCTIONS
@@ -1730,7 +1791,7 @@ function getCsrfToken() {
 }
 
 function formatNumber(num) {
-    if (isNaN(num)) return '0';
+    if (isNaN(num) || num === null || num === undefined) return '0';
     return new Intl.NumberFormat('uz-UZ').format(Math.round(num));
 }
 
@@ -1763,7 +1824,13 @@ function toggleLoading(button, loading) {
 }
 
 function showNotification(message, type = 'info') {
+    // Remove existing notifications
+    const existingNotifications = document.querySelectorAll('.notification-toast');
+    existingNotifications.forEach(notification => notification.remove());
+
     const notification = document.createElement('div');
+    notification.className = 'notification-toast';
+
     const typeClasses = {
         'success': 'bg-green-600 text-white',
         'error': 'bg-red-600 text-white',
@@ -1771,7 +1838,7 @@ function showNotification(message, type = 'info') {
         'info': 'bg-blue-600 text-white'
     };
 
-    notification.className = `fixed top-4 right-4 z-50 p-4 rounded-lg shadow-lg max-w-sm transform transition-all duration-300 translate-x-full opacity-0 ${typeClasses[type] || typeClasses['info']}`;
+    notification.className += ` fixed top-4 right-4 z-50 p-4 rounded-lg shadow-lg max-w-sm transform transition-all duration-300 translate-x-full opacity-0 ${typeClasses[type] || typeClasses['info']}`;
 
     notification.innerHTML = `
         <div class="flex items-center">

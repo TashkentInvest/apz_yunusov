@@ -3,77 +3,129 @@
 namespace App\Models;
 
 use Illuminate\Database\Eloquent\Model;
-use Illuminate\Database\Eloquent\Relations\BelongsTo;
-use Illuminate\Database\Eloquent\Relations\HasMany;
-use Illuminate\Database\Eloquent\SoftDeletes;
 
 class Subject extends Model
 {
+    // Removed SoftDeletes trait since the table doesn't have deleted_at column
+
     protected $fillable = [
+        // Common fields
         'is_legal_entity',
-        'org_form_id',
+        'phone',
+        'email',
+        'physical_address',
+        'is_active',
+
+        // Legal entity fields
         'company_name',
         'inn',
-        'is_resident',
-        'country_code',
-        'oked',
         'bank_name',
         'bank_code',
         'bank_account',
         'legal_address',
+        'oked',
+        'is_resident',
+        'country_code',
+        'org_form_id',
+
+        // Physical person fields
+        'first_name',
+        'last_name',
+        'middle_name',
         'document_type',
         'document_series',
         'document_number',
         'issued_by',
         'issued_date',
         'pinfl',
-        'phone',
-        'email',
-        'physical_address',
-        'is_active'
+        'birth_date',
+        'gender'
     ];
 
     protected $casts = [
         'is_legal_entity' => 'boolean',
+        'is_active' => 'boolean',
         'is_resident' => 'boolean',
         'issued_date' => 'date',
-        'is_active' => 'boolean'
+        'birth_date' => 'date'
     ];
 
-    public function orgForm(): BelongsTo
+    /**
+     * Get display name for the subject
+     */
+    public function getDisplayNameAttribute()
     {
-        return $this->belongsTo(OrgForm::class, 'org_form_id');
+        if ($this->is_legal_entity) {
+            return $this->company_name;
+        } else {
+            $parts = array_filter([
+                $this->last_name,
+                $this->first_name,
+                $this->middle_name
+            ]);
+
+            if (empty($parts)) {
+                // Fallback to document info if no names
+                return ($this->document_series ? $this->document_series . ' ' : '') . $this->document_number;
+            }
+
+            return implode(' ', $parts);
+        }
     }
 
-    public function contracts(): HasMany
+    /**
+     * Get identifier (INN for legal entity, PINFL for physical person)
+     */
+    public function getIdentifierAttribute()
+    {
+        return $this->is_legal_entity ? $this->inn : $this->pinfl;
+    }
+
+    /**
+     * Relationship with organization form
+     */
+    public function orgForm()
+    {
+        return $this->belongsTo(OrgForm::class);
+    }
+
+    /**
+     * Relationship with contracts
+     */
+    public function contracts()
     {
         return $this->hasMany(Contract::class);
     }
 
-    public function objects(): HasMany
+    /**
+     * Relationship with objects
+     */
+    public function objects()
     {
         return $this->hasMany(Objectt::class);
     }
 
-    // Accessor for display name
-    public function getDisplayNameAttribute(): string
+    /**
+     * Scope for active subjects
+     */
+    public function scopeActive($query)
     {
-        if ($this->is_legal_entity) {
-            return $this->company_name ?? 'Не указано';
-        }
-
-        $parts = array_filter([
-            $this->last_name ?? '',
-            $this->first_name ?? '',
-            $this->father_name ?? ''
-        ]);
-
-        return !empty($parts) ? implode(' ', $parts) : 'Не указано';
+        return $query->where('is_active', true);
     }
 
-    // Accessor for identifier (INN or PINFL)
-    public function getIdentifierAttribute(): string
+    /**
+     * Scope for legal entities
+     */
+    public function scopeLegalEntities($query)
     {
-        return $this->is_legal_entity ? ($this->inn ?? '') : ($this->pinfl ?? '');
+        return $query->where('is_legal_entity', true);
+    }
+
+    /**
+     * Scope for physical persons
+     */
+    public function scopePhysicalPersons($query)
+    {
+        return $query->where('is_legal_entity', false);
     }
 }
