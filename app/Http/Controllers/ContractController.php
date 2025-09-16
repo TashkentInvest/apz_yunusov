@@ -18,12 +18,13 @@ use App\Models\PermitType;
 use App\Models\IssuingAuthority;
 use App\Models\OrgForm;
 use App\Models\PaymentSchedule;
-use App\Services\CoefficientCalculatorService;
 use Carbon\Carbon;
 use Exception;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
+use Illuminate\Support\FacadesDB;
 use Illuminate\Support\Facades\Log;
+use Illuminate\Support\FacadesLog;
 use Illuminate\Validation\ValidationException;
 
 class ContractController extends Controller
@@ -138,6 +139,297 @@ class ContractController extends Controller
         }
     }
 
+
+/**
+ * Generate payment schedule for amendment
+ */
+private function generateAmendmentPaymentSchedule(
+    Contract $contract,
+    ContractAmendment $amendment,
+    $newTotalAmount,
+    $initialPaymentPercent,
+    $quartersCount,
+    $startYear,
+    $startQuarter
+) {
+    // Calculate payment amounts
+    $totalPaid = $contract->actualPayments()->sum('amount');
+    $newInitialPaymentAmount = ($newTotalAmount * $initialPaymentPercent) / 100;
+
+    // Check if we need to create an initial payment requirement
+    $needsInitialPayment = $totalPaid < $newInitialPaymentAmount;
+
+    if ($needsInitialPayment) {
+        // Create initial payment schedule entry
+        $initialPaymentNeeded = $newInitialPaymentAmount - $totalPaid;
+
+        if ($initialPaymentNeeded > 0) {
+            PaymentSchedule::create([
+                'contract_id' => $contract->id,
+                'amendment_id' => $amendment->id,
+                'year' => $startYear,
+                'quarter' => $startQuarter,
+                'quarter_amount' => $initialPaymentNeeded,
+                'custom_percent' => ($initialPaymentNeeded / $newTotalAmount) * 100,
+                'is_active' => true
+            ]);
+        }
+
+        // Calculate remaining amount after initial payment
+        $remainingAmount = $newTotalAmount - $newInitialPaymentAmount;
+    } else {
+        // All paid amount goes towards the new total
+        $remainingAmount = $newTotalAmount - $totalPaid;
+    }
+
+    // Create quarterly payment schedules
+    if ($remainingAmount > 0 && $quartersCount > 0) {
+        $quarterlyAmount = $remainingAmount / $quartersCount;
+
+        $currentYear = $startYear;
+        $currentQuarter = $startQuarter;
+
+        // Skip first quarter if we used it for initial payment
+        if ($needsInitialPayment && $initialPaymentNeeded > 0) {
+            $currentQuarter++;
+            if ($currentQuarter > 4) {
+                $currentQuarter = 1;
+                $currentYear++;
+            }
+        }
+
+        for ($i = 0; $i < $quartersCount; $i++) {
+            PaymentSchedule::create([
+                'contract_id' => $contract->id,
+                'amendment_id' => $amendment->id,
+                'year' => $currentYear,
+                'quarter' => $currentQuarter,
+                'quarter_amount' => $quarterlyAmount,
+                'custom_percent' => ($quarterlyAmount / $newTotalAmount) * 100,
+                'is_active' => true
+            ]);
+
+            $currentQuarter++;
+            if ($currentQuarter > 4) {
+                $currentQuarter = 1;
+                $currentYear++;
+            }
+        }
+    }
+}
+
+/**
+ * Get amendment data for modal
+ */
+   public function getAmendments(Contract $contract)
+    {
+        $amendments = $contract->amendments()
+            ->with(['createdBy', 'approvedBy'])
+            ->orderBy('amendment_number', 'desc')
+            ->get();
+
+        return response()->json([
+            'success' => true,
+            'amendments' => $amendments
+        ]);
+    }
+
+
+/**
+ * Show amendment details
+ */
+    public function showAmendment(ContractAmendment $amendment)
+    {
+        $amendment->load(['contract', 'createdBy', 'approvedBy']);
+
+        return response()->json([
+            'success' => true,
+            'amendment' => $amendment
+        ]);
+    }
+
+/**
+ * Get amendments list for contract
+ */
+public function getAmendmentsList(Contract $contract)
+{
+    try {
+        $amendments = $contract->amendments()
+            ->where('is_active', true)
+            ->orderBy('amendment_number', 'desc')
+            ->get()
+            ->map(function ($amendment) {
+                return [
+                    'id' => $amendment->id,
+                    'amendment_number' => $amendment->amendment_number,
+                    'amendment_date' => $amendment->amendment_date->format('d.m.Y'),
+                    'reason' => $amendment->reason,
+                    'old_amount' => $amendment->old_amount,
+                    'new_amount' => $amendment->new_amount,
+                    'difference' => $amendment->new_amount - $amendment->old_amount,
+                    'difference_formatted' => number_format(abs($amendment->new_amount - $amendment->old_amount), 0, '.', ' '),
+                    'is_increase' => $amendment->new_amount > $amendment->old_amount,
+                    'created_at' => $amendment->created_at->format('d.m.Y H:i'),
+                    'created_by_name' => $amendment->creator->name ?? 'Tizim'
+                ];
+            });
+
+        return response()->json([
+            'success' => true,
+            'amendments' => $amendments
+        ]);
+
+    } catch (\Exception $e) {
+        return response()->json([
+            'success' => false,
+            'message' => 'Qo\'shimcha kelishuvlar ro\'yxatini yuklashda xato'
+        ], 500);
+    }
+}
+
+/**
+ * Calculate amendment preview
+ */
+public function calculateAmendmentPreview(Request $request, Contract $contract)
+{
+    $request->validate([
+        'new_volume' => 'required|numeric|min:0',
+        'new_coefficient' => 'required|numeric|min:0',
+        'new_base_amount_id' => 'required|exists:base_calculation_amounts,id',
+        'new_initial_payment_percent' => 'required|integer|min:0|max:100',
+        'new_quarters_count' => 'required|integer|min:1|max:20',
+        'start_year' => 'required|integer',
+        'start_quarter' => 'required|integer|min:1|max:4'
+    ]);
+
+    try {
+        $baseAmount = BaseCalculationAmount::findOrFail($request->new_base_amount_id);
+
+        // Calculate new total amount
+        $newTotalAmount = $request->new_volume * $request->new_coefficient * $baseAmount->amount;
+
+        // Get current payment data
+        $totalPaid = $contract->actualPayments()->sum('amount');
+        $newInitialPaymentAmount = ($newTotalAmount * $request->new_initial_payment_percent) / 100;
+
+        // Calculate payment schedule preview
+        $needsInitialPayment = $totalPaid < $newInitialPaymentAmount;
+        $initialPaymentNeeded = $needsInitialPayment ? ($newInitialPaymentAmount - $totalPaid) : 0;
+
+        $remainingAmount = $needsInitialPayment ?
+            ($newTotalAmount - $newInitialPaymentAmount) :
+            ($newTotalAmount - $totalPaid);
+
+        $quarterlyAmount = $remainingAmount / $request->new_quarters_count;
+
+        // Generate payment schedule preview
+        $paymentSchedule = [];
+
+        if ($initialPaymentNeeded > 0) {
+            $paymentSchedule[] = [
+                'type' => 'initial',
+                'year' => $request->start_year,
+                'quarter' => $request->start_quarter,
+                'amount' => $initialPaymentNeeded,
+                'description' => "Boshlang'ich to'lov qo'shimchasi ({$request->new_initial_payment_percent}%)"
+            ];
+        }
+
+        $currentYear = $request->start_year;
+        $currentQuarter = $request->start_quarter;
+
+        // Skip first quarter if used for initial payment
+        if ($initialPaymentNeeded > 0) {
+            $currentQuarter++;
+            if ($currentQuarter > 4) {
+                $currentQuarter = 1;
+                $currentYear++;
+            }
+        }
+
+        for ($i = 0; $i < $request->new_quarters_count; $i++) {
+            $paymentSchedule[] = [
+                'type' => 'quarterly',
+                'year' => $currentYear,
+                'quarter' => $currentQuarter,
+                'amount' => $quarterlyAmount,
+                'description' => "{$currentQuarter}-chorak {$currentYear} to'lov"
+            ];
+
+            $currentQuarter++;
+            if ($currentQuarter > 4) {
+                $currentQuarter = 1;
+                $currentYear++;
+            }
+        }
+
+        return response()->json([
+            'success' => true,
+            'preview' => [
+                'old_total_amount' => $contract->total_amount,
+                'new_total_amount' => $newTotalAmount,
+                'difference' => $newTotalAmount - $contract->total_amount,
+                'total_paid' => $totalPaid,
+                'new_debt' => $newTotalAmount - $totalPaid,
+                'needs_initial_payment' => $needsInitialPayment,
+                'initial_payment_needed' => $initialPaymentNeeded,
+                'remaining_amount' => $remainingAmount,
+                'quarterly_amount' => $quarterlyAmount,
+                'payment_schedule' => $paymentSchedule
+            ]
+        ]);
+
+    } catch (\Exception $e) {
+        return response()->json([
+            'success' => false,
+            'message' => 'Hisoblashda xato: ' . $e->getMessage()
+        ], 500);
+    }
+}
+
+/**
+ * Deactivate amendment
+ */
+public function deactivateAmendment(Contract $contract, ContractAmendment $amendment)
+{
+    try {
+        DB::beginTransaction();
+
+        // Deactivate the amendment
+        $amendment->update(['is_active' => false]);
+
+        // Deactivate related payment schedules
+        PaymentSchedule::where('amendment_id', $amendment->id)
+            ->update(['is_active' => false]);
+
+        // Log the action
+        PaymentHistory::logAction(
+            $contract->id,
+            'deactivated',
+            'contract_amendments',
+            $amendment->id,
+            $amendment->toArray(),
+            ['is_active' => false],
+            "Qo'shimcha kelishuv #{$amendment->amendment_number} bekor qilindi"
+        );
+
+        DB::commit();
+
+        return response()->json([
+            'success' => true,
+            'message' => 'Qo\'shimcha kelishuv bekor qilindi'
+        ]);
+
+    } catch (\Exception $e) {
+        DB::rollBack();
+
+        return response()->json([
+            'success' => false,
+            'message' => 'Qo\'shimcha kelishuvni bekor qilishda xato'
+        ], 500);
+    }
+}
+
     private function generateBasicPaymentSchedule(Contract $contract)
     {
         // Clear any existing schedules
@@ -183,57 +475,7 @@ class ContractController extends Controller
         }
     }
 
-    /**
-     * Generate payment schedule for the contract
-     */
-    private function generatePaymentSchedule(Contract $contract, CoefficientCalculatorService $calculatorService)
-    {
-        // Delete any existing payment schedules (in case of regeneration)
-        $contract->paymentSchedules()->delete();
 
-        if ($contract->payment_type === 'full') {
-            // For full payment, create single payment record
-            $contract->paymentSchedules()->create([
-                'year' => date('Y', strtotime($contract->contract_date)),
-                'quarter' => ceil(date('n', strtotime($contract->contract_date)) / 3),
-                'quarter_amount' => $contract->total_amount,
-                'custom_percent' => 100,
-                'is_active' => true
-            ]);
-        } else {
-            // Calculate installment payment schedule
-            $paymentData = $calculatorService->calculatePaymentSchedule(
-                $contract->total_amount,
-                $contract->initial_payment_percent,
-                $contract->quarters_count
-            );
-
-            $startYear = date('Y', strtotime($contract->contract_date));
-            $startQuarter = ceil(date('n', strtotime($contract->contract_date)) / 3);
-
-            // Create initial payment record
-            $contract->paymentSchedules()->create([
-                'year' => $startYear,
-                'quarter' => $startQuarter,
-                'quarter_amount' => $paymentData['initial_payment'],
-                'custom_percent' => $contract->initial_payment_percent,
-                'is_active' => true
-            ]);
-
-            // Create quarterly payment records
-            for ($i = 0; $i < $contract->quarters_count; $i++) {
-                $currentQuarter = (($startQuarter - 1 + $i) % 4) + 1;
-                $currentYear = $startYear + intval(($startQuarter - 1 + $i) / 4);
-
-                $contract->paymentSchedules()->create([
-                    'year' => $currentYear,
-                    'quarter' => $currentQuarter,
-                    'quarter_amount' => $paymentData['quarterly_payment'],
-                    'is_active' => true
-                ]);
-            }
-        }
-    }
 
     /**
      * Create subject via AJAX - PRODUCTION READY
@@ -804,60 +1046,174 @@ class ContractController extends Controller
         ];
     }
 
-    public function createAmendment(Request $request, Contract $contract)
+public function createAmendment(Request $request, Contract $contract)
     {
-        $validated = $request->validate([
-            'reason' => 'required|string',
-            'new_volume' => 'nullable|numeric|min:0',
-            'new_coefficient' => 'nullable|numeric|min:0',
-            'new_base_amount_id' => 'nullable|exists:base_calculation_amounts,id',
-            'bank_changes' => 'nullable|string'
+        $request->validate([
+            'reason' => 'required|string|max:255',
+            'description' => 'nullable|string|max:1000',
+            'amendment_date' => 'required|date|after_or_equal:' . $contract->contract_date->format('Y-m-d') . '|before_or_equal:today',
+            'effective_date' => 'nullable|date|after_or_equal:amendment_date',
+            'new_total_amount' => 'required|numeric|min:1|max:999999999999.99',
+            'new_initial_payment_percent' => 'required|numeric|min:0|max:100',
+            'new_quarters_count' => 'required|integer|min:1|max:20',
+            'new_construction_period_years' => 'required|integer|min:1|max:10',
+        ], [
+            'reason.required' => 'O\'zgartirish sababini kiriting',
+            'amendment_date.required' => 'Qo\'shimcha kelishuv sanasini kiriting',
+            'amendment_date.after_or_equal' => 'Qo\'shimcha kelishuv sanasi shartnoma sanasidan oldin bo\'lishi mumkin emas',
+            'amendment_date.before_or_equal' => 'Qo\'shimcha kelishuv sanasi bugundan kech bo\'lishi mumkin emas',
+            'new_total_amount.required' => 'Yangi jami summani kiriting',
+            'new_total_amount.min' => 'Summa 1 so\'mdan kam bo\'lishi mumkin emas',
         ]);
 
-        DB::beginTransaction();
         try {
-            $amendmentNumber = $contract->amendments()->count() + 1;
+            DB::beginTransaction();
 
-            $amendment = ContractAmendment::create([
+            $amendment = new ContractAmendment([
                 'contract_id' => $contract->id,
-                'amendment_number' => $amendmentNumber,
-                'amendment_date' => now(),
-                'reason' => $validated['reason'],
-                'old_volume' => $contract->contract_volume,
-                'old_coefficient' => $contract->coefficient,
-                'old_amount' => $contract->total_amount,
-                'old_base_amount_id' => $contract->base_amount_id,
-                'new_volume' => $validated['new_volume'] ?? $contract->contract_volume,
-                'new_coefficient' => $validated['new_coefficient'] ?? $contract->coefficient,
-                'new_base_amount_id' => $validated['new_base_amount_id'] ?? $contract->base_amount_id,
-                'bank_changes' => $validated['bank_changes']
+                'amendment_date' => $request->amendment_date,
+                'reason' => $request->reason,
+                'description' => $request->description,
+                'old_total_amount' => $contract->total_amount,
+                'old_initial_payment_percent' => $contract->initial_payment_percent,
+                'old_quarters_count' => $contract->quarters_count,
+                'old_construction_period_years' => $contract->construction_period_years,
+                'new_total_amount' => $request->new_total_amount,
+                'new_initial_payment_percent' => $request->new_initial_payment_percent,
+                'new_quarters_count' => $request->new_quarters_count,
+                'new_construction_period_years' => $request->new_construction_period_years,
+                'effective_date' => $request->effective_date,
+                'status' => 'pending',
+                'created_by' => auth()->id()
             ]);
 
-            $newBaseAmount = BaseCalculationAmount::find($amendment->new_base_amount_id);
-            $newTotalAmount = $amendment->new_volume * $newBaseAmount->amount * $amendment->new_coefficient;
-            $amendment->update(['new_amount' => $newTotalAmount]);
+            $amendment->amendment_number = $amendment->generateAmendmentNumber();
+            $amendment->calculation_data = $amendment->calculatePaymentRecalculation();
+            $amendment->save();
 
-            $contract->update([
-                'contract_volume' => $amendment->new_volume,
-                'coefficient' => $amendment->new_coefficient,
-                'total_amount' => $newTotalAmount,
-                'base_amount_id' => $amendment->new_base_amount_id
+            // Auto-approve if user has permission
+            if (auth()->user()->can('approve-amendments')) {
+                $amendment->approve();
+                $message = 'Qo\'shimcha kelishuv yaratildi va tasdiqlandi';
+            } else {
+                $message = 'Qo\'shimcha kelishuv yaratildi va tasdiqlash uchun yuborildi';
+            }
+
+            // Log the amendment creation
+            PaymentHistory::create([
+                'contract_id' => $contract->id,
+                'action' => 'amendment_created',
+                'table_name' => 'contract_amendments',
+                'record_id' => $amendment->id,
+                'changes' => [
+                    'amendment_number' => $amendment->amendment_number,
+                    'reason' => $amendment->reason,
+                    'old_total_amount' => $amendment->old_total_amount,
+                    'new_total_amount' => $amendment->new_total_amount,
+                ],
+                'description' => "Qo'shimcha kelishuv #{$amendment->amendment_number} yaratildi: {$amendment->reason}",
+                'user_id' => auth()->id(),
             ]);
-
-            $contract->paymentSchedules()->update(['is_active' => false]);
-            $this->generatePaymentScheduleForAmendment($contract, $amendment);
 
             DB::commit();
-            return response()->json(['success' => true, 'message' => 'Дополнительное соглашение успешно создано']);
+
+            return response()->json([
+                'success' => true,
+                'message' => $message,
+                'amendment' => $amendment->load(['createdBy', 'approvedBy'])
+            ]);
+
         } catch (\Exception $e) {
-            DB::rollback();
-            return response()->json(['success' => false, 'message' => 'Ошибка: ' . $e->getMessage()]);
+            DB::rollBack();
+
+            return response()->json([
+                'success' => false,
+                'message' => 'Qo\'shimcha kelishuv yaratishda xatolik: ' . $e->getMessage()
+            ], 500);
         }
     }
 
 
+ /**
+     * Get amendment preview calculation
+     */
+    public function getAmendmentPreview(Request $request, Contract $contract)
+    {
+        $request->validate([
+            'new_total_amount' => 'required|numeric|min:1',
+            'new_initial_payment_percent' => 'required|numeric|min:0|max:100',
+            'new_quarters_count' => 'required|integer|min:1|max:20'
+        ]);
 
+        // Create temporary amendment for calculation
+        $tempAmendment = new ContractAmendment([
+            'contract_id' => $contract->id,
+            'old_total_amount' => $contract->total_amount,
+            'old_initial_payment_percent' => $contract->initial_payment_percent,
+            'old_quarters_count' => $contract->quarters_count,
+            'new_total_amount' => $request->new_total_amount,
+            'new_initial_payment_percent' => $request->new_initial_payment_percent,
+            'new_quarters_count' => $request->new_quarters_count
+        ]);
 
+        $tempAmendment->contract = $contract;
+        $calculation = $tempAmendment->calculatePaymentRecalculation();
+
+        return response()->json([
+            'success' => true,
+            'calculation' => $calculation
+        ]);
+    }
+
+  /**
+     * Approve amendment
+     */
+    public function approveAmendment(ContractAmendment $amendment)
+    {
+        if ($amendment->status !== 'pending') {
+            return response()->json([
+                'success' => false,
+                'message' => 'Faqat kutilayotgan holatdagi qo\'shimcha kelishuvlarni tasdiqlash mumkin'
+            ], 400);
+        }
+
+        try {
+            DB::beginTransaction();
+
+            $amendment->approve();
+
+            // Log the approval
+            PaymentHistory::create([
+                'contract_id' => $amendment->contract_id,
+                'action' => 'amendment_approved',
+                'table_name' => 'contract_amendments',
+                'record_id' => $amendment->id,
+                'changes' => [
+                    'status' => 'approved',
+                    'approved_by' => auth()->id(),
+                    'approved_at' => now(),
+                ],
+                'description' => "Qo'shimcha kelishuv #{$amendment->amendment_number} tasdiqlandi",
+                'user_id' => auth()->id(),
+            ]);
+
+            DB::commit();
+
+            return response()->json([
+                'success' => true,
+                'message' => 'Qo\'shimcha kelishuv muvaffaqiyatli tasdiqlandi',
+                'amendment' => $amendment->fresh()->load(['createdBy', 'approvedBy'])
+            ]);
+
+        } catch (\Exception $e) {
+            DB::rollBack();
+
+            return response()->json([
+                'success' => false,
+                'message' => 'Tasdiqlashda xatolik: ' . $e->getMessage()
+            ], 500);
+        }
+    }
 
 
     //-----------------------------
@@ -1023,7 +1379,7 @@ class ContractController extends Controller
                     'Shartnoma asosiy ma\'lumotlari yangilandi'
                 );
             } catch (\Exception $logError) {
-                \Log::error('Failed to log contract history', [
+                Log::error('Failed to log contract history', [
                     'error' => $logError->getMessage(),
                     'contract_id' => $contract->id
                 ]);
@@ -1039,7 +1395,7 @@ class ContractController extends Controller
             ]);
         } catch (\Exception $e) {
             DB::rollBack();
-            \Log::error('Contract update failed', ['error' => $e->getMessage()]);
+            Log::error('Contract update failed', ['error' => $e->getMessage()]);
             return response()->json([
                 'success' => false,
                 'message' => 'Xatolik yuz berdi: ' . $e->getMessage()
@@ -1194,7 +1550,7 @@ class ContractController extends Controller
             $paymentDate = $request->input('payment_date');
             $paymentAmount = $request->input('payment_amount');
 
-            \Log::info('Payment assignment (no future restriction):', [
+            Log::info('Payment assignment (no future restriction):', [
                 'payment_date' => $paymentDate,
                 'target_year' => $targetYear,
                 'target_quarter' => $targetQuarter,
@@ -1226,7 +1582,7 @@ class ContractController extends Controller
                 ], 400);
             }
 
-            \DB::beginTransaction();
+            DB::beginTransaction();
 
             // Create the payment record with EXPLICIT quarter assignment
             $payment = new ActualPayment();
@@ -1243,7 +1599,7 @@ class ContractController extends Controller
 
             $payment->save();
 
-            \Log::info('Payment saved successfully:', [
+            Log::info('Payment saved successfully:', [
                 'payment_id' => $payment->id,
                 'assigned_year' => $payment->year,
                 'assigned_quarter' => $payment->quarter,
@@ -1251,7 +1607,7 @@ class ContractController extends Controller
                 'amount' => $payment->amount
             ]);
 
-            \DB::commit();
+            DB::commit();
 
             return response()->json([
                 'success' => true,
@@ -1275,8 +1631,8 @@ class ContractController extends Controller
                 'errors' => $e->errors()
             ], 422);
         } catch (\Exception $e) {
-            \DB::rollBack();
-            \Log::error('Payment storage error:', [
+            DB::rollBack();
+            Log::error('Payment storage error:', [
                 'contract_id' => $contractId,
                 'error' => $e->getMessage()
             ]);
@@ -1298,7 +1654,7 @@ class ContractController extends Controller
         $testPayment->year = $request->target_year;
         $testPayment->quarter = $request->target_quarter;
 
-        \Log::info('Test payment before save:', [
+        Log::info('Test payment before save:', [
             'year' => $testPayment->year,
             'quarter' => $testPayment->quarter,
             'payment_date' => $testPayment->payment_date
@@ -1314,30 +1670,7 @@ class ContractController extends Controller
             ]
         ]);
     }
-    private function updateQuarterlyTotals($quarterSchedule)
-    {
-        // Recalculate totals for this quarter
-        $totalPaid = ActualPayment::where('quarterly_schedule_id', $quarterSchedule->id)
-            ->sum('amount');
 
-        $debt = $quarterSchedule->plan_amount - $totalPaid;
-        $paymentPercent = $quarterSchedule->plan_amount > 0
-            ? ($totalPaid / $quarterSchedule->plan_amount) * 100
-            : 0;
-
-        // Update the quarterly schedule record
-        $quarterSchedule->update([
-            'fact_total' => $totalPaid,
-            'debt' => $debt,
-            'payment_percent' => $paymentPercent
-        ]);
-    }
-
-    private function calculateQuarterFromDate($date)
-    {
-        $month = Carbon::parse($date)->month;
-        return ceil($month / 3);
-    }
 
     /**
      * Calculate payment plan preview
@@ -1467,7 +1800,7 @@ class ContractController extends Controller
             ]);
         } catch (\Exception $e) {
             DB::rollBack();
-            \Log::error('Error deleting payment', [
+            Log::error('Error deleting payment', [
                 'contract_id' => $contract->id,
                 'payment_id' => $paymentId,
                 'error' => $e->getMessage()
@@ -1597,7 +1930,7 @@ class ContractController extends Controller
 
             return response()->json($breakdown);
         } catch (\Exception $e) {
-            \Log::error('Error getting quarterly breakdown', [
+            Log::error('Error getting quarterly breakdown', [
                 'contract_id' => $contract->id,
                 'error' => $e->getMessage(),
                 'contract_date' => $contract->contract_date
@@ -1639,7 +1972,7 @@ class ContractController extends Controller
                 'quarterly_schedule' => 'sometimes|json'
             ]);
 
-            \DB::beginTransaction();
+            DB::beginTransaction();
 
             $scheduleType = $request->schedule_type;
             $quartersCount = $request->quarters_count;
@@ -1699,7 +2032,7 @@ class ContractController extends Controller
                 }
             }
 
-            \DB::commit();
+            DB::commit();
 
             return response()->json([
                 'success' => true,
@@ -1711,8 +2044,8 @@ class ContractController extends Controller
                 ]
             ]);
         } catch (\Exception $e) {
-            \DB::rollBack();
-            \Log::error('Error creating quarterly schedule', [
+            DB::rollBack();
+            Log::error('Error creating quarterly schedule', [
                 'contract_id' => $contract->id,
                 'error' => $e->getMessage(),
                 'contract_date' => $contract->contract_date
@@ -1777,7 +2110,7 @@ class ContractController extends Controller
                 ]
             ]);
         } catch (\Exception $e) {
-            \Log::error('Error getting payment summary', [
+            Log::error('Error getting payment summary', [
                 'contract_id' => $contract->id,
                 'error' => $e->getMessage()
             ]);
@@ -1895,7 +2228,7 @@ class ContractController extends Controller
                 'payment_amount.min' => 'To\'lov summasi 0 dan katta bo\'lishi kerak'
             ]);
 
-            \DB::beginTransaction();
+            DB::beginTransaction();
 
             // Check if updated payment exceeds contract total
             $totalPaidExcludingThis = $contract->actualPayments()
@@ -1918,7 +2251,7 @@ class ContractController extends Controller
                 'notes' => $request->payment_notes
             ]);
 
-            \DB::commit();
+            DB::commit();
 
             return response()->json([
                 'success' => true,
@@ -1926,7 +2259,7 @@ class ContractController extends Controller
                 'payment' => $payment->fresh()
             ]);
         } catch (\Exception $e) {
-            \DB::rollBack();
+            DB::rollBack();
             return response()->json([
                 'success' => false,
                 'message' => 'To\'lovni yangilashda xatolik yuz berdi: ' . $e->getMessage()
@@ -2438,7 +2771,7 @@ class ContractController extends Controller
                 ]
             ]);
         } catch (\Exception $e) {
-            \Log::error('Error fetching payment history', [
+            Log::error('Error fetching payment history', [
                 'contract_id' => $contract->id,
                 'error' => $e->getMessage()
             ]);
@@ -2480,7 +2813,7 @@ class ContractController extends Controller
                 'activities' => $formattedActivities
             ]);
         } catch (\Exception $e) {
-            \Log::error('Error fetching recent activities', [
+            Log::error('Error fetching recent activities', [
                 'error' => $e->getMessage()
             ]);
 

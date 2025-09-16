@@ -27,6 +27,12 @@ return new class extends Migration
             // Тизимлаштириш учун индекслар
             $table->index(['contract_id', 'payment_date']); // Шартнома ва сана бўйича
             $table->index(['year', 'quarter']); // Вақт бўйича индекс
+
+            $table->boolean('is_initial_payment')->default(false);
+            $table->foreignId('amendment_id')->nullable()->constrained('contract_amendments');
+
+                $table->text('amendment_notes')->nullable(); // Qo'shimcha kelishuv bilan bog'liq izohlar
+
         });
     }
 

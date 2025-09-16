@@ -76,25 +76,44 @@
         <div>
             <h3 class="text-sm font-semibold text-gray-900 mb-3">Zona koeffitsientlari</h3>
             <div class="space-y-2">
-                <div class="flex justify-between items-center p-2 bg-gray-50 rounded text-sm">
+                <div class="flex justify-between items-center p-2 bg-red-50 rounded text-sm border-l-4 border-red-500">
                     <span class="font-medium">1-zona</span>
-                    <span class="font-semibold">1.40</span>
+                    <span class="font-semibold text-red-600">1.40</span>
                 </div>
-                <div class="flex justify-between items-center p-2 bg-gray-50 rounded text-sm">
+                <div class="flex justify-between items-center p-2 bg-orange-50 rounded text-sm border-l-4 border-orange-500">
                     <span class="font-medium">2-zona</span>
-                    <span class="font-semibold">1.25</span>
+                    <span class="font-semibold text-orange-600">1.25</span>
                 </div>
-                <div class="flex justify-between items-center p-2 bg-gray-50 rounded text-sm">
+                <div class="flex justify-between items-center p-2 bg-yellow-50 rounded text-sm border-l-4 border-yellow-500">
                     <span class="font-medium">3-zona</span>
-                    <span class="font-semibold">1.00</span>
+                    <span class="font-semibold text-yellow-600">1.00</span>
                 </div>
-                <div class="flex justify-between items-center p-2 bg-gray-50 rounded text-sm">
+                <div class="flex justify-between items-center p-2 bg-green-50 rounded text-sm border-l-4 border-green-500">
                     <span class="font-medium">4-zona</span>
-                    <span class="font-semibold">0.75</span>
+                    <span class="font-semibold text-green-600">0.75</span>
+                </div>
+                <div class="flex justify-between items-center p-2 bg-blue-50 rounded text-sm border-l-4 border-blue-500">
+                    <span class="font-medium">5-zona</span>
+                    <span class="font-semibold text-blue-600">0.50</span>
+                </div>
+            </div>
+        </div>
+
+        <!-- Base Amounts -->
+        <div>
+            <h3 class="text-sm font-semibold text-gray-900 mb-3">Bazaviy miqdorlar</h3>
+            <div class="space-y-2">
+                <div class="flex justify-between items-center p-2 bg-gray-50 rounded text-sm">
+                    <span class="font-medium">2024</span>
+                    <span class="font-semibold">340,000 so'm</span>
                 </div>
                 <div class="flex justify-between items-center p-2 bg-gray-50 rounded text-sm">
-                    <span class="font-medium">5-zona</span>
-                    <span class="font-semibold">0.50</span>
+                    <span class="font-medium">2025</span>
+                    <span class="font-semibold">375,000 so'm</span>
+                </div>
+                <div class="flex justify-between items-center p-2 bg-gray-50 rounded text-sm">
+                    <span class="font-medium">2026</span>
+                    <span class="font-semibold">412,000 so'm</span>
                 </div>
             </div>
         </div>
@@ -222,13 +241,13 @@
                         @foreach($objects as $object)
                             <option value="{{ $object->id }}"
                                     data-volume="{{ $object->construction_volume ?? 0 }}"
-                                    data-above-permit="{{ $object->above_permit_volume ?? 0 }}"
+                                    data-abovepermit="{{ $object->above_permit_volume ?? 0 }}"
                                     data-parking="{{ $object->parking_volume ?? 0 }}"
                                     data-technical="{{ $object->technical_rooms_volume ?? 0 }}"
                                     data-common="{{ $object->common_area_volume ?? 0 }}"
                                     data-subject="{{ $object->subject_id }}"
-                                    data-construction-type="{{ $object->construction_type_id ?? 1 }}"
-                                    data-object-type="{{ $object->object_type_id ?? 5 }}"
+                                    data-constructiontype="{{ $object->construction_type_id ?? 1 }}"
+                                    data-objecttype="{{ $object->object_type_id ?? 5 }}"
                                     data-zone="{{ $object->territorial_zone_id ?? 3 }}"
                                     data-location="{{ $object->location_type ?? 'other_locations' }}"
                                     {{ old('object_id') == $object->id ? 'selected' : '' }}>
@@ -243,76 +262,111 @@
             </div>
         </div>
 
-        <!-- Hisoblash summasi -->
-        <div class="bg-white rounded-xl shadow-sm border border-gray-200 p-6">
-            <h3 class="text-lg font-semibold text-gray-900 mb-6">Shartnoma summasi hisoblash</h3>
+        <!-- Hisoblash summasi - REDESIGNED SECTION -->
+        <div class="bg-white rounded-xl shadow-sm border border-gray-200 p-8">
+            <div class="flex items-center mb-8">
+                <i data-feather="calculator" class="w-6 h-6 mr-3 text-blue-600"></i>
+                <h3 class="text-2xl font-bold text-gray-900">Shartnoma summasi hisoblash</h3>
+            </div>
 
             <!-- Obyekt hajmlari -->
-            <div class="mb-6">
-                <h4 class="text-md font-medium text-gray-800 mb-4">Obyekt hajmlari</h4>
-                <div class="grid grid-cols-2 md:grid-cols-5 gap-4 p-4 bg-gray-50 rounded-lg">
-                    <div class="text-center">
-                        <label class="block text-sm font-medium text-gray-600 mb-2">Umumiy hajm (Hb)</label>
-                        <div id="display_hb" class="text-lg font-semibold text-gray-900 bg-white rounded px-3 py-2 border">0 m³</div>
+            <div class="mb-10">
+                <div class="flex items-center mb-6">
+                    <i data-feather="home" class="w-5 h-5 mr-2 text-gray-600"></i>
+                    <h4 class="text-lg font-semibold text-gray-800">Obyekt hajmlari</h4>
+                </div>
+
+                <!-- Main volumes grid -->
+                <div class="grid grid-cols-1 md:grid-cols-5 gap-4 mb-6">
+                    <div class="bg-blue-50 border border-blue-200 rounded-lg p-4 text-center">
+                        <div class="text-sm font-medium text-blue-700 mb-2">Umumiy hajm</div>
+                        <div class="text-xs text-blue-600 mb-3">(Hb)</div>
+                        <div id="display_hb" class="text-2xl font-bold text-blue-900">0 m³</div>
                     </div>
-                    <div class="text-center">
-                        <label class="block text-sm font-medium text-gray-600 mb-2">Ruxsatdan yuqori (Hyu)</label>
-                        <div id="display_hyu" class="text-lg font-semibold text-gray-900 bg-white rounded px-3 py-2 border">0 m³</div>
+
+                    <div class="bg-green-50 border border-green-200 rounded-lg p-4 text-center">
+                        <div class="text-sm font-medium text-green-700 mb-2">Ruxsatdan yuqori</div>
+                        <div class="text-xs text-green-600 mb-3">(Hyu)</div>
+                        <div id="display_hyu" class="text-2xl font-bold text-green-900">0 m³</div>
                     </div>
-                    <div class="text-center">
-                        <label class="block text-sm font-medium text-gray-600 mb-2">Avtoturargoh (Ha)</label>
-                        <div id="display_ha" class="text-lg font-semibold text-gray-700 bg-white rounded px-3 py-2 border">0 m³</div>
+
+                    <div class="bg-red-50 border border-red-200 rounded-lg p-4 text-center">
+                        <div class="text-sm font-medium text-red-700 mb-2">Avtoturargoh</div>
+                        <div class="text-xs text-red-600 mb-3">(Ha)</div>
+                        <div id="display_ha" class="text-2xl font-bold text-red-900">0 m³</div>
                     </div>
-                    <div class="text-center">
-                        <label class="block text-sm font-medium text-gray-600 mb-2">Texnik xonalar (Ht)</label>
-                        <div id="display_ht" class="text-lg font-semibold text-gray-700 bg-white rounded px-3 py-2 border">0 m³</div>
+
+                    <div class="bg-orange-50 border border-orange-200 rounded-lg p-4 text-center">
+                        <div class="text-sm font-medium text-orange-700 mb-2">Texnik xonalar</div>
+                        <div class="text-xs text-orange-600 mb-3">(Ht)</div>
+                        <div id="display_ht" class="text-2xl font-bold text-orange-900">0 m³</div>
                     </div>
-                    <div class="text-center">
-                        <label class="block text-sm font-medium text-gray-600 mb-2">Umumiy foydalanish (Hu)</label>
-                        <div id="display_hu" class="text-lg font-semibold text-gray-700 bg-white rounded px-3 py-2 border">0 m³</div>
+
+                    <div class="bg-purple-50 border border-purple-200 rounded-lg p-4 text-center">
+                        <div class="text-sm font-medium text-purple-700 mb-2">Umumiy foydalanish</div>
+                        <div class="text-xs text-purple-600 mb-3">(Hu)</div>
+                        <div id="display_hu" class="text-2xl font-bold text-purple-900">0 m³</div>
                     </div>
+                </div>
+
+                <!-- Calculation result -->
+                <div class="bg-gray-900 text-white rounded-lg p-6 text-center">
+                    <div class="text-sm font-medium mb-2">Hisoblash hajmi</div>
+                    <div id="display_calculated_volume" class="text-3xl font-bold mb-2">0 m³</div>
+                    <div class="text-sm opacity-75">(Hb + Hyu) - (Ha + Ht + Hu)</div>
                 </div>
             </div>
 
             <!-- Koeffitsientlar -->
-            <div class="mb-6">
-                <h4 class="text-md font-medium text-gray-800 mb-4">Koeffitsientlar</h4>
-                <div class="grid grid-cols-2 md:grid-cols-5 gap-4 p-4 bg-gray-100 rounded-lg">
-                    <div class="text-center">
-                        <label class="block text-sm font-medium text-gray-700 mb-2">Qurilish turi (Kt)</label>
-                        <div id="display_kt" class="text-lg font-bold text-gray-900 bg-white rounded px-3 py-2 border">1.0</div>
+            <div class="mb-10">
+                <div class="flex items-center mb-6">
+                    <i data-feather="settings" class="w-5 h-5 mr-2 text-gray-600"></i>
+                    <h4 class="text-lg font-semibold text-gray-800">Koeffitsientlar</h4>
+                </div>
+
+                <div class="grid grid-cols-1 md:grid-cols-5 gap-4 mb-6">
+                    <div class="border border-gray-200 rounded-lg p-4 text-center bg-white">
+                        <div class="text-sm font-medium text-gray-700 mb-2">Qurilish turi</div>
+                        <div class="text-xs text-gray-500 mb-3">(Kt)</div>
+                        <div id="display_kt" class="text-2xl font-bold text-gray-900">1.00</div>
                     </div>
-                    <div class="text-center">
-                        <label class="block text-sm font-medium text-gray-700 mb-2">Obyekt turi (Ko)</label>
-                        <div id="display_ko" class="text-lg font-bold text-gray-900 bg-white rounded px-3 py-2 border">1.0</div>
+
+                    <div class="border border-gray-200 rounded-lg p-4 text-center bg-white">
+                        <div class="text-sm font-medium text-gray-700 mb-2">Obyekt turi</div>
+                        <div class="text-xs text-gray-500 mb-3">(Ko)</div>
+                        <div id="display_ko" class="text-2xl font-bold text-gray-900">1.00</div>
                     </div>
-                    <div class="text-center">
-                        <label class="block text-sm font-medium text-gray-700 mb-2">Hududiy zona (Kz)</label>
-                        <div id="display_kz" class="text-lg font-bold text-gray-900 bg-white rounded px-3 py-2 border">1.0</div>
+
+                    <div class="border border-gray-200 rounded-lg p-4 text-center bg-white">
+                        <div class="text-sm font-medium text-gray-700 mb-2">Hududiy zona</div>
+                        <div class="text-xs text-gray-500 mb-3">(Kz)</div>
+                        <div id="display_kz" class="text-2xl font-bold text-gray-900">1.00</div>
                     </div>
-                    <div class="text-center">
-                        <label class="block text-sm font-medium text-gray-700 mb-2">Joylashuv (Kj)</label>
-                        <div id="display_kj" class="text-lg font-bold text-gray-900 bg-white rounded px-3 py-2 border">1.0</div>
+
+                    <div class="border border-gray-200 rounded-lg p-4 text-center bg-white">
+                        <div class="text-sm font-medium text-gray-700 mb-2">Joylashuv</div>
+                        <div class="text-xs text-gray-500 mb-3">(Kj)</div>
+                        <div id="display_kj" class="text-2xl font-bold text-gray-900">1.00</div>
                     </div>
-                    <div class="text-center">
-                        <label class="block text-sm font-medium text-gray-700 mb-2">Jami koeffitsient</label>
-                        <div id="display_total_coef" class="text-lg font-bold text-blue-600 bg-white rounded px-3 py-2 border-2 border-blue-200">1.0</div>
+
+                    <div class="bg-blue-600 text-white rounded-lg p-4 text-center">
+                        <div class="text-sm font-medium mb-2">Jami koeffitsient</div>
+                        <div class="text-xs opacity-75 mb-3">(Kt×Ko×Kz×Kj)</div>
+                        <div id="display_total_coef" class="text-2xl font-bold">1.00</div>
                     </div>
                 </div>
             </div>
 
             <!-- Asosiy hisoblash -->
-            <div class="grid grid-cols-1 md:grid-cols-3 gap-6 mb-6">
+            <div class="grid grid-cols-1 md:grid-cols-3 gap-6 mb-8">
                 <div>
                     <label class="block text-sm font-medium text-gray-700 mb-2">Bazaviy hisoblash miqdori (Bh) *</label>
                     <select name="base_amount_id" required onchange="calculateTotal()"
-                            class="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500">
+                            class="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500">
                         <option value="">Bazaviy miqdorni tanlang</option>
-                        @foreach($baseAmounts as $baseAmount)
-                            <option value="{{ $baseAmount->id }}" data-amount="{{ $baseAmount->amount }}" {{ old('base_amount_id') == $baseAmount->id ? 'selected' : '' }}>
-                                {{ number_format($baseAmount->amount) }} so'm ({{ $baseAmount->effective_from->format('d.m.Y') }})
-                            </option>
-                        @endforeach
+                        <option value="1" data-amount="340000">340,000 so'm (2024)</option>
+                        <option value="2" data-amount="375000">375,000 so'm (2025)</option>
+                        <option value="3" data-amount="412000">412,000 so'm (2026)</option>
                     </select>
                     @error('base_amount_id')
                         <p class="text-red-600 text-sm mt-1">{{ $message }}</p>
@@ -322,7 +376,7 @@
                 <div>
                     <label class="block text-sm font-medium text-gray-700 mb-2">Hisoblash hajmi (m³) *</label>
                     <input type="number" name="contract_volume" step="0.01" value="{{ old('contract_volume') }}" required readonly
-                           class="w-full px-3 py-2 border border-gray-300 rounded-lg bg-gray-100 text-gray-700">
+                           class="w-full px-4 py-3 border border-gray-300 rounded-lg bg-gray-100 text-gray-700">
                     @error('contract_volume')
                         <p class="text-red-600 text-sm mt-1">{{ $message }}</p>
                     @enderror
@@ -332,7 +386,7 @@
                 <div>
                     <label class="block text-sm font-medium text-gray-700 mb-2">Hisobga olinadigan Bh *</label>
                     <input type="number" name="calculated_bh" step="0.01" value="{{ old('calculated_bh') }}" required readonly
-                           class="w-full px-3 py-2 border border-gray-300 rounded-lg bg-gray-100 text-gray-700">
+                           class="w-full px-4 py-3 border border-gray-300 rounded-lg bg-gray-100 text-gray-700">
                     @error('calculated_bh')
                         <p class="text-red-600 text-sm mt-1">{{ $message }}</p>
                     @enderror
@@ -341,11 +395,11 @@
             </div>
 
             <!-- To'lov turi -->
-            <div class="grid grid-cols-1 md:grid-cols-3 gap-6 mb-6">
+            <div class="grid grid-cols-1 md:grid-cols-3 gap-6 mb-8">
                 <div>
                     <label class="block text-sm font-medium text-gray-700 mb-2">To'lov turi *</label>
                     <select name="payment_type" required onchange="togglePaymentFields()"
-                            class="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500">
+                            class="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500">
                         <option value="installment" {{ old('payment_type') == 'installment' ? 'selected' : '' }}>Bo'lib to'lash</option>
                         <option value="full" {{ old('payment_type') == 'full' ? 'selected' : '' }}>To'liq to'lash</option>
                     </select>
@@ -358,7 +412,7 @@
                     <label class="block text-sm font-medium text-gray-700 mb-2">Boshlang'ich to'lov foizi *</label>
                     <input type="number" name="initial_payment_percent" value="{{ old('initial_payment_percent', 20) }}" required
                            min="0" max="100" onchange="calculateTotal()"
-                           class="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500">
+                           class="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500">
                     @error('initial_payment_percent')
                         <p class="text-red-600 text-sm mt-1">{{ $message }}</p>
                     @enderror
@@ -368,7 +422,7 @@
                     <label class="block text-sm font-medium text-gray-700 mb-2">Qurilish muddati (yil) *</label>
                     <input type="number" name="construction_period_years" value="{{ old('construction_period_years', 2) }}" required
                            min="1" max="10" onchange="calculateCompletionDate(); calculateTotal();"
-                           class="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500">
+                           class="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500">
                     @error('construction_period_years')
                         <p class="text-red-600 text-sm mt-1">{{ $message }}</p>
                     @enderror
@@ -376,10 +430,16 @@
             </div>
 
             <!-- Yakuniy summa -->
-            <div class="bg-gradient-to-r from-blue-600 to-blue-700 text-white rounded-lg p-6 text-center">
-                <h4 class="text-lg font-medium mb-3">Shartnoma umumiy summasi</h4>
-                <div id="total_amount_display" class="text-4xl font-bold mb-2">0 so'm</div>
-                <p class="text-sm opacity-80">Barcha koeffitsientlar hisobga olingan</p>
+            <div class="bg-white border-2 border-blue-600 rounded-lg p-8 text-center">
+                <div class="flex items-center justify-center mb-4">
+                    <i data-feather="dollar-sign" class="w-6 h-6 mr-2 text-blue-600"></i>
+                    <h4 class="text-xl font-semibold text-gray-900">Shartnoma umumiy summasi</h4>
+                </div>
+                <div id="total_amount_display" class="text-4xl font-bold text-blue-600 mb-4">0 so'm</div>
+                <p class="text-sm text-gray-600 mb-4">Barcha koeffitsientlar hisobga olingan</p>
+                <div id="formula_display" class="text-sm text-gray-500 font-mono bg-gray-100 p-3 rounded">
+                    Ti = Hisobga olinadigan Bh × Hisoblash hajmi
+                </div>
             </div>
         </div>
 
@@ -517,136 +577,178 @@
     </div>
 </div>
 
-<!-- Object Modal -->
+<!-- Object Modal with Improved Map -->
 <div id="objectModal" class="hidden fixed inset-0 z-50 overflow-y-auto">
     <div class="flex items-center justify-center min-h-screen px-4">
         <div class="fixed inset-0 bg-gray-500 bg-opacity-75"></div>
-        <div class="inline-block bg-white rounded-xl shadow-xl transform transition-all max-w-4xl w-full max-h-[90vh] overflow-hidden">
+        <div class="inline-block bg-white rounded-xl shadow-xl transform transition-all max-w-7xl w-full max-h-[95vh] overflow-hidden">
             <form id="objectModalForm">
                 @csrf
-                <div class="px-6 py-4 border-b border-gray-200 bg-gradient-to-r from-blue-600 to-blue-700">
+                <div class="px-6 py-4 border-b border-gray-200 bg-blue-600">
                     <h3 class="text-xl font-bold text-white">Yangi obyekt yaratish</h3>
-                    <p class="text-sm text-blue-100 mt-1">Obyekt ma'lumotlarini to'ldiring</p>
+                    <p class="text-sm text-blue-100 mt-1">Obyekt ma'lumotlarini to'ldiring va xaritadan joylashuvni belgilang</p>
                 </div>
 
-                <div class="p-6 overflow-y-auto max-h-[calc(90vh-200px)]">
-                    <!-- Basic Information -->
-                    <div class="mb-6">
-                        <h4 class="text-lg font-semibold text-gray-900 mb-4 pb-2 border-b border-gray-200">
-                            <i data-feather="map-pin" class="w-5 h-5 inline mr-2 text-blue-600"></i>
-                            Asosiy ma'lumotlar
-                        </h4>
-                        <div class="space-y-4">
-                            <div>
-                                <label class="block text-sm font-medium text-gray-700 mb-2">Tuman *</label>
-                                <select name="district_id" required
-                                        class="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500">
-                                    <option value="">Tumanni tanlang</option>
-                                    @foreach($districts as $district)
-                                        <option value="{{ $district->id }}">{{ $district->name_uz }}</option>
-                                    @endforeach
-                                </select>
-                            </div>
-                            <div>
-                                <label class="block text-sm font-medium text-gray-700 mb-2">Manzil *</label>
-                                <textarea name="address" rows="3" required
-                                          class="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
-                                          placeholder="To'liq manzilni kiriting"></textarea>
-                            </div>
-                            <div class="grid grid-cols-2 gap-4">
+                <div class="flex h-[calc(95vh-200px)]">
+                    <!-- Left Panel - Form -->
+                    <div class="w-1/2 border-r border-gray-200 p-6 overflow-y-auto">
+                        <!-- Basic Information -->
+                        <div class="mb-6">
+                            <h4 class="text-lg font-semibold text-gray-900 mb-4 pb-2 border-b border-gray-200">
+                                <i data-feather="map-pin" class="w-5 h-5 inline mr-2 text-blue-600"></i>
+                                Asosiy ma'lumotlar
+                            </h4>
+                            <div class="space-y-4">
                                 <div>
-                                    <label class="block text-sm font-medium text-gray-700 mb-2">Kadastr raqami</label>
-                                    <input type="text" name="cadastre_number"
+                                    <label class="block text-sm font-medium text-gray-700 mb-2">Tuman *</label>
+                                    <select name="district_id" required
+                                            class="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500">
+                                        <option value="">Tumanni tanlang</option>
+                                        @foreach($districts as $district)
+                                            <option value="{{ $district->id }}">{{ $district->name_uz }}</option>
+                                        @endforeach
+                                    </select>
+                                </div>
+                                <div>
+                                    <label class="block text-sm font-medium text-gray-700 mb-2">Manzil *</label>
+                                    <textarea name="address" rows="3" required
+                                              class="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
+                                              placeholder="To'liq manzilni kiriting"></textarea>
+                                </div>
+                                <div class="grid grid-cols-2 gap-4">
+                                    <div>
+                                        <label class="block text-sm font-medium text-gray-700 mb-2">Kadastr raqami</label>
+                                        <input type="text" name="cadastre_number"
+                                               class="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500">
+                                    </div>
+                                    <div>
+                                        <label class="block text-sm font-medium text-gray-700 mb-2">Koordinatalar</label>
+                                        <input type="text" name="geolocation" id="coordinatesInput" placeholder="41.2995, 69.2401" readonly
+                                               class="w-full px-3 py-2 border border-gray-300 rounded-lg bg-gray-50">
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+
+                        <!-- Construction Volumes -->
+                        <div class="mb-6">
+                            <h4 class="text-lg font-semibold text-gray-900 mb-4 pb-2 border-b border-gray-200">
+                                <i data-feather="home" class="w-5 h-5 inline mr-2 text-green-600"></i>
+                                Qurilish hajmlari (m³)
+                            </h4>
+                            <div class="space-y-4">
+                                <div>
+                                    <label class="block text-sm font-medium text-gray-700 mb-2">Umumiy hajm (Hb) *</label>
+                                    <input type="number" name="construction_volume" step="0.01" required
                                            class="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500">
                                 </div>
                                 <div>
-                                    <label class="block text-sm font-medium text-gray-700 mb-2">Koordinatalar</label>
-                                    <input type="text" name="geolocation" placeholder="41.2995, 69.2401"
+                                    <label class="block text-sm font-medium text-gray-700 mb-2">Ruxsat etilganidan yuqori (Hyu)</label>
+                                    <input type="number" name="above_permit_volume" step="0.01" value="0"
                                            class="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500">
+                                </div>
+                                <div>
+                                    <label class="block text-sm font-medium text-gray-700 mb-2">Avtoturargoh (Ha)</label>
+                                    <input type="number" name="parking_volume" step="0.01" value="0"
+                                           class="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500">
+                                </div>
+                                <div>
+                                    <label class="block text-sm font-medium text-gray-700 mb-2">Texnik xonalar (Ht)</label>
+                                    <input type="number" name="technical_rooms_volume" step="0.01" value="0"
+                                           class="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500">
+                                </div>
+                                <div>
+                                    <label class="block text-sm font-medium text-gray-700 mb-2">Umumiy foydalanish (Hu)</label>
+                                    <input type="number" name="common_area_volume" step="0.01" value="0"
+                                           class="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500">
+                                </div>
+                            </div>
+                        </div>
+
+                        <!-- Coefficients -->
+                        <div class="mb-6">
+                            <h4 class="text-lg font-semibold text-gray-900 mb-4 pb-2 border-b border-gray-200">
+                                <i data-feather="settings" class="w-5 h-5 inline mr-2 text-purple-600"></i>
+                                Koeffitsientlar
+                            </h4>
+                            <div class="space-y-4">
+                                <div>
+                                    <label class="block text-sm font-medium text-gray-700 mb-2">Qurilish turi (Kt)</label>
+                                    <select name="construction_type_id"
+                                            class="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500">
+                                        <option value="">Tanlang</option>
+                                        <option value="1">Yangi kapital qurilish (1.0)</option>
+                                        <option value="2">Obyektni rekonstruksiya qilish (1.0)</option>
+                                        <option value="3">Ekspertiza talab etilmaydigan rekonstruksiya (0.0)</option>
+                                        <option value="4">Hajm o'zgarmaydigan rekonstruksiya (0.0)</option>
+                                    </select>
+                                </div>
+                                <div>
+                                    <label class="block text-sm font-medium text-gray-700 mb-2">Obyekt turi (Ko)</label>
+                                    <select name="object_type_id"
+                                            class="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500">
+                                        <option value="">Tanlang</option>
+                                        <option value="1">Ijtimoiy infratuzilma va turizm obyektlari (0.5)</option>
+                                        <option value="2">Davlat ulushi 50% dan ortiq (0.5)</option>
+                                        <option value="3">Ishlab chiqarish korxonalari (0.5)</option>
+                                        <option value="4">Omborxonalar (0.5)</option>
+                                        <option value="5">Boshqa obyektlar (1.0)</option>
+                                    </select>
+                                </div>
+                                <div>
+                                    <label class="block text-sm font-medium text-gray-700 mb-2">Hududiy zona (Kz)</label>
+                                    <select name="territorial_zone_id" id="modalTerritorialZone"
+                                            class="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500">
+                                        <option value="">Xaritadan avtomatik aniqlanadi</option>
+                                        <option value="1">1-zona (1.40)</option>
+                                        <option value="2">2-zona (1.25)</option>
+                                        <option value="3">3-zona (1.00)</option>
+                                        <option value="4">4-zona (0.75)</option>
+                                        <option value="5">5-zona (0.50)</option>
+                                    </select>
+                                </div>
+                                <div>
+                                    <label class="block text-sm font-medium text-gray-700 mb-2">Joylashuv (Kj)</label>
+                                    <select name="location_type"
+                                            class="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500">
+                                        <option value="other_locations">Oddiy joylashuv (1.0)</option>
+                                        <option value="metro_radius_200m_outside">Metro stantsiyasi yaqinida (0.6)</option>
+                                    </select>
                                 </div>
                             </div>
                         </div>
                     </div>
 
-                    <!-- Construction Volumes -->
-                    <div class="mb-6">
-                        <h4 class="text-lg font-semibold text-gray-900 mb-4 pb-2 border-b border-gray-200">
-                            <i data-feather="home" class="w-5 h-5 inline mr-2 text-green-600"></i>
-                            Qurilish hajmlari (m³)
-                        </h4>
-                        <div class="space-y-4">
-                            <div>
-                                <label class="block text-sm font-medium text-gray-700 mb-2">Umumiy hajm (Hb) *</label>
-                                <input type="number" name="construction_volume" step="0.01" required
-                                       class="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500">
-                            </div>
-                            <div>
-                                <label class="block text-sm font-medium text-gray-700 mb-2">Ruxsat etilganidan yuqori (Hyu)</label>
-                                <input type="number" name="above_permit_volume" step="0.01" value="0"
-                                       class="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500">
-                            </div>
-                            <div>
-                                <label class="block text-sm font-medium text-gray-700 mb-2">Avtoturargoh (Ha)</label>
-                                <input type="number" name="parking_volume" step="0.01" value="0"
-                                       class="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500">
-                            </div>
-                            <div>
-                                <label class="block text-sm font-medium text-gray-700 mb-2">Texnik xonalar (Ht)</label>
-                                <input type="number" name="technical_rooms_volume" step="0.01" value="0"
-                                       class="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500">
-                            </div>
-                            <div>
-                                <label class="block text-sm font-medium text-gray-700 mb-2">Umumiy foydalanish (Hu)</label>
-                                <input type="number" name="common_area_volume" step="0.01" value="0"
-                                       class="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500">
-                            </div>
+                    <!-- Right Panel - Improved Map -->
+                    <div class="w-1/2 flex flex-col">
+                        <div class="p-4 border-b border-gray-200 bg-gray-50">
+                            <h4 class="text-lg font-semibold text-gray-900 mb-2">
+                                <i data-feather="map" class="w-5 h-5 inline mr-2 text-red-600"></i>
+                                Zona aniqlash xaritasi
+                            </h4>
+                            <p class="text-sm text-gray-600">Xaritada obyekt joylashuvini belgilang va zona avtomatik aniqlanadi</p>
                         </div>
-                    </div>
+                        <div class="flex-1 p-4">
+                            <div id="objectMap" class="w-full h-full rounded-lg border-2 border-gray-300 min-h-[400px]"></div>
 
-                    <!-- Coefficients -->
-                    <div class="mb-6">
-                        <h4 class="text-lg font-semibold text-gray-900 mb-4 pb-2 border-b border-gray-200">
-                            <i data-feather="settings" class="w-5 h-5 inline mr-2 text-purple-600"></i>
-                            Koeffitsientlar
-                        </h4>
-                        <div class="space-y-4">
-                            <div>
-                                <label class="block text-sm font-medium text-gray-700 mb-2">Qurilish turi (Kt)</label>
-                                <select name="construction_type_id"
-                                        class="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500">
-                                    <option value="">Tanlang</option>
-                                    @foreach($constructionTypes as $type)
-                                        <option value="{{ $type->id }}">{{ $type->name_uz }}</option>
-                                    @endforeach
-                                </select>
+                            <!-- Zone detection info -->
+                            <div id="zoneInfo" class="mt-4 p-4 border-l-4 rounded-lg hidden bg-blue-50 border-blue-400">
+                                <div class="flex items-center justify-between">
+                                    <div>
+                                        <p class="font-semibold text-gray-900">Aniqlangan zona:</p>
+                                        <p id="detectedZone" class="text-xl font-bold text-blue-600"></p>
+                                    </div>
+                                    <div class="text-right">
+                                        <p class="text-sm text-gray-600">Koeffitsient:</p>
+                                        <p id="zoneCoefficient" class="text-xl font-bold text-blue-600"></p>
+                                    </div>
+                                </div>
                             </div>
-                            <div>
-                                <label class="block text-sm font-medium text-gray-700 mb-2">Obyekt turi (Ko)</label>
-                                <select name="object_type_id"
-                                        class="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500">
-                                    <option value="">Tanlang</option>
-                                    @foreach($objectTypes as $type)
-                                        <option value="{{ $type->id }}">{{ $type->name_uz }}</option>
-                                    @endforeach
-                                </select>
-                            </div>
-                            <div>
-                                <label class="block text-sm font-medium text-gray-700 mb-2">Hududiy zona (Kz)</label>
-                                <select name="territorial_zone_id"
-                                        class="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500">
-                                    <option value="">Tanlang</option>
-                                    @foreach($territorialZones as $zone)
-                                        <option value="{{ $zone->id }}">{{ $zone->name_uz }}</option>
-                                    @endforeach
-                                </select>
-                            </div>
-                            <div>
-                                <label class="block text-sm font-medium text-gray-700 mb-2">Joylashuv (Kj)</label>
-                                <select name="location_type"
-                                        class="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500">
-                                    <option value="other_locations">Oddiy joylashuv (1.0)</option>
-                                    <option value="metro_radius_200m_outside">Metro stantsiyasi yaqinida (0.6)</option>
-                                </select>
+
+                            <!-- Map instructions -->
+                            <div class="mt-4 text-center text-sm text-gray-500 bg-gray-100 p-3 rounded-lg">
+                                <i data-feather="mouse-pointer" class="w-4 h-4 inline mr-1"></i>
+                                Xaritada istalgan joyni bosib koordinata va zonani aniqlang
                             </div>
                         </div>
                     </div>
@@ -670,21 +772,522 @@
     </div>
 </div>
 
+<!-- Leaflet CSS -->
+<link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
+
 <script>
 // =======================
-// PRODUCTION-READY CONTRACT CREATION SYSTEM
+// IMPROVED CONTRACT CREATION SYSTEM WITH FIXED MAP & ZONES
 // =======================
 
-// Coefficient configuration
+// Real coefficient values
 const coefficients = {
-    construction_type: { 1: 1.0, 2: 1.0, 3: 0.0, 4: 0.0 },
-    object_type: { 1: 0.5, 2: 0.5, 3: 0.5, 4: 0.5, 5: 1.0 },
-    territorial_zone: { 1: 1.40, 2: 1.25, 3: 1.00, 4: 0.75, 5: 0.50 },
-    location: { 'metro_radius_200m_outside': 0.6, 'other_locations': 1.0 }
+    construction_type: {
+        1: 1.0,    // Yangi kapital qurilish
+        2: 1.0,    // Obyektni rekonstruksiya qilish
+        3: 0.0,    // Ekspertiza talab etilmaydigan rekonstruksiya
+        4: 0.0     // Hajm o'zgarmaydigan rekonstruksiya
+    },
+    object_type: {
+        1: 0.5,    // Ijtimoiy infratuzilma va turizm obyektlari
+        2: 0.5,    // Davlat ulushi 50% dan ortiq
+        3: 0.5,    // Ishlab chiqarish korxonalari
+        4: 0.5,    // Omborxonalar
+        5: 1.0     // Boshqa obyektlar
+    },
+    territorial_zone: {
+        1: 1.40,   // 1-zona
+        2: 1.25,   // 2-zona
+        3: 1.00,   // 3-zona
+        4: 0.75,   // 4-zona
+        5: 0.50    // 5-zona
+    },
+    location: {
+        'metro_radius_200m_outside': 0.6,  // Metro yaqinida
+        'other_locations': 1.0             // Oddiy joylashuv
+    }
 };
 
+// Zone data with colors
+const zoneData = {
+    '1': { name: '1-zona', coefficient: 1.40, color: '#dc2626', bgColor: '#fef2f2' },
+    '2': { name: '2-zona', coefficient: 1.25, color: '#ea580c', bgColor: '#fff7ed' },
+    '3': { name: '3-zona', coefficient: 1.00, color: '#ca8a04', bgColor: '#fefce8' },
+    '4': { name: '4-zona', coefficient: 0.75, color: '#16a34a', bgColor: '#f0fdf4' },
+    '5': { name: '5-zona', coefficient: 0.50, color: '#0891b2', bgColor: '#f0f9ff' }
+};
+
+// Map variables
+let objectMap = null;
+let mapMarker = null;
+let currentZones = null;
+let zoneBoundaries = {};
+let kmlLoaded = false;
+
 // =======================
-// CORE CALCULATION FUNCTIONS
+// KML ZONE LOADING AND MAP INITIALIZATION
+// =======================
+async function loadZoneKML() {
+    try {
+        console.log('Loading zone KML file...');
+        const response = await fetch('/zone.kml');
+        if (!response.ok) {
+            throw new Error(`KML file not found: ${response.status}`);
+        }
+
+        const kmlText = await response.text();
+        const parser = new DOMParser();
+        const kmlDoc = parser.parseFromString(kmlText, 'text/xml');
+
+        // Check for parsing errors
+        const parserError = kmlDoc.querySelector('parsererror');
+        if (parserError) {
+            throw new Error('Invalid KML format');
+        }
+
+        const placemarks = kmlDoc.querySelectorAll('Placemark');
+        console.log(`Found ${placemarks.length} placemarks in KML`);
+
+        placemarks.forEach((placemark, index) => {
+            try {
+                // Try different methods to extract zone information
+                let zoneName = '';
+
+                // Method 1: Check SchemaData
+                const schemaData = placemark.querySelector('SchemaData');
+                if (schemaData) {
+                    const soniData = schemaData.querySelector('SimpleData[name="SONI"]') ||
+                                    schemaData.querySelector('SimpleData[name="soni"]') ||
+                                    schemaData.querySelector('SimpleData[name="Zone"]') ||
+                                    schemaData.querySelector('SimpleData[name="zone"]');
+                    if (soniData) {
+                        zoneName = soniData.textContent.trim();
+                    }
+                }
+
+                // Method 2: Check name element
+                if (!zoneName) {
+                    const nameElement = placemark.querySelector('name');
+                    if (nameElement) {
+                        zoneName = nameElement.textContent.trim();
+                    }
+                }
+
+                // Method 3: Check description
+                if (!zoneName) {
+                    const descElement = placemark.querySelector('description');
+                    if (descElement) {
+                        zoneName = descElement.textContent.trim();
+                    }
+                }
+
+                console.log(`Placemark ${index}: Zone name = "${zoneName}"`);
+
+                // Extract zone number from the name
+                const zoneMatch = zoneName.match(/(?:ZONA|ЗОНА|Zone|zone)[_\s-]*(\d+)/i);
+                if (!zoneMatch) {
+                    console.warn(`No zone number found in: "${zoneName}"`);
+                    return;
+                }
+
+                const zoneId = zoneMatch[1];
+                console.log(`Extracted zone ID: ${zoneId}`);
+
+                // Extract coordinates from MultiGeometry or direct Polygon
+                const multiGeometry = placemark.querySelector('MultiGeometry');
+                const polygons = multiGeometry ?
+                    multiGeometry.querySelectorAll('Polygon') :
+                    placemark.querySelectorAll('Polygon');
+
+                polygons.forEach((polygon, polyIndex) => {
+                    const outerRing = polygon.querySelector('outerBoundaryIs LinearRing coordinates') ||
+                                     polygon.querySelector('LinearRing coordinates') ||
+                                     polygon.querySelector('coordinates');
+
+                    if (!outerRing) {
+                        console.warn(`No coordinates found for polygon ${polyIndex} in zone ${zoneId}`);
+                        return;
+                    }
+
+                    const coordinatesText = outerRing.textContent.trim();
+                    if (coordinatesText) {
+                        const coords = parseKMLCoordinates(coordinatesText);
+                        if (coords.length > 2) {
+                            if (!zoneBoundaries[zoneId]) {
+                                zoneBoundaries[zoneId] = [];
+                            }
+                            zoneBoundaries[zoneId].push(coords);
+                            console.log(`Added polygon with ${coords.length} points to zone ${zoneId}`);
+                        }
+                    }
+                });
+            } catch (error) {
+                console.error(`Error processing placemark ${index}:`, error);
+            }
+        });
+
+        kmlLoaded = true;
+        console.log('Zone boundaries loaded successfully:', Object.keys(zoneBoundaries));
+        return true;
+    } catch (error) {
+        console.error('Error loading KML zones:', error);
+        kmlLoaded = false;
+        showNotification('Zona ma\'lumotlari yuklanmadi. Xarita cheklangan rejimda ishlaydi.', 'warning');
+        return false;
+    }
+}
+
+function parseKMLCoordinates(coordinatesText) {
+    const coords = [];
+    const coordPairs = coordinatesText.split(/[\s\n]+/).filter(pair => pair.trim());
+
+    coordPairs.forEach(pair => {
+        const parts = pair.split(',');
+        if (parts.length >= 2) {
+            const lng = parseFloat(parts[0]);
+            const lat = parseFloat(parts[1]);
+
+            // Validate coordinates are in Tashkent area
+            if (!isNaN(lat) && !isNaN(lng) &&
+                lat > 40.5 && lat < 42.0 &&
+                lng > 68.5 && lng < 70.0) {
+                coords.push([lat, lng]);
+            }
+        }
+    });
+
+    return coords;
+}
+
+function initializeMap() {
+    if (typeof L === 'undefined') {
+        console.error('Leaflet library not loaded');
+        showNotification('Xarita kutubxonasi yuklanmagan', 'error');
+        return;
+    }
+
+    try {
+        if (!objectMap) {
+            objectMap = L.map('objectMap').setView([41.2995, 69.2401], 11);
+
+            L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
+                attribution: '© OpenStreetMap',
+                maxZoom: 18
+            }).addTo(objectMap);
+
+            currentZones = L.layerGroup().addTo(objectMap);
+
+            // Load and display zones from KML
+            loadZoneKML().then((success) => {
+                if (success && Object.keys(zoneBoundaries).length > 0) {
+                    displayZonesOnMap();
+                    showNotification('Zona ma\'lumotlari muvaffaqiyatli yuklandi', 'success');
+                } else {
+                    showNotification('Zona ma\'lumotlari topilmadi', 'warning');
+                }
+            });
+
+            // Map click event for zone detection
+            objectMap.on('click', function(e) {
+                const lat = e.latlng.lat;
+                const lng = e.latlng.lng;
+
+                // Remove existing marker
+                if (mapMarker) {
+                    objectMap.removeLayer(mapMarker);
+                }
+
+                // Add new marker
+                mapMarker = L.marker([lat, lng], {
+                    title: 'Obyekt joylashuvi',
+                    draggable: true
+                }).addTo(objectMap);
+
+                // Make marker draggable
+                mapMarker.on('dragend', function(e) {
+                    const newPos = e.target.getLatLng();
+                    updateLocationData(newPos.lat, newPos.lng);
+                });
+
+                updateLocationData(lat, lng);
+            });
+
+            console.log('Map initialized successfully');
+        }
+    } catch (error) {
+        console.error('Error initializing map:', error);
+        showNotification('Xarita yuklashda xatolik', 'error');
+    }
+}
+
+function displayZonesOnMap() {
+    if (!currentZones || Object.keys(zoneBoundaries).length === 0) return;
+
+    Object.keys(zoneBoundaries).forEach(zoneId => {
+        const zoneInfo = zoneData[zoneId];
+        const polygons = zoneBoundaries[zoneId];
+
+        if (zoneInfo && polygons) {
+            polygons.forEach((coords) => {
+                try {
+                    const polygon = L.polygon(coords, {
+                        color: zoneInfo.color,
+                        fillColor: zoneInfo.color,
+                        fillOpacity: 0.2,
+                        weight: 2,
+                        opacity: 0.8
+                    }).bindPopup(`
+                        <div class="text-center">
+                            <strong>${zoneInfo.name}</strong><br>
+                            Koeffitsient: <strong>${zoneInfo.coefficient}</strong>
+                        </div>
+                    `);
+
+                    currentZones.addLayer(polygon);
+                } catch (error) {
+                    console.error(`Error creating polygon for zone ${zoneId}:`, error);
+                }
+            });
+        }
+    });
+
+    // Fit map to show all zones
+    if (currentZones.getLayers().length > 0) {
+        try {
+            const group = new L.featureGroup(currentZones.getLayers());
+            objectMap.fitBounds(group.getBounds().pad(0.1));
+        } catch (error) {
+            console.log('Could not fit bounds, using default view');
+        }
+    }
+}
+
+function updateLocationData(lat, lng) {
+    // Update coordinates input
+    const coordsInput = document.getElementById('coordinatesInput');
+    if (coordsInput) {
+        coordsInput.value = `${lat.toFixed(6)}, ${lng.toFixed(6)}`;
+    }
+
+    // Detect zone using KML data
+    const detectedZone = detectZoneByCoordinates(lat, lng);
+    if (detectedZone) {
+        showZoneInfo(detectedZone);
+        updateModalZoneSelect(detectedZone);
+    } else {
+        hideZoneInfo();
+        showNotification('Ushbu koordinata uchun zona aniqlanmadi', 'warning');
+    }
+}
+
+// =======================
+// DEBUG AND TEST FUNCTIONS
+// =======================
+function testZoneDetection() {
+    console.log('=== Testing zone detection ===');
+
+    // Test coordinates in central Tashkent (should be in Zone 1)
+    const testLat = 41.2995;
+    const testLng = 69.2401;
+
+    console.log(`Testing coordinates: ${testLat}, ${testLng}`);
+    console.log('Available zones:', Object.keys(zoneBoundaries));
+    console.log('Zone data:', zoneData);
+
+    if (objectMap) {
+        objectMap.setView([testLat, testLng], 15);
+
+        // Remove existing marker
+        if (mapMarker) {
+            objectMap.removeLayer(mapMarker);
+        }
+
+        // Add test marker
+        mapMarker = L.marker([testLat, testLng], {
+            title: 'Test Location - Toshkent Markazi',
+            draggable: true
+        }).addTo(objectMap);
+
+        // Make marker draggable
+        mapMarker.on('dragend', function(e) {
+            const newPos = e.target.getLatLng();
+            updateLocationData(newPos.lat, newPos.lng);
+        });
+    }
+
+    updateLocationData(testLat, testLng);
+
+    // Additional manual test
+    console.log('Manual zone detection test:');
+    const detectedZone = detectZoneByCoordinates(testLat, testLng);
+    console.log('Result:', detectedZone);
+}
+
+function showZoneStats() {
+    console.log('=== Zone Statistics ===');
+    console.log('KML Loaded:', kmlLoaded);
+    console.log('Available zones:', Object.keys(zoneBoundaries));
+
+    Object.entries(zoneBoundaries).forEach(([zoneId, polygons]) => {
+        console.log(`Zone ${zoneId}: ${polygons.length} polygons`);
+        polygons.forEach((polygon, index) => {
+            console.log(`  Polygon ${index}: ${polygon.length} points`);
+        });
+    });
+
+    // Show notification with stats
+    const zoneCount = Object.keys(zoneBoundaries).length;
+    const totalPolygons = Object.values(zoneBoundaries).reduce((sum, polygons) => sum + polygons.length, 0);
+
+    showNotification(`Yuklangan: ${zoneCount} zona, ${totalPolygons} polygon`, 'info');
+}
+
+function detectZoneByCoordinates(lat, lng) {
+    if (!kmlLoaded || Object.keys(zoneBoundaries).length === 0) {
+        console.warn('KML zones not loaded, cannot detect zone');
+        return null;
+    }
+
+    // Check each zone's polygons
+    for (const [zoneId, polygons] of Object.entries(zoneBoundaries)) {
+        for (const polygon of polygons) {
+            if (isPointInPolygon([lat, lng], polygon)) {
+                console.log(`Point (${lat}, ${lng}) found in zone ${zoneId}`);
+                return zoneId;
+            }
+        }
+    }
+
+    console.log(`Point (${lat}, ${lng}) not found in any zone`);
+    return null;
+}
+
+function isPointInPolygon(point, polygon) {
+    const [x, y] = point;
+    let inside = false;
+
+    for (let i = 0, j = polygon.length - 1; i < polygon.length; j = i++) {
+        const [xi, yi] = polygon[i];
+        const [xj, yj] = polygon[j];
+
+        if (((yi > y) !== (yj > y)) && (x < (xj - xi) * (y - yi) / (yj - yi) + xi)) {
+            inside = !inside;
+        }
+    }
+
+    return inside;
+}
+
+function getDistanceFromLatLonInKm(lat1, lon1, lat2, lon2) {
+    const R = 6371; // Earth radius in km
+    const dLat = deg2rad(lat2 - lat1);
+    const dLon = deg2rad(lon2 - lon1);
+    const a = Math.sin(dLat/2) * Math.sin(dLat/2) +
+              Math.cos(deg2rad(lat1)) * Math.cos(deg2rad(lat2)) *
+              Math.sin(dLon/2) * Math.sin(dLon/2);
+    const c = 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1-a));
+    return R * c;
+}
+
+function deg2rad(deg) {
+    return deg * (Math.PI/180);
+}
+
+function showZoneInfo(zoneId) {
+    const zoneInfo = document.getElementById('zoneInfo');
+    const detectedZoneEl = document.getElementById('detectedZone');
+    const zoneCoefficientEl = document.getElementById('zoneCoefficient');
+
+    if (zoneInfo && detectedZoneEl && zoneCoefficientEl) {
+        const zone = zoneData[zoneId];
+        if (zone) {
+            zoneInfo.style.borderColor = zone.color;
+            zoneInfo.style.backgroundColor = zone.bgColor;
+            zoneInfo.classList.remove('hidden');
+
+            detectedZoneEl.textContent = zone.name;
+            detectedZoneEl.style.color = zone.color;
+            zoneCoefficientEl.textContent = zone.coefficient;
+            zoneCoefficientEl.style.color = zone.color;
+        }
+    }
+}
+
+function hideZoneInfo() {
+    const zoneInfo = document.getElementById('zoneInfo');
+    if (zoneInfo) {
+        zoneInfo.classList.add('hidden');
+    }
+}
+
+function updateModalZoneSelect(zoneId) {
+    const zoneSelect = document.getElementById('modalTerritorialZone');
+    if (zoneSelect) {
+        zoneSelect.value = zoneId;
+        console.log(`Zone select updated to: ${zoneId}`);
+    }
+}
+
+function setCoordinatesFromInput() {
+    const coordsInput = document.getElementById('coordinatesInput');
+    if (!coordsInput || !coordsInput.value.trim()) {
+        showNotification('Koordinatalarni kiriting', 'warning');
+        return;
+    }
+
+    const coordsText = coordsInput.value.trim();
+    const coordMatch = coordsText.match(/(-?\d+\.?\d*),\s*(-?\d+\.?\d*)/);
+
+    if (!coordMatch) {
+        showNotification('Koordinatalar formati noto\'g\'ri. Masalan: 41.2995, 69.2401', 'error');
+        return;
+    }
+
+    const lat = parseFloat(coordMatch[1]);
+    const lng = parseFloat(coordMatch[2]);
+
+    // Validate coordinates are in reasonable range for Tashkent
+    if (lat < 40.5 || lat > 42.0 || lng < 68.5 || lng > 70.0) {
+        showNotification('Koordinatalar Toshkent hududidan tashqarida', 'warning');
+        return;
+    }
+
+    // Update map view and marker
+    if (objectMap) {
+        objectMap.setView([lat, lng], 15);
+
+        // Remove existing marker
+        if (mapMarker) {
+            objectMap.removeLayer(mapMarker);
+        }
+
+        // Add new marker
+        mapMarker = L.marker([lat, lng], {
+            title: 'Obyekt joylashuvi',
+            draggable: true
+        }).addTo(objectMap);
+
+        // Make marker draggable
+        mapMarker.on('dragend', function(e) {
+            const newPos = e.target.getLatLng();
+            updateLocationData(newPos.lat, newPos.lng);
+        });
+    }
+
+    // Detect zone
+    const detectedZone = detectZoneByCoordinates(lat, lng);
+    if (detectedZone) {
+        showZoneInfo(detectedZone);
+        updateModalZoneSelect(detectedZone);
+        showNotification(`Zona aniqlandi: ${zoneData[detectedZone].name}`, 'success');
+    } else {
+        hideZoneInfo();
+        showNotification('Ushbu koordinata uchun zona aniqlanmadi', 'warning');
+    }
+}
+
+// =======================
+// CALCULATION FUNCTIONS
 // =======================
 function updateObjectVolume() {
     const objectSelect = document.querySelector('select[name="object_id"]');
@@ -696,20 +1299,27 @@ function updateObjectVolume() {
     const selectedOption = objectSelect.options[objectSelect.selectedIndex];
 
     try {
-        // Get volume data with safe parsing
+        // Get volume data with proper attribute names
         const volumes = {
             hb: parseFloat(selectedOption.dataset.volume) || 0,
-            hyu: parseFloat(selectedOption.dataset.abovePermit) || 0,
+            hyu: parseFloat(selectedOption.dataset.abovepermit) || 0,
             ha: parseFloat(selectedOption.dataset.parking) || 0,
             ht: parseFloat(selectedOption.dataset.technical) || 0,
             hu: parseFloat(selectedOption.dataset.common) || 0
         };
 
-        // Update displays
+        // Update volume displays
         updateVolumeDisplays(volumes);
 
         // Calculate contract volume
         const contractVolume = Math.max(0, (volumes.hb + volumes.hyu) - (volumes.ha + volumes.ht + volumes.hu));
+
+        // Update calculated volume display
+        const displayCalcVolume = document.getElementById('display_calculated_volume');
+        if (displayCalcVolume) {
+            displayCalcVolume.textContent = formatNumber(contractVolume) + ' m³';
+        }
+
         const volumeInput = document.querySelector('input[name="contract_volume"]');
         if (volumeInput) volumeInput.value = contractVolume.toFixed(2);
 
@@ -725,8 +1335,11 @@ function updateObjectVolume() {
 
 function updateVolumeDisplays(volumes) {
     const displayMap = {
-        'display_hb': volumes.hb, 'display_hyu': volumes.hyu, 'display_ha': volumes.ha,
-        'display_ht': volumes.ht, 'display_hu': volumes.hu
+        'display_hb': volumes.hb,
+        'display_hyu': volumes.hyu,
+        'display_ha': volumes.ha,
+        'display_ht': volumes.ht,
+        'display_hu': volumes.hu
     };
 
     Object.entries(displayMap).forEach(([id, value]) => {
@@ -737,8 +1350,8 @@ function updateVolumeDisplays(volumes) {
 
 function calculateAndDisplayCoefficients(selectedOption) {
     const types = {
-        construction: selectedOption.dataset.constructionType || '1',
-        object: selectedOption.dataset.objectType || '5',
+        construction: selectedOption.dataset.constructiontype || '1',
+        object: selectedOption.dataset.objecttype || '5',
         zone: selectedOption.dataset.zone || '3',
         location: selectedOption.dataset.location || 'other_locations'
     };
@@ -752,9 +1365,13 @@ function calculateAndDisplayCoefficients(selectedOption) {
 
     const totalCoef = coefs.kt * coefs.ko * coefs.kz * coefs.kj;
 
+    // Update coefficient displays
     const displayMap = {
-        'display_kt': coefs.kt, 'display_ko': coefs.ko, 'display_kz': coefs.kz,
-        'display_kj': coefs.kj, 'display_total_coef': totalCoef
+        'display_kt': coefs.kt,
+        'display_ko': coefs.ko,
+        'display_kz': coefs.kz,
+        'display_kj': coefs.kj,
+        'display_total_coef': totalCoef
     };
 
     Object.entries(displayMap).forEach(([id, value]) => {
@@ -765,26 +1382,33 @@ function calculateAndDisplayCoefficients(selectedOption) {
 
 function calculateTotal() {
     try {
-        const elements = {
-            baseAmountSelect: document.querySelector('select[name="base_amount_id"]'),
-            volumeInput: document.querySelector('input[name="contract_volume"]'),
-            calculatedBhInput: document.querySelector('input[name="calculated_bh"]'),
-            totalDisplay: document.getElementById('total_amount_display'),
-            totalCoefElement: document.getElementById('display_total_coef')
-        };
+        const baseAmountSelect = document.querySelector('select[name="base_amount_id"]');
+        const volumeInput = document.querySelector('input[name="contract_volume"]');
+        const calculatedBhInput = document.querySelector('input[name="calculated_bh"]');
+        const totalDisplay = document.getElementById('total_amount_display');
+        const formulaDisplay = document.getElementById('formula_display');
+        const totalCoefElement = document.getElementById('display_total_coef');
 
-        if (!elements.baseAmountSelect || !elements.volumeInput || !elements.totalDisplay) return;
+        if (!baseAmountSelect || !volumeInput || !totalDisplay) return;
 
-        const selectedOption = elements.baseAmountSelect.options[elements.baseAmountSelect.selectedIndex];
+        const selectedOption = baseAmountSelect.options[baseAmountSelect.selectedIndex];
         const baseAmount = selectedOption?.dataset.amount ? parseFloat(selectedOption.dataset.amount) : 0;
-        const volume = parseFloat(elements.volumeInput.value) || 0;
-        const totalCoef = elements.totalCoefElement ? parseFloat(elements.totalCoefElement.textContent) || 1 : 1;
+        const volume = parseFloat(volumeInput.value) || 0;
+        const totalCoef = totalCoefElement ? parseFloat(totalCoefElement.textContent) || 1 : 1;
 
+        // Calculate: Bh × total_coefficient
         const calculatedBh = baseAmount * totalCoef;
-        if (elements.calculatedBhInput) elements.calculatedBhInput.value = calculatedBh.toFixed(2);
+        if (calculatedBhInput) calculatedBhInput.value = calculatedBh.toFixed(2);
 
+        // Calculate total: calculated_bh × volume
         const totalAmount = calculatedBh * volume;
-        elements.totalDisplay.textContent = formatNumber(totalAmount) + ' so\'m';
+        totalDisplay.textContent = formatNumber(totalAmount) + ' so\'m';
+
+        // Update formula display
+        if (formulaDisplay && baseAmount > 0 && volume > 0) {
+            formulaDisplay.textContent =
+                `Ti = ${formatNumber(calculatedBh)} × ${formatNumber(volume)} m³ = ${formatNumber(totalAmount)} so'm`;
+        }
 
     } catch (error) {
         console.error('Error in calculateTotal:', error);
@@ -795,80 +1419,22 @@ function calculateTotal() {
 function resetCalculationDisplays() {
     const displays = [
         'display_hb', 'display_hyu', 'display_ha', 'display_ht', 'display_hu',
-        'display_kt', 'display_ko', 'display_kz', 'display_kj', 'display_total_coef'
+        'display_kt', 'display_ko', 'display_kz', 'display_kj', 'display_total_coef',
+        'display_calculated_volume'
     ];
 
     displays.forEach(id => {
         const element = document.getElementById(id);
-        if (element) element.textContent = id.includes('display_k') ? '1.0' : '0 m³';
+        if (element) {
+            element.textContent = id.includes('display_k') ? '1.00' : '0 m³';
+        }
     });
 
-    ['total_amount_display'].forEach(id => {
-        const element = document.getElementById(id);
-        if (element) element.textContent = '0 so\'m';
-    });
-
+    document.getElementById('total_amount_display').textContent = '0 so\'m';
     ['contract_volume', 'calculated_bh'].forEach(name => {
         const element = document.querySelector(`input[name="${name}"]`);
         if (element) element.value = '';
     });
-}
-
-// =======================
-// PAYMENT TYPE FUNCTIONS
-// =======================
-function togglePaymentFields() {
-    try {
-        const paymentTypeSelect = document.querySelector('select[name="payment_type"]');
-        if (!paymentTypeSelect) return;
-
-        const isFullPayment = paymentTypeSelect.value === 'full';
-        const fields = {
-            initialPaymentField: document.getElementById('initial_payment_field'),
-            constructionPeriodField: document.getElementById('construction_period_field'),
-            initialPercentInput: document.querySelector('input[name="initial_payment_percent"]')
-        };
-
-        if (isFullPayment) {
-            if (fields.initialPaymentField) fields.initialPaymentField.style.display = 'none';
-            if (fields.constructionPeriodField) fields.constructionPeriodField.style.display = 'none';
-            if (fields.initialPercentInput) fields.initialPercentInput.value = 100;
-        } else {
-            if (fields.initialPaymentField) fields.initialPaymentField.style.display = 'block';
-            if (fields.constructionPeriodField) fields.constructionPeriodField.style.display = 'block';
-            if (fields.initialPercentInput && fields.initialPercentInput.value == 100) {
-                fields.initialPercentInput.value = 20;
-            }
-        }
-
-        calculateTotal();
-    } catch (error) {
-        console.error('Error toggling payment fields:', error);
-    }
-}
-
-function calculateCompletionDate() {
-    const elements = {
-        contractDate: document.querySelector('input[name="contract_date"]'),
-        years: document.querySelector('input[name="construction_period_years"]'),
-        completionDate: document.querySelector('input[name="completion_date"]')
-    };
-
-    if (!elements.contractDate?.value || !elements.years?.value || !elements.completionDate) return;
-
-    try {
-        const contractDate = new Date(elements.contractDate.value);
-        const years = parseInt(elements.years.value) || 2;
-
-        if (isNaN(contractDate.getTime())) return;
-
-        const completionDate = new Date(contractDate);
-        completionDate.setFullYear(completionDate.getFullYear() + years);
-
-        elements.completionDate.value = completionDate.toISOString().split('T')[0];
-    } catch (error) {
-        console.error('Error calculating completion date:', error);
-    }
 }
 
 // =======================
@@ -915,17 +1481,36 @@ function openObjectModal() {
     if (modal) {
         modal.classList.remove('hidden');
         document.body.style.overflow = 'hidden';
+
+        // Initialize map after modal is visible
+        setTimeout(() => {
+            initializeMap();
+            if (objectMap) {
+                objectMap.invalidateSize();
+            }
+            if (typeof feather !== 'undefined') {
+                feather.replace();
+            }
+        }, 300);
     }
 }
 
 function closeObjectModal() {
     const modal = document.getElementById('objectModal');
     const form = document.getElementById('objectModalForm');
+
     if (modal) {
         modal.classList.add('hidden');
         document.body.style.overflow = 'auto';
     }
     if (form) form.reset();
+
+    hideZoneInfo();
+
+    if (mapMarker && objectMap) {
+        objectMap.removeLayer(mapMarker);
+        mapMarker = null;
+    }
 }
 
 function toggleEntityFields() {
@@ -933,10 +1518,6 @@ function toggleEntityFields() {
     if (!legalEntityRadio) return;
 
     const isLegalEntity = legalEntityRadio.value === '1';
-    const fields = {
-        legal: document.getElementById('legalEntityFields'),
-        physical: document.getElementById('physicalPersonFields')
-    };
 
     // Update visual cards
     document.querySelectorAll('.entity-type-card').forEach(card => {
@@ -944,40 +1525,80 @@ function toggleEntityFields() {
         card.className = 'entity-type-card p-3 border-2 rounded-lg cursor-pointer transition-all';
 
         if (input?.checked) {
-            card.classList.add(input.value === '1' ? 'border-blue-500' : 'border-green-500', 'bg-blue-50');
+            if (input.value === '1') {
+                card.classList.add('border-blue-500', 'bg-blue-50');
+            } else {
+                card.classList.add('border-green-500', 'bg-green-50');
+            }
         } else {
             card.classList.add('border-gray-200');
         }
     });
 
-    // Toggle field visibility and requirements
-    if (fields.legal && fields.physical) {
+    // Toggle field visibility
+    const legalFields = document.getElementById('legalEntityFields');
+    const physicalFields = document.getElementById('physicalPersonFields');
+
+    if (legalFields && physicalFields) {
         if (isLegalEntity) {
-            fields.legal.classList.remove('hidden');
-            fields.physical.classList.add('hidden');
-            setRequiredFields(fields.legal, ['company_name', 'inn'], true);
-            setRequiredFields(fields.physical, ['document_type', 'document_number', 'pinfl'], false);
+            legalFields.classList.remove('hidden');
+            physicalFields.classList.add('hidden');
         } else {
-            fields.legal.classList.add('hidden');
-            fields.physical.classList.remove('hidden');
-            setRequiredFields(fields.legal, ['company_name', 'inn'], false);
-            setRequiredFields(fields.physical, ['document_type', 'document_number', 'pinfl'], true);
+            legalFields.classList.add('hidden');
+            physicalFields.classList.remove('hidden');
         }
     }
 }
 
-function setRequiredFields(container, fieldNames, required) {
-    fieldNames.forEach(name => {
-        const field = container.querySelector(`[name="${name}"]`);
-        if (field) {
-            if (required) field.setAttribute('required', 'required');
-            else field.removeAttribute('required');
+// =======================
+// PAYMENT AND DATE FUNCTIONS
+// =======================
+function togglePaymentFields() {
+    const paymentTypeSelect = document.querySelector('select[name="payment_type"]');
+    if (!paymentTypeSelect) return;
+
+    const isFullPayment = paymentTypeSelect.value === 'full';
+    const initialPaymentField = document.getElementById('initial_payment_field');
+    const constructionPeriodField = document.getElementById('construction_period_field');
+    const initialPercentInput = document.querySelector('input[name="initial_payment_percent"]');
+
+    if (isFullPayment) {
+        if (initialPaymentField) initialPaymentField.style.display = 'none';
+        if (constructionPeriodField) constructionPeriodField.style.display = 'none';
+        if (initialPercentInput) initialPercentInput.value = 100;
+    } else {
+        if (initialPaymentField) initialPaymentField.style.display = 'block';
+        if (constructionPeriodField) constructionPeriodField.style.display = 'block';
+        if (initialPercentInput && initialPercentInput.value == 100) {
+            initialPercentInput.value = 20;
         }
-    });
+    }
+}
+
+function calculateCompletionDate() {
+    const contractDateInput = document.querySelector('input[name="contract_date"]');
+    const yearsInput = document.querySelector('input[name="construction_period_years"]');
+    const completionDateInput = document.querySelector('input[name="completion_date"]');
+
+    if (!contractDateInput?.value || !yearsInput?.value || !completionDateInput) return;
+
+    try {
+        const contractDate = new Date(contractDateInput.value);
+        const years = parseInt(yearsInput.value) || 2;
+
+        if (isNaN(contractDate.getTime())) return;
+
+        const completionDate = new Date(contractDate);
+        completionDate.setFullYear(completionDate.getFullYear() + years);
+
+        completionDateInput.value = completionDate.toISOString().split('T')[0];
+    } catch (error) {
+        console.error('Error calculating completion date:', error);
+    }
 }
 
 // =======================
-// FORM SUBMISSION
+// FORM SUBMISSION HANDLERS
 // =======================
 function handleFormSubmissions() {
     // Subject form submission
@@ -1012,7 +1633,6 @@ function handleFormSubmissions() {
         contractForm.addEventListener('submit', async function(e) {
             e.preventDefault();
 
-            // Validate form before submission
             const errors = validateContractForm();
             if (errors.length > 0) {
                 showNotification(errors[0], 'error');
@@ -1076,10 +1696,8 @@ function handleObjectSuccess(result) {
         const newOption = new Option(result.object.text, result.object.id, true, true);
 
         // Set data attributes for calculations
-        ['volume', 'above_permit_volume', 'parking_volume', 'technical_rooms_volume',
-         'common_area_volume', 'construction_type_id', 'object_type_id',
-         'territorial_zone_id', 'location_type'].forEach(attr => {
-            newOption.dataset[attr.replace(/_/g, '')] = result.object[attr] || '';
+        ['volume', 'abovepermit', 'parking', 'technical', 'common', 'constructiontype', 'objecttype', 'zone', 'location'].forEach(attr => {
+            newOption.dataset[attr] = result.object[attr] || '';
         });
 
         objectSelect.add(newOption);
@@ -1113,7 +1731,6 @@ function validateContractForm() {
         }
     });
 
-    // Validate calculated values
     const contractVolume = parseFloat(document.querySelector('input[name="contract_volume"]')?.value || 0);
     const calculatedBh = parseFloat(document.querySelector('input[name="calculated_bh"]')?.value || 0);
 
@@ -1159,7 +1776,7 @@ function showNotification(message, type = 'info') {
     document.querySelectorAll('.notification-toast').forEach(n => n.remove());
 
     const notification = document.createElement('div');
-    notification.className = 'notification-toast';
+    notification.className = 'notification-toast fixed top-4 right-4 z-50 p-4 rounded-lg shadow-lg max-w-sm transform transition-all duration-300 translate-x-full opacity-0';
 
     const typeClasses = {
         success: 'bg-green-600 text-white',
@@ -1168,7 +1785,7 @@ function showNotification(message, type = 'info') {
         info: 'bg-blue-600 text-white'
     };
 
-    notification.className += ` fixed top-4 right-4 z-50 p-4 rounded-lg shadow-lg max-w-sm transform transition-all duration-300 translate-x-full opacity-0 ${typeClasses[type] || typeClasses.info}`;
+    notification.className += ` ${typeClasses[type] || typeClasses.info}`;
 
     notification.innerHTML = `
         <div class="flex items-center">
@@ -1179,10 +1796,7 @@ function showNotification(message, type = 'info') {
 
     document.body.appendChild(notification);
 
-    // Animate in
     setTimeout(() => notification.classList.remove('translate-x-full', 'opacity-0'), 100);
-
-    // Auto remove
     setTimeout(() => {
         if (notification.parentElement) {
             notification.classList.add('translate-x-full', 'opacity-0');
@@ -1257,17 +1871,14 @@ function initializeApplication() {
     try {
         console.log('Initializing contract creation application...');
 
-        // Initialize form handlers
         handleFormSubmissions();
         setupEventListeners();
 
-        // Initialize calculations
         togglePaymentFields();
         toggleEntityFields();
         calculateTotal();
         calculateCompletionDate();
 
-        // Initialize feather icons
         if (typeof feather !== 'undefined') feather.replace();
 
         console.log('Contract creation application initialized successfully');
@@ -1291,6 +1902,9 @@ window.addEventListener('unhandledrejection', function(e) {
     console.error('Unhandled promise rejection:', e.reason);
 });
 
-console.log('Production-ready contract creation system loaded successfully');
+console.log('Improved contract creation system loaded successfully');
 </script>
+
+<!-- Leaflet JS -->
+<script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
 @endsection

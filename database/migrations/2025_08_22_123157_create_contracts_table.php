@@ -42,6 +42,9 @@ return new class extends Migration
             $table->index('status_id'); // Статус бўйича индекс
             $table->index(['contract_date', 'completion_date']); // Санасалар бўйича индекс
             $table->index('is_active'); // Фаол ҳолат бўйича индекс
+
+ $table->foreignId('last_amendment_id')->nullable();
+            $table->integer('amendment_count')->default(0);
         });
     }
 

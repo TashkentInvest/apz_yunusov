@@ -27,7 +27,9 @@ class Contract extends Model
         'formula',
         'is_active',
         'created_by',
-        'updated_by'
+        'updated_by',
+        'last_amendment_id',
+        'amendment_count'
     ];
 
     protected $casts = [
@@ -211,5 +213,61 @@ class Contract extends Model
                 $model->updated_by = auth()->id();
             }
         });
+    }
+
+//
+
+
+ // Relationships
+
+
+    public function lastAmendment()
+    {
+        return $this->belongsTo(ContractAmendment::class, 'last_amendment_id');
+    }
+
+    // Methods
+    public function getExistingPayments()
+    {
+        return ActualPayment::where('contract_id', $this->id)->get();
+    }
+
+    public function getTotalPaidAmount()
+    {
+        return $this->getExistingPayments()->sum('amount');
+    }
+
+    public function getInitialPaymentsMade()
+    {
+        return ActualPayment::where('contract_id', $this->id)
+            ->where('is_initial_payment', true)
+            ->sum('amount');
+    }
+
+    public function getQuarterlyPaymentsMade()
+    {
+        return ActualPayment::where('contract_id', $this->id)
+            ->where('is_initial_payment', false)
+            ->sum('amount');
+    }
+
+    public function hasAmendments()
+    {
+        return $this->amendments()->count() > 0;
+    }
+
+    public function getCurrentStructure()
+    {
+        $initialPayment = $this->total_amount * ($this->initial_payment_percent / 100);
+        $remainingAmount = $this->total_amount - $initialPayment;
+        $quarterlyAmount = $this->quarters_count > 0 ? $remainingAmount / $this->quarters_count : 0;
+
+        return [
+            'total_amount' => $this->total_amount,
+            'initial_payment' => $initialPayment,
+            'remaining_amount' => $remainingAmount,
+            'quarterly_amount' => $quarterlyAmount,
+            'quarters_count' => $this->quarters_count
+        ];
     }
 }

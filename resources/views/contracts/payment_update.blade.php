@@ -21,6 +21,14 @@
     </button>
     @endif
 
+    @if(isset($contract))
+    <button onclick="openAmendmentModal()"
+            class="inline-flex items-center px-4 py-2 bg-orange-600 text-white rounded-lg hover:bg-orange-700 transition-colors">
+        <i data-feather="edit-3" class="w-4 h-4 mr-2"></i>
+        Shartnomani o'zgartirish
+    </button>
+    @endif
+
     <button onclick="exportReport()"
             class="inline-flex items-center px-4 py-2 bg-green-600 text-white rounded-lg hover:bg-green-700 transition-colors">
         <i data-feather="download" class="w-4 h-4 mr-2"></i>
@@ -38,6 +46,7 @@
 .danger-gradient { background: linear-gradient(135deg, #fee2e2 0%, #fecaca 100%); }
 .info-gradient { background: linear-gradient(135deg, #dbeafe 0%, #bfdbfe 100%); }
 .primary-gradient { background: linear-gradient(135deg, #e0e7ff 0%, #c7d2fe 100%); }
+.orange-gradient { background: linear-gradient(135deg, #fed7aa 0%, #fdba74 100%); }
 
 /* Year section styling */
 .year-section {
@@ -295,8 +304,125 @@
     margin: 0 auto 1rem;
     color: #d1d5db;
 }
-</style>
 
+/* Amendment specific styles */
+.amendment-item {
+    background: #fff8f0;
+    border: 2px solid #f59e0b;
+    border-radius: 0.75rem;
+    padding: 1.5rem;
+    margin-bottom: 1rem;
+    position: relative;
+}
+
+.amendment-item::before {
+    content: '';
+    position: absolute;
+    top: 0;
+    left: 0;
+    right: 0;
+    height: 4px;
+    background: #f59e0b;
+}
+
+.amendment-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    margin-bottom: 1rem;
+}
+
+.amendment-badge {
+    padding: 0.25rem 0.75rem;
+    border-radius: 0.5rem;
+    font-size: 0.75rem;
+    font-weight: 600;
+    text-transform: uppercase;
+}
+
+.amendment-pending { background: #fef3c7; color: #92400e; }
+.amendment-approved { background: #dcfce7; color: #166534; }
+.amendment-rejected { background: #fee2e2; color: #991b1b; }
+
+.calculation-preview {
+    background: #f8fafc;
+    border: 2px solid #e2e8f0;
+    border-radius: 0.75rem;
+    padding: 1.5rem;
+    margin-top: 1rem;
+}
+
+.calculation-row {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    padding: 0.75rem 0;
+    border-bottom: 1px solid #e5e7eb;
+}
+
+.calculation-row:last-child {
+    border-bottom: none;
+    font-weight: 700;
+    font-size: 1.1rem;
+}
+
+.calculation-label {
+    font-weight: 500;
+    color: #374151;
+}
+
+.calculation-value {
+    font-weight: 600;
+}
+
+.value-positive { color: #059669; }
+.value-negative { color: #dc2626; }
+.value-neutral { color: #6b7280; }
+
+/* Modal enhancements */
+.modal-content {
+    max-height: 90vh;
+    overflow-y: auto;
+}
+
+.amendment-comparison {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 1rem;
+    margin: 1rem 0;
+}
+
+.comparison-column {
+    padding: 1rem;
+    border-radius: 0.5rem;
+    border: 1px solid #e5e7eb;
+}
+
+.comparison-original {
+    background: #f9fafb;
+    border-left: 4px solid #6b7280;
+}
+
+.comparison-new {
+    background: #f0f9ff;
+    border-left: 4px solid #3b82f6;
+}
+
+@media (max-width: 768px) {
+    .amendment-comparison {
+        grid-template-columns: 1fr;
+    }
+
+    .year-stats {
+        flex-direction: column;
+        gap: 1rem;
+    }
+
+    .quarters-grid {
+        grid-template-columns: 1fr;
+    }
+}
+</style>
 
 @section('content')
 <div class="space-y-8">
@@ -313,6 +439,33 @@
             </div>
         </div>
     </div>
+
+    <!-- Amendment History Section (New) -->
+    @if(isset($contract))
+    <div class="bg-white rounded-2xl shadow-lg border govt-card">
+        <div class="border-b border-gray-200 p-6 flex items-center justify-between">
+            <h2 class="text-2xl font-bold text-gray-900 flex items-center">
+                <i data-feather="edit-3" class="w-6 h-6 mr-3 text-orange-600"></i>
+                Shartnoma o'zgarishlar tarixi
+            </h2>
+            <div class="flex space-x-3">
+                <button onclick="openAmendmentModal()"
+                        class="inline-flex items-center px-4 py-2 bg-orange-600 text-white rounded-lg hover:bg-orange-700 transition-colors">
+                    <i data-feather="plus" class="w-4 h-4 mr-2"></i>
+                    Yangi o'zgarish
+                </button>
+            </div>
+        </div>
+        <div class="p-8">
+            <div id="amendmentHistoryContainer">
+                <div class="text-center py-8 text-gray-500">
+                    <div class="animate-spin rounded-full h-8 w-8 border-b-2 border-orange-600 mx-auto mb-3"></div>
+                    <p>O'zgarishlar tarixi yuklanmoqda...</p>
+                </div>
+            </div>
+        </div>
+    </div>
+    @endif
 
     <!-- Contract Information Form -->
     <div class="bg-white rounded-2xl shadow-lg border govt-card">
@@ -331,69 +484,69 @@
             @endif
 
             <!-- Basic Contract Information -->
-    <div class="grid grid-cols-1 lg:grid-cols-3 gap-6">
-    <div>
-        <label class="block text-sm font-semibold text-gray-700 mb-3">Shartnoma raqami *</label>
-        <input type="text" name="contract_number" required
-               value="{{ old('contract_number', $contract->contract_number ?? '') }}"
-               class="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 text-lg font-medium @error('contract_number') border-red-300 @enderror">
-        @error('contract_number')
-            <p class="text-red-500 text-sm mt-1">{{ $message }}</p>
-        @enderror
-    </div>
+            <div class="grid grid-cols-1 lg:grid-cols-3 gap-6">
+                <div>
+                    <label class="block text-sm font-semibold text-gray-700 mb-3">Shartnoma raqami *</label>
+                    <input type="text" name="contract_number" required
+                           value="{{ old('contract_number', $contract->contract_number ?? '') }}"
+                           class="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 text-lg font-medium @error('contract_number') border-red-300 @enderror">
+                    @error('contract_number')
+                        <p class="text-red-500 text-sm mt-1">{{ $message }}</p>
+                    @enderror
+                </div>
 
-    <div>
-        <label class="block text-sm font-semibold text-gray-700 mb-3">Shartnoma sanasi *</label>
-        <input type="date" name="contract_date" required
-               value="{{ old('contract_date', isset($contract) ? $contract->contract_date->format('Y-m-d') : date('Y-m-d')) }}"
-               max="{{ date('Y-m-d') }}"
-               class="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 text-lg @error('contract_date') border-red-300 @enderror">
-        @error('contract_date')
-            <p class="text-red-500 text-sm mt-1">{{ $message }}</p>
-        @enderror
-    </div>
+                <div>
+                    <label class="block text-sm font-semibold text-gray-700 mb-3">Shartnoma sanasi *</label>
+                    <input type="date" name="contract_date" required
+                           value="{{ old('contract_date', isset($contract) ? $contract->contract_date->format('Y-m-d') : date('Y-m-d')) }}"
+                           max="{{ date('Y-m-d') }}"
+                           class="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 text-lg @error('contract_date') border-red-300 @enderror">
+                    @error('contract_date')
+                        <p class="text-red-500 text-sm mt-1">{{ $message }}</p>
+                    @enderror
+                </div>
 
-    <div>
-        <label class="block text-sm font-semibold text-gray-700 mb-3">Yakunlash sanasi</label>
-        <input type="date" name="completion_date"
-               value="{{ old('completion_date', isset($contract) && $contract->completion_date ? $contract->completion_date->format('Y-m-d') : '') }}"
-               class="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 text-lg @error('completion_date') border-red-300 @enderror">
-        @error('completion_date')
-            <p class="text-red-500 text-sm mt-1">{{ $message }}</p>
-        @enderror
-    </div>
-</div>
+                <div>
+                    <label class="block text-sm font-semibold text-gray-700 mb-3">Yakunlash sanasi</label>
+                    <input type="date" name="completion_date"
+                           value="{{ old('completion_date', isset($contract) && $contract->completion_date ? $contract->completion_date->format('Y-m-d') : '') }}"
+                           class="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 text-lg @error('completion_date') border-red-300 @enderror">
+                    @error('completion_date')
+                        <p class="text-red-500 text-sm mt-1">{{ $message }}</p>
+                    @enderror
+                </div>
+            </div>
 
             <!-- Financial Information -->
             <div class="bg-blue-50 rounded-xl p-6 border-l-4 border-blue-500">
                 <h3 class="text-xl font-bold text-blue-900 mb-6">Moliyaviy ma'lumotlar</h3>
 
-            <div class="grid grid-cols-1 lg:grid-cols-2 gap-6 mb-6">
-    <div>
-        <label class="block text-sm font-semibold text-gray-700 mb-3">Jami shartnoma summasi (so'm) *</label>
-        <input type="number" name="total_amount" required step="0.01" min="1"
-               value="{{ old('total_amount', $contract->total_amount ?? '') }}"
-               class="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 text-lg font-bold @error('total_amount') border-red-300 @enderror"
-               onchange="calculatePaymentBreakdown()"
-               placeholder="Masalan: 1000000.00">
-        @error('total_amount')
-            <p class="text-red-500 text-sm mt-1">{{ $message }}</p>
-        @enderror
-    </div>
+                <div class="grid grid-cols-1 lg:grid-cols-2 gap-6 mb-6">
+                    <div>
+                        <label class="block text-sm font-semibold text-gray-700 mb-3">Jami shartnoma summasi (so'm) *</label>
+                        <input type="number" name="total_amount" required step="0.01" min="1"
+                               value="{{ old('total_amount', $contract->total_amount ?? '') }}"
+                               class="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 text-lg font-bold @error('total_amount') border-red-300 @enderror"
+                               onchange="calculatePaymentBreakdown()"
+                               placeholder="Masalan: 1000000.00">
+                        @error('total_amount')
+                            <p class="text-red-500 text-sm mt-1">{{ $message }}</p>
+                        @enderror
+                    </div>
 
-    <div>
-        <label class="block text-sm font-semibold text-gray-700 mb-3">To'lov turi *</label>
-        <select name="payment_type" required onchange="togglePaymentSettings()"
-                class="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 text-lg @error('payment_type') border-red-300 @enderror">
-            <option value="">To'lov turini tanlang</option>
-            <option value="installment" {{ old('payment_type', $contract->payment_type ?? '') === 'installment' ? 'selected' : '' }}>Bo'lib to'lash</option>
-            <option value="full" {{ old('payment_type', $contract->payment_type ?? '') === 'full' ? 'selected' : '' }}>To'liq to'lash</option>
-        </select>
-        @error('payment_type')
-            <p class="text-red-500 text-sm mt-1">{{ $message }}</p>
-        @enderror
-    </div>
-</div>
+                    <div>
+                        <label class="block text-sm font-semibold text-gray-700 mb-3">To'lov turi *</label>
+                        <select name="payment_type" required onchange="togglePaymentSettings()"
+                                class="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 text-lg @error('payment_type') border-red-300 @enderror">
+                            <option value="">To'lov turini tanlang</option>
+                            <option value="installment" {{ old('payment_type', $contract->payment_type ?? '') === 'installment' ? 'selected' : '' }}>Bo'lib to'lash</option>
+                            <option value="full" {{ old('payment_type', $contract->payment_type ?? '') === 'full' ? 'selected' : '' }}>To'liq to'lash</option>
+                        </select>
+                        @error('payment_type')
+                            <p class="text-red-500 text-sm mt-1">{{ $message }}</p>
+                        @enderror
+                    </div>
+                </div>
 
                 <!-- Installment Settings -->
                 <div id="installmentSettings" class="space-y-6">
@@ -445,17 +598,17 @@
             </div>
 
             <!-- Action Buttons -->
-           <div class="flex justify-end space-x-4 pt-6 border-t border-gray-200">
-    <button type="button" onclick="resetForm()"
-            class="px-8 py-3 bg-gray-100 text-gray-700 rounded-lg hover:bg-gray-200 transition-colors font-medium">
-        Tozalash
-    </button>
-    <button type="submit" id="contractSubmitBtn"
-            class="px-8 py-3 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors font-medium disabled:opacity-50 disabled:cursor-not-allowed">
-        <span id="submitText">{{ isset($contract) ? 'Yangilash' : 'Saqlash' }}</span>
-        <i data-feather="loader" class="w-4 h-4 ml-2 hidden animate-spin" id="submitLoader"></i>
-    </button>
-</div>
+            <div class="flex justify-end space-x-4 pt-6 border-t border-gray-200">
+                <button type="button" onclick="resetForm()"
+                        class="px-8 py-3 bg-gray-100 text-gray-700 rounded-lg hover:bg-gray-200 transition-colors font-medium">
+                    Tozalash
+                </button>
+                <button type="submit" id="contractSubmitBtn"
+                        class="px-8 py-3 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors font-medium disabled:opacity-50 disabled:cursor-not-allowed">
+                    <span id="submitText">{{ isset($contract) ? 'Yangilash' : 'Saqlash' }}</span>
+                    <i data-feather="loader" class="w-4 h-4 ml-2 hidden animate-spin" id="submitLoader"></i>
+                </button>
+            </div>
         </form>
     </div>
 
@@ -524,6 +677,161 @@
         </div>
     </div>
     @endif
+
+    <!-- Payment History Section -->
+    @if(isset($contract))
+    <div class="bg-white rounded-2xl shadow-lg border govt-card">
+        <div class="border-b border-gray-200 p-6">
+            <h2 class="text-2xl font-bold text-gray-900 flex items-center">
+                <i data-feather="clock" class="w-6 h-6 mr-3 text-purple-600"></i>
+                To'lov tarixi
+            </h2>
+        </div>
+        <div class="p-8">
+            <div id="paymentHistoryContainer">
+                <div class="text-center py-8 text-gray-500">
+                    <div class="animate-spin rounded-full h-8 w-8 border-b-2 border-purple-600 mx-auto mb-3"></div>
+                    <p>Tarix yuklanmoqda...</p>
+                </div>
+            </div>
+        </div>
+    </div>
+    @endif
+</div>
+
+<!-- Amendment Modal (New) -->
+<div id="amendmentModal" class="hidden fixed inset-0 z-50 overflow-y-auto">
+    <div class="flex items-center justify-center min-h-screen px-4">
+        <div class="fixed inset-0 bg-gray-500 bg-opacity-75"></div>
+        <div class="inline-block bg-white rounded-2xl shadow-xl transform transition-all sm:max-w-4xl sm:w-full modal-content">
+            <form id="amendmentForm">
+                @csrf
+                <div class="px-8 py-6 border-b border-gray-200">
+                    <h3 class="text-xl font-semibold text-gray-900 flex items-center">
+                        <i data-feather="edit-3" class="w-5 h-5 mr-2 text-orange-600"></i>
+                        Shartnoma o'zgarish yaratish
+                    </h3>
+                </div>
+
+                <div class="px-8 py-6 space-y-6">
+                    <!-- Amendment Type -->
+                    <div>
+                        <label class="block text-sm font-medium text-gray-700 mb-3">O'zgarish turi *</label>
+                        <select name="amendment_type" required onchange="handleAmendmentTypeChange()"
+                                class="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-orange-500">
+                            <option value="">O'zgarish turini tanlang</option>
+                            <option value="amount_increase">Summa oshirish</option>
+                            <option value="amount_decrease">Summa kamaytirish</option>
+                            <option value="payment_terms">To'lov shartlarini o'zgartirish</option>
+                            <option value="schedule_restructure">Jadval qayta tuzish</option>
+                        </select>
+                    </div>
+
+                    <!-- Amendment Reason -->
+                    <div>
+                        <label class="block text-sm font-medium text-gray-700 mb-3">O'zgarish sababi *</label>
+                        <textarea name="amendment_reason" rows="3" required
+                                  class="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-orange-500"
+                                  placeholder="O'zgarish sababini batafsil yozing"></textarea>
+                    </div>
+
+                    <!-- New Amount (shown for amount changes) -->
+                    <div id="newAmountSection" class="hidden">
+                        <label class="block text-sm font-medium text-gray-700 mb-3">Yangi shartnoma summasi (so'm) *</label>
+                        <input type="number" name="new_total_amount" step="0.01" min="1"
+                               onchange="calculateAmendmentPreview()"
+                               class="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-orange-500 text-lg font-bold"
+                               placeholder="Yangi summa">
+                        <p class="text-sm text-gray-500 mt-1">
+                            Joriy summa: <span class="font-bold">{{ isset($contract) ? number_format($contract->total_amount, 0, '.', ' ') : '0' }} so'm</span>
+                        </p>
+                    </div>
+
+                    <!-- New Payment Terms (shown for payment terms changes) -->
+                    <div id="newPaymentTermsSection" class="hidden space-y-4">
+                        <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+                            <div>
+                                <label class="block text-sm font-medium text-gray-700 mb-2">Yangi boshlang'ich to'lov (%)</label>
+                                <input type="number" name="new_initial_payment_percent" min="0" max="100" step="1"
+                                       onchange="calculateAmendmentPreview()"
+                                       class="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-orange-500">
+                            </div>
+                            <div>
+                                <label class="block text-sm font-medium text-gray-700 mb-2">Yangi choraklar soni</label>
+                                <input type="number" name="new_quarters_count" min="1" max="20" step="1"
+                                       onchange="calculateAmendmentPreview()"
+                                       class="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-orange-500">
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- Amendment Preview -->
+                    <div id="amendmentPreview" class="hidden">
+                        <h4 class="text-lg font-bold text-orange-900 mb-4">O'zgarish ko'rinishi</h4>
+
+                        <!-- Comparison -->
+                        <div class="amendment-comparison">
+                            <div class="comparison-column comparison-original">
+                                <h5 class="font-bold text-gray-700 mb-3">Joriy holat</h5>
+                                <div id="currentState">
+                                    <!-- Dynamic content -->
+                                </div>
+                            </div>
+                            <div class="comparison-column comparison-new">
+                                <h5 class="font-bold text-blue-700 mb-3">Yangi holat</h5>
+                                <div id="newState">
+                                    <!-- Dynamic content -->
+                                </div>
+                            </div>
+                        </div>
+
+                        <!-- Calculation Details -->
+                        <div class="calculation-preview">
+                            <h5 class="font-bold text-gray-900 mb-4">Hisob-kitob natijalari</h5>
+                            <div id="calculationDetails">
+                                <!-- Dynamic calculation results -->
+                            </div>
+                        </div>
+
+                        <!-- Impact Summary -->
+                        <div id="impactSummary" class="mt-4 p-4 rounded-lg border-2">
+                            <!-- Dynamic impact summary -->
+                        </div>
+                    </div>
+                </div>
+
+                <div class="px-8 py-6 border-t border-gray-200 flex justify-end space-x-4">
+                    <button type="button" onclick="closeAmendmentModal()"
+                            class="px-6 py-3 bg-gray-100 text-gray-700 rounded-lg hover:bg-gray-200 transition-colors">
+                        Bekor qilish
+                    </button>
+                    <button type="submit" id="amendmentSubmitBtn"
+                            class="px-6 py-3 bg-orange-600 text-white rounded-lg hover:bg-orange-700 transition-colors disabled:opacity-50 disabled:cursor-not-allowed">
+                        <span id="amendmentSubmitText">O'zgarish yaratish</span>
+                        <i data-feather="loader" class="w-4 h-4 ml-2 hidden animate-spin" id="amendmentLoader"></i>
+                    </button>
+                </div>
+            </form>
+        </div>
+    </div>
+</div>
+
+<!-- Amendment Details Modal -->
+<div id="amendmentDetailsModal" class="hidden fixed inset-0 z-50 overflow-y-auto">
+    <div class="flex items-center justify-center min-h-screen px-4">
+        <div class="fixed inset-0 bg-gray-500 bg-opacity-75"></div>
+        <div class="inline-block bg-white rounded-2xl shadow-xl transform transition-all sm:max-w-4xl sm:w-full modal-content">
+            <div class="px-8 py-6 border-b border-gray-200 flex items-center justify-between">
+                <h3 class="text-xl font-semibold text-gray-900" id="amendmentDetailsTitle">O'zgarish ma'lumotlari</h3>
+                <button onclick="closeAmendmentDetailsModal()" class="text-gray-400 hover:text-gray-600">
+                    <i data-feather="x" class="w-6 h-6"></i>
+                </button>
+            </div>
+            <div class="px-8 py-6" id="amendmentDetailsContent">
+                <!-- Dynamic content will be inserted here -->
+            </div>
+        </div>
+    </div>
 </div>
 
 <!-- History Modal -->
@@ -583,88 +891,87 @@
                     </div>
 
                     <!-- Year and Quarters Selection -->
-              <div class="grid grid-cols-1 md:grid-cols-3 gap-4">
-    <div>
-        <label class="block text-sm font-medium text-gray-700 mb-2">Yil</label>
-        <select name="schedule_year" class="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500">
-            @if(isset($contract))
-                @php
-                    $contractDate = $contract->contract_date;
-                    $contractYear = $contractDate->year;
-                    $contractMonth = $contractDate->month;
-                    $contractQuarter = ceil($contractMonth / 3);
-                    $constructionYears = $contract->construction_period_years ?? 2;
-                    $quartersCount = $contract->quarters_count ?? 8;
+                    <div class="grid grid-cols-1 md:grid-cols-3 gap-4">
+                        <div>
+                            <label class="block text-sm font-medium text-gray-700 mb-2">Yil</label>
+                            <select name="schedule_year" class="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500">
+                                @if(isset($contract))
+                                    @php
+                                        $contractDate = $contract->contract_date;
+                                        $contractYear = $contractDate->year;
+                                        $contractMonth = $contractDate->month;
+                                        $contractQuarter = ceil($contractMonth / 3);
+                                        $constructionYears = $contract->construction_period_years ?? 2;
+                                        $quartersCount = $contract->quarters_count ?? 8;
 
-                    // Calculate how many years needed for all quarters
-                    $remainingQuartersInContractYear = 5 - $contractQuarter; // Quarters left in contract year
-                    $remainingQuarters = max(0, $quartersCount - $remainingQuartersInContractYear);
-                    $additionalYears = ceil($remainingQuarters / 4);
-                    $endYear = $contractYear + $additionalYears;
-                @endphp
+                                        // Calculate how many years needed for all quarters
+                                        $remainingQuartersInContractYear = 5 - $contractQuarter; // Quarters left in contract year
+                                        $remainingQuarters = max(0, $quartersCount - $remainingQuartersInContractYear);
+                                        $additionalYears = ceil($remainingQuarters / 4);
+                                        $endYear = $contractYear + $additionalYears;
+                                    @endphp
 
-                {{-- Contract year (starting quarter) --}}
-                <option value="{{ $contractYear }}" selected>
-                    {{ $contractYear }} yil ({{ $contractQuarter }}-chorakdan boshlanadi)
-                </option>
+                                    {{-- Contract year (starting quarter) --}}
+                                    <option value="{{ $contractYear }}" selected>
+                                        {{ $contractYear }} yil ({{ $contractQuarter }}-chorakdan boshlanadi)
+                                    </option>
 
-                {{-- Additional years if needed --}}
-                @for($year = $contractYear + 1; $year <= $endYear; $year++)
-                    <option value="{{ $year }}">{{ $year }} yil</option>
-                @endfor
-            @else
-                {{-- Fallback when no contract --}}
-                <option value="{{ date('Y') }}">{{ date('Y') }} yil</option>
-                <option value="{{ date('Y') + 1 }}">{{ date('Y') + 1 }} yil</option>
-            @endif
-        </select>
-        @if(isset($contract))
-            <p class="text-xs text-blue-600 mt-1 font-medium">
-                📅 Shartnoma: {{ $contract->contract_date->format('d.m.Y') }}
-                ({{ $contractQuarter }}-chorak)
-            </p>
-        @endif
-    </div>
+                                    {{-- Additional years if needed --}}
+                                    @for($year = $contractYear + 1; $year <= $endYear; $year++)
+                                        <option value="{{ $year }}">{{ $year }} yil</option>
+                                    @endfor
+                                @else
+                                    {{-- Fallback when no contract --}}
+                                    <option value="{{ date('Y') }}">{{ date('Y') }} yil</option>
+                                    <option value="{{ date('Y') + 1 }}">{{ date('Y') + 1 }} yil</option>
+                                @endif
+                            </select>
+                            @if(isset($contract))
+                                <p class="text-xs text-blue-600 mt-1 font-medium">
+                                    📅 Shartnoma: {{ $contract->contract_date->format('d.m.Y') }}
+                                    ({{ $contractQuarter }}-chorak)
+                                </p>
+                            @endif
+                        </div>
 
-    <div>
-        <label class="block text-sm font-medium text-gray-700 mb-2">Choraklar soni</label>
-        <input type="number" name="quarters_count" min="1" max="20" step="1"
-               value="{{ isset($contract) ? ($contract->quarters_count ?? 8) : 4 }}"
-               onchange="updateSchedulePreview()"
-               class="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500"
-               placeholder="1-20 orasida">
-        @if(isset($contract))
-            <p class="text-xs text-gray-500 mt-1">
-                Shartnomada {{ $contract->quarters_count ?? 8 }} ta chorak belgilangan
-            </p>
-        @endif
-    </div>
+                        <div>
+                            <label class="block text-sm font-medium text-gray-700 mb-2">Choraklar soni</label>
+                            <input type="number" name="quarters_count" min="1" max="20" step="1"
+                                   value="{{ isset($contract) ? ($contract->quarters_count ?? 8) : 4 }}"
+                                   onchange="updateSchedulePreview()"
+                                   class="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500"
+                                   placeholder="1-20 orasida">
+                            @if(isset($contract))
+                                <p class="text-xs text-gray-500 mt-1">
+                                    Shartnomada {{ $contract->quarters_count ?? 8 }} ta chorak belgilangan
+                                </p>
+                            @endif
+                        </div>
 
-    <div>
-        <label class="block text-sm font-medium text-gray-700 mb-2">Jami summa (so'm)</label>
-        @if(isset($contract))
-            @php
-                $initialPayment = $contract->total_amount * (($contract->initial_payment_percent ?? 0) / 100);
-                $remainingAmount = $contract->total_amount - $initialPayment;
-            @endphp
-            <input type="number" name="total_schedule_amount" step="0.01" min="0.01"
-                   value="{{ $remainingAmount }}"
-                   class="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500">
-            <p class="text-xs text-green-600 mt-1 font-medium">
-                💰 Qolgan summa: {{ number_format($remainingAmount, 0, '.', ' ') }} so'm
-            </p>
-            <p class="text-xs text-gray-500">
-                (Jami: {{ number_format($contract->total_amount, 0, '.', ' ') }} so'm -
-                Boshlang'ich: {{ number_format($initialPayment, 0, '.', ' ') }} so'm)
-            </p>
-        @else
-            <input type="number" name="total_schedule_amount" step="0.01" min="0.01"
-                   placeholder="Choraklar uchun taqsimlanadigan summa"
-                   class="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500">
-        @endif
-    </div>
-</div>
-
+                        <div>
+                            <label class="block text-sm font-medium text-gray-700 mb-2">Jami summa (so'm)</label>
+                            @if(isset($contract))
+                                @php
+                                    $initialPayment = $contract->total_amount * (($contract->initial_payment_percent ?? 0) / 100);
+                                    $remainingAmount = $contract->total_amount - $initialPayment;
+                                @endphp
+                                <input type="number" name="total_schedule_amount" step="0.01" min="0.01"
+                                       value="{{ $remainingAmount }}"
+                                       class="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500">
+                                <p class="text-xs text-green-600 mt-1 font-medium">
+                                    💰 Qolgan summa: {{ number_format($remainingAmount, 0, '.', ' ') }} so'm
+                                </p>
+                                <p class="text-xs text-gray-500">
+                                    (Jami: {{ number_format($contract->total_amount, 0, '.', ' ') }} so'm -
+                                    Boshlang'ich: {{ number_format($initialPayment, 0, '.', ' ') }} so'm)
+                                </p>
+                            @else
+                                <input type="number" name="total_schedule_amount" step="0.01" min="0.01"
+                                       placeholder="Choraklar uchun taqsimlanadigan summa"
+                                       class="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500">
+                            @endif
+                        </div>
+                    </div>
 
                     <!-- Custom Schedule Grid -->
                     <div id="customScheduleGrid" class="hidden">
@@ -684,67 +991,20 @@
                 </div>
 
                 <div class="px-8 py-6 border-t border-gray-200 flex justify-end space-x-4">
-          <button type="button" onclick="closePaymentScheduleModal()"
-            class="px-6 py-3 bg-gray-100 text-gray-700 rounded-lg hover:bg-gray-200 transition-colors">
-        Bekor qilish
-    </button>
-    <button type="submit" id="scheduleSubmitBtn"
-            class="px-6 py-3 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors disabled:opacity-50 disabled:cursor-not-allowed">
-        <i data-feather="calendar" class="w-4 h-4 mr-2"></i>
-        Jadvalni saqlash
-    </button>
+                    <button type="button" onclick="closePaymentScheduleModal()"
+                            class="px-6 py-3 bg-gray-100 text-gray-700 rounded-lg hover:bg-gray-200 transition-colors">
+                        Bekor qilish
+                    </button>
+                    <button type="submit" id="scheduleSubmitBtn"
+                            class="px-6 py-3 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors disabled:opacity-50 disabled:cursor-not-allowed">
+                        <i data-feather="calendar" class="w-4 h-4 mr-2"></i>
+                        Jadvalni saqlash
+                    </button>
                 </div>
             </form>
         </div>
     </div>
 </div>
-
-<style>
-    button[type="submit"] {
-    transition: all 0.2s ease;
-}
-
-button[type="submit"]:disabled {
-    pointer-events: none;
-    opacity: 0.6;
-    cursor: not-allowed;
-}
-
-button[type="submit"]:active {
-    transform: scale(0.98);
-}
-
-/* Visual feedback for clicking */
-.payment-form-submitting {
-    opacity: 0.7;
-    pointer-events: none;
-}
-
-/* Loading state styling */
-.btn-loading {
-    position: relative;
-    color: transparent !important;
-}
-
-.btn-loading::after {
-    content: '';
-    position: absolute;
-    width: 16px;
-    height: 16px;
-    top: 50%;
-    left: 50%;
-    margin-left: -8px;
-    margin-top: -8px;
-    border: 2px solid #ffffff;
-    border-radius: 50%;
-    border-top-color: transparent;
-    animation: spin 1s linear infinite;
-}
-
-@keyframes spin {
-    to { transform: rotate(360deg); }
-}
-</style>
 
 <!-- Add Payment Modal -->
 <div id="paymentModal" class="hidden fixed inset-0 z-50 overflow-y-auto">
@@ -761,67 +1021,66 @@ button[type="submit"]:active {
                 </div>
 
                 <div class="px-8 py-6 space-y-4">
-<div>
-    <label class="block text-sm font-medium text-gray-700 mb-2">To'lov sanasi *</label>
-    <input type="date" name="payment_date" required
-           value="{{ old('payment_date', date('Y-m-d')) }}"
-           min="{{ isset($contract) ? $contract->contract_date->format('Y-m-d') : date('Y-m-d') }}"
-           max="{{ date('Y-m-d') }}"
-           class="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-green-500 @error('payment_date') border-red-300 @enderror">
-    @error('payment_date')
-        <p class="text-red-500 text-sm mt-1">{{ $message }}</p>
-    @enderror
-    @if(isset($contract))
-        <p class="text-xs text-gray-500 mt-1">
-            Eng erta sana: {{ $contract->contract_date->format('d.m.Y') }}
-            (Shartnoma sanasi)
-        </p>
-    @else
-        <p class="text-xs text-gray-500 mt-1">To'lov sanasi shartnoma sanasidan oldin bo'lishi mumkin emas</p>
-    @endif
-</div>
-    <div>
-        <label class="block text-sm font-medium text-gray-700 mb-2">To'lov summasi (so'm) *</label>
-        <input type="number" name="payment_amount" step="0.01" min="0.01" required
-               value="{{ old('payment_amount') }}"
-               class="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-green-500 text-lg font-medium @error('payment_amount') border-red-300 @enderror"
-               placeholder="0.00">
-        @error('payment_amount')
-            <p class="text-red-500 text-sm mt-1">{{ $message }}</p>
-        @enderror
-    </div>
+                    <div>
+                        <label class="block text-sm font-medium text-gray-700 mb-2">To'lov sanasi *</label>
+                        <input type="date" name="payment_date" required
+                               value="{{ old('payment_date', date('Y-m-d')) }}"
+                               min="{{ isset($contract) ? $contract->contract_date->format('Y-m-d') : date('Y-m-d') }}"
+                               class="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-green-500 @error('payment_date') border-red-300 @enderror">
+                        @error('payment_date')
+                            <p class="text-red-500 text-sm mt-1">{{ $message }}</p>
+                        @enderror
+                        @if(isset($contract))
+                            <p class="text-xs text-gray-500 mt-1">
+                                Eng erta sana: {{ $contract->contract_date->format('d.m.Y') }}
+                                (Shartnoma sanasi)
+                            </p>
+                        @else
+                            <p class="text-xs text-gray-500 mt-1">To'lov sanasi shartnoma sanasidan oldin bo'lishi mumkin emas</p>
+                        @endif
+                    </div>
+                    <div>
+                        <label class="block text-sm font-medium text-gray-700 mb-2">To'lov summasi (so'm) *</label>
+                        <input type="number" name="payment_amount" step="0.01" min="0.01" required
+                               value="{{ old('payment_amount') }}"
+                               class="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-green-500 text-lg font-medium @error('payment_amount') border-red-300 @enderror"
+                               placeholder="0.00">
+                        @error('payment_amount')
+                            <p class="text-red-500 text-sm mt-1">{{ $message }}</p>
+                        @enderror
+                    </div>
 
-    <div>
-        <label class="block text-sm font-medium text-gray-700 mb-2">Hujjat raqami</label>
-        <input type="text" name="payment_number" maxlength="50"
-               value="{{ old('payment_number') }}"
-               class="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-green-500 @error('payment_number') border-red-300 @enderror"
-               placeholder="Chek, spravka raqami">
-        @error('payment_number')
-            <p class="text-red-500 text-sm mt-1">{{ $message }}</p>
-        @enderror
-    </div>
+                    <div>
+                        <label class="block text-sm font-medium text-gray-700 mb-2">Hujjat raqami</label>
+                        <input type="text" name="payment_number" maxlength="50"
+                               value="{{ old('payment_number') }}"
+                               class="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-green-500 @error('payment_number') border-red-300 @enderror"
+                               placeholder="Chek, spravka raqami">
+                        @error('payment_number')
+                            <p class="text-red-500 text-sm mt-1">{{ $message }}</p>
+                        @enderror
+                    </div>
 
-    <div>
-        <label class="block text-sm font-medium text-gray-700 mb-2">Izoh</label>
-        <textarea name="payment_notes" rows="3"
-                  class="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-green-500 @error('payment_notes') border-red-300 @enderror"
-                  placeholder="Qo'shimcha ma'lumot">{{ old('payment_notes') }}</textarea>
-        @error('payment_notes')
-            <p class="text-red-500 text-sm mt-1">{{ $message }}</p>
-        @enderror
-    </div>
-</div>
+                    <div>
+                        <label class="block text-sm font-medium text-gray-700 mb-2">Izoh</label>
+                        <textarea name="payment_notes" rows="3"
+                                  class="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-green-500 @error('payment_notes') border-red-300 @enderror"
+                                  placeholder="Qo'shimcha ma'lumot">{{ old('payment_notes') }}</textarea>
+                        @error('payment_notes')
+                            <p class="text-red-500 text-sm mt-1">{{ $message }}</p>
+                        @enderror
+                    </div>
+                </div>
                 <div class="px-8 py-6 border-t border-gray-200 flex justify-end space-x-4">
-          <button type="button" onclick="closePaymentModal()"
-            class="px-6 py-3 bg-gray-100 text-gray-700 rounded-lg hover:bg-gray-200 transition-colors">
-        Bekor qilish
-    </button>
-    <button type="submit" id="paymentSubmitBtn"
-            class="px-6 py-3 bg-green-600 text-white rounded-lg hover:bg-green-700 transition-colors disabled:opacity-50 disabled:cursor-not-allowed">
-        <i data-feather="credit-card" class="w-4 h-4 mr-2"></i>
-        To'lovni qo'shish
-    </button>
+                    <button type="button" onclick="closePaymentModal()"
+                            class="px-6 py-3 bg-gray-100 text-gray-700 rounded-lg hover:bg-gray-200 transition-colors">
+                        Bekor qilish
+                    </button>
+                    <button type="submit" id="paymentSubmitBtn"
+                            class="px-6 py-3 bg-green-600 text-white rounded-lg hover:bg-green-700 transition-colors disabled:opacity-50 disabled:cursor-not-allowed">
+                        <i data-feather="credit-card" class="w-4 h-4 mr-2"></i>
+                        To'lovni qo'shish
+                    </button>
                 </div>
             </form>
         </div>
@@ -846,29 +1105,6 @@ button[type="submit"]:active {
     </div>
 </div>
 
-
-{{-- 1. Add this after the Payment Schedule Management section --}}
-@if(isset($contract))
-<!-- Payment History Section -->
-<div class="bg-white rounded-2xl shadow-lg border govt-card">
-    <div class="border-b border-gray-200 p-6">
-        <h2 class="text-2xl font-bold text-gray-900 flex items-center">
-            <i data-feather="clock" class="w-6 h-6 mr-3 text-purple-600"></i>
-            To'lov tarixi
-        </h2>
-    </div>
-    <div class="p-8">
-        <div id="paymentHistoryContainer">
-            <div class="text-center py-8 text-gray-500">
-                <div class="animate-spin rounded-full h-8 w-8 border-b-2 border-purple-600 mx-auto mb-3"></div>
-                <p>Tarix yuklanmoqda...</p>
-            </div>
-        </div>
-    </div>
-</div>
-@endif
-
-{{-- 2. Add Edit Payment Modal after the existing modals --}}
 <!-- Edit Payment Modal -->
 <div id="editPaymentModal" class="hidden fixed inset-0 z-50 overflow-y-auto">
     <div class="flex items-center justify-center min-h-screen px-4">
@@ -943,14 +1179,6 @@ button[type="submit"]:active {
     </div>
 </div>
 
-{{-- 3. Enhanced meta tags and CSRF protection --}}
-@push('head')
-<meta name="csrf-token" content="{{ csrf_token() }}">
-<meta name="contract-start-date" content="{{ isset($contract) ? $contract->contract_date->format('Y-m-d') : date('Y-m-d') }}">
-@endpush
-
-
-
 @if ($errors->any())
 <div class="bg-red-50 border border-red-200 rounded-lg p-4 mb-6">
     <div class="flex">
@@ -971,8 +1199,6 @@ button[type="submit"]:active {
 </div>
 @endif
 
-
-{{-- 5. Enhanced success/error flash messages --}}
 @if(session('success'))
 <div class="bg-green-50 border border-green-200 rounded-lg p-4 mb-6" id="successMessage">
     <div class="flex">
@@ -1009,23 +1235,30 @@ button[type="submit"]:active {
 </div>
 @endif
 
-
-
 @endsection
+
+@push('head')
+<meta name="csrf-token" content="{{ csrf_token() }}">
+<meta name="contract-start-date" content="{{ isset($contract) ? $contract->contract_date->format('Y-m-d') : date('Y-m-d') }}">
+@endpush
+
 @push('scripts')
 <script src="https://unpkg.com/feather-icons"></script>
 <script>
-// COMPLETE WORKING JAVASCRIPT - ALL ERRORS FIXED
+// COMPLETE WORKING JAVASCRIPT WITH AMENDMENT FUNCTIONALITY
 
 // Global variables
 const contractData = @json($contract ?? null);
 let quarterlyData = {};
 let currentQuarterData = null;
+let amendmentData = {};
+let currentAmendmentPreview = null;
 
 // Prevent multiple submissions
 let isSubmittingPayment = false;
 let isSubmittingSchedule = false;
 let isSubmittingContract = false;
+let isSubmittingAmendment = false;
 
 // Safe feather replace function
 function safeFeatherReplace() {
@@ -1042,7 +1275,7 @@ function safeFeatherReplace() {
 document.addEventListener('DOMContentLoaded', function() {
     disableEnterKeySubmissions();
     setupFormValidation();
-    removeDateRestrictions(); // NEW: Remove date restrictions
+    removeDateRestrictions();
 
     setTimeout(() => {
         const successMsg = document.getElementById('successMessage');
@@ -1098,6 +1331,7 @@ document.addEventListener('DOMContentLoaded', function() {
         togglePaymentSettings();
         calculatePaymentBreakdown();
         loadQuarterlyData();
+        loadAmendmentHistory();
     } else {
         calculatePaymentBreakdown();
     }
@@ -1105,25 +1339,824 @@ document.addEventListener('DOMContentLoaded', function() {
     setupEventListeners();
 });
 
-// NEW: Remove restrictive date validations
+// NEW: Amendment History Loading
+function loadAmendmentHistory() {
+    if (!contractData) return;
+
+    const historyContainer = document.getElementById('amendmentHistoryContainer');
+    if (!historyContainer) return;
+
+    fetch(`/contracts/${contractData.id}/amendment-history`)
+        .then(response => response.json())
+        .then(data => {
+            if (data.success && data.amendments && data.amendments.length > 0) {
+                renderAmendmentHistory(data.amendments);
+            } else {
+                renderEmptyAmendmentHistory();
+            }
+        })
+        .catch(error => {
+            console.error('Error loading amendment history:', error);
+            renderAmendmentHistoryError();
+        });
+}
+
+// NEW: Render Amendment History
+function renderAmendmentHistory(amendments) {
+    const container = document.getElementById('amendmentHistoryContainer');
+    if (!container) return;
+
+    let html = '<div class="space-y-4">';
+
+    amendments.forEach((amendment, index) => {
+        const statusClass = getAmendmentStatusClass(amendment.status);
+        const statusText = getAmendmentStatusText(amendment.status);
+        const typeText = getAmendmentTypeText(amendment.amendment_type);
+
+        html += `
+            <div class="amendment-item">
+                <div class="amendment-header">
+                    <div>
+                        <h4 class="font-bold text-gray-900 mb-1">O'zgarish #${amendment.amendment_number}</h4>
+                        <p class="text-sm text-gray-600">${typeText}</p>
+                    </div>
+                    <div class="flex items-center space-x-3">
+                        <span class="amendment-badge ${statusClass}">${statusText}</span>
+                        <button onclick="viewAmendmentDetails(${amendment.id})"
+                                class="text-blue-600 hover:text-blue-800 text-sm font-medium">
+                            Batafsil
+                        </button>
+                    </div>
+                </div>
+
+                <div class="grid grid-cols-1 md:grid-cols-3 gap-4 mb-4">
+                    <div class="text-center p-3 bg-gray-50 rounded-lg">
+                        <p class="text-xs text-gray-500 mb-1">ESKI SUMMA</p>
+                        <p class="font-bold text-gray-900">${formatFullCurrency(amendment.old_total_amount)}</p>
+                    </div>
+                    <div class="text-center p-3 bg-blue-50 rounded-lg">
+                        <p class="text-xs text-blue-500 mb-1">YANGI SUMMA</p>
+                        <p class="font-bold text-blue-900">${formatFullCurrency(amendment.new_total_amount)}</p>
+                    </div>
+                    <div class="text-center p-3 ${amendment.amount_difference >= 0 ? 'bg-green-50' : 'bg-red-50'} rounded-lg">
+                        <p class="text-xs ${amendment.amount_difference >= 0 ? 'text-green-500' : 'text-red-500'} mb-1">FARQ</p>
+                        <p class="font-bold ${amendment.amount_difference >= 0 ? 'text-green-900' : 'text-red-900'}">
+                            ${amendment.amount_difference >= 0 ? '+' : ''}${formatFullCurrency(amendment.amount_difference)}
+                        </p>
+                    </div>
+                </div>
+
+                <div class="text-sm text-gray-600 mb-3">
+                    <strong>Sabab:</strong> ${amendment.reason}
+                </div>
+
+                <div class="flex items-center justify-between text-xs text-gray-500">
+                    <div>
+                        <i data-feather="user" class="w-3 h-3 mr-1 inline"></i>
+                        Yaratuvchi: ${amendment.created_by ? amendment.created_by.name : 'Noma\'lum'}
+                    </div>
+                    <div>
+                        <i data-feather="calendar" class="w-3 h-3 mr-1 inline"></i>
+                        ${new Date(amendment.created_at).toLocaleDateString('uz-UZ')}
+                    </div>
+                </div>
+
+                ${amendment.status === 'pending' ? `
+                    <div class="mt-4 flex space-x-2">
+                        <button onclick="approveAmendment(${amendment.id})"
+                                class="px-4 py-2 bg-green-600 text-white rounded-lg hover:bg-green-700 transition-colors text-sm">
+                            <i data-feather="check" class="w-4 h-4 mr-1"></i>
+                            Tasdiqlash
+                        </button>
+                        <button onclick="rejectAmendment(${amendment.id})"
+                                class="px-4 py-2 bg-red-600 text-white rounded-lg hover:bg-red-700 transition-colors text-sm">
+                            <i data-feather="x" class="w-4 h-4 mr-1"></i>
+                            Rad etish
+                        </button>
+                    </div>
+                ` : ''}
+            </div>
+        `;
+    });
+
+    html += '</div>';
+    container.innerHTML = html;
+    safeFeatherReplace();
+}
+
+// NEW: Empty Amendment History
+function renderEmptyAmendmentHistory() {
+    const container = document.getElementById('amendmentHistoryContainer');
+    if (!container) return;
+
+    container.innerHTML = `
+        <div class="text-center py-12">
+            <div class="w-16 h-16 bg-orange-100 rounded-full flex items-center justify-center mx-auto mb-4">
+                <i data-feather="edit-3" class="w-8 h-8 text-orange-400"></i>
+            </div>
+            <h4 class="text-lg font-medium text-gray-900 mb-2">O'zgarishlar tarixi bo'sh</h4>
+            <p class="text-gray-500 max-w-sm mx-auto mb-6">
+                Hali shartnomaga hech qanday o'zgarish kiritilmagan.
+                Yangi o'zgarish yaratish uchun tugmani bosing.
+            </p>
+            <button onclick="openAmendmentModal()"
+                    class="inline-flex items-center px-6 py-3 bg-orange-600 text-white rounded-lg hover:bg-orange-700 transition-colors">
+                <i data-feather="edit-3" class="w-5 h-5 mr-2"></i>
+                Yangi o'zgarish
+            </button>
+        </div>
+    `;
+    safeFeatherReplace();
+}
+
+// NEW: Amendment History Error
+function renderAmendmentHistoryError() {
+    const container = document.getElementById('amendmentHistoryContainer');
+    if (!container) return;
+
+    container.innerHTML = `
+        <div class="text-center py-8">
+            <div class="w-12 h-12 bg-red-100 rounded-full flex items-center justify-center mx-auto mb-4">
+                <i data-feather="alert-triangle" class="w-6 h-6 text-red-500"></i>
+            </div>
+            <h4 class="text-lg font-medium text-gray-900 mb-2">Ma'lumotlarni yuklashda xatolik</h4>
+            <p class="text-gray-500 mb-4">O'zgarishlar tarixini yuklashda muammo yuz berdi</p>
+            <button onclick="loadAmendmentHistory()"
+                    class="px-4 py-2 bg-orange-600 text-white rounded-lg hover:bg-orange-700 transition-colors">
+                <i data-feather="refresh-cw" class="w-4 h-4 mr-2"></i>
+                Qaytadan urinish
+            </button>
+        </div>
+    `;
+    safeFeatherReplace();
+}
+
+// NEW: Amendment Helper Functions
+function getAmendmentStatusClass(status) {
+    switch (status) {
+        case 'pending': return 'amendment-pending';
+        case 'approved': return 'amendment-approved';
+        case 'rejected': return 'amendment-rejected';
+        default: return 'amendment-pending';
+    }
+}
+
+function getAmendmentStatusText(status) {
+    switch (status) {
+        case 'pending': return 'Kutilmoqda';
+        case 'approved': return 'Tasdiqlangan';
+        case 'rejected': return 'Rad etilgan';
+        default: return 'Noma\'lum';
+    }
+}
+
+function getAmendmentTypeText(type) {
+    switch (type) {
+        case 'amount_increase': return 'Summa oshirish';
+        case 'amount_decrease': return 'Summa kamaytirish';
+        case 'payment_terms': return 'To\'lov shartlari';
+        case 'schedule_restructure': return 'Jadval qayta tuzish';
+        default: return 'Noma\'lum';
+    }
+}
+
+// NEW: Open Amendment Modal
+function openAmendmentModal() {
+    if (!contractData) {
+        showNotification('Avval shartnomani saqlang', 'error');
+        return;
+    }
+
+    document.getElementById('amendmentModal').classList.remove('hidden');
+
+    // Reset form
+    document.getElementById('amendmentForm').reset();
+    document.getElementById('amendmentPreview').classList.add('hidden');
+    document.getElementById('newAmountSection').classList.add('hidden');
+    document.getElementById('newPaymentTermsSection').classList.add('hidden');
+
+    // Set current values as defaults
+    if (contractData) {
+        const newAmountInput = document.querySelector('input[name="new_total_amount"]');
+        if (newAmountInput) {
+            newAmountInput.value = contractData.total_amount;
+        }
+
+        const newInitialPercentInput = document.querySelector('input[name="new_initial_payment_percent"]');
+        if (newInitialPercentInput) {
+            newInitialPercentInput.value = contractData.initial_payment_percent || 20;
+        }
+
+        const newQuartersInput = document.querySelector('input[name="new_quarters_count"]');
+        if (newQuartersInput) {
+            newQuartersInput.value = contractData.quarters_count || 8;
+        }
+    }
+}
+
+// NEW: Close Amendment Modal
+function closeAmendmentModal() {
+    document.getElementById('amendmentModal').classList.add('hidden');
+    document.getElementById('amendmentForm').reset();
+    currentAmendmentPreview = null;
+}
+
+// NEW: Handle Amendment Type Change
+function handleAmendmentTypeChange() {
+    const amendmentType = document.querySelector('select[name="amendment_type"]').value;
+    const newAmountSection = document.getElementById('newAmountSection');
+    const newPaymentTermsSection = document.getElementById('newPaymentTermsSection');
+    const amendmentPreview = document.getElementById('amendmentPreview');
+
+    // Hide all sections first
+    newAmountSection.classList.add('hidden');
+    newPaymentTermsSection.classList.add('hidden');
+    amendmentPreview.classList.add('hidden');
+
+    // Show relevant sections based on type
+    if (amendmentType === 'amount_increase' || amendmentType === 'amount_decrease') {
+        newAmountSection.classList.remove('hidden');
+    } else if (amendmentType === 'payment_terms' || amendmentType === 'schedule_restructure') {
+        newPaymentTermsSection.classList.remove('hidden');
+    }
+
+    calculateAmendmentPreview();
+}
+
+// NEW: Calculate Amendment Preview
+function calculateAmendmentPreview() {
+    const amendmentType = document.querySelector('select[name="amendment_type"]').value;
+    if (!amendmentType || !contractData) return;
+
+    const amendmentPreview = document.getElementById('amendmentPreview');
+    amendmentPreview.classList.remove('hidden');
+
+    // Get current state
+    const currentAmount = contractData.total_amount;
+    const currentInitialPercent = contractData.initial_payment_percent || 20;
+    const currentQuarters = contractData.quarters_count || 8;
+
+    // Get new values
+    let newAmount = currentAmount;
+    let newInitialPercent = currentInitialPercent;
+    let newQuarters = currentQuarters;
+
+    if (amendmentType === 'amount_increase' || amendmentType === 'amount_decrease') {
+        newAmount = parseFloat(document.querySelector('input[name="new_total_amount"]').value) || currentAmount;
+    }
+
+    if (amendmentType === 'payment_terms' || amendmentType === 'schedule_restructure') {
+        newInitialPercent = parseFloat(document.querySelector('input[name="new_initial_payment_percent"]').value) || currentInitialPercent;
+        newQuarters = parseInt(document.querySelector('input[name="new_quarters_count"]').value) || currentQuarters;
+    }
+
+    // Calculate current state
+    const currentInitialAmount = currentAmount * (currentInitialPercent / 100);
+    const currentRemainingAmount = currentAmount - currentInitialAmount;
+    const currentQuarterlyAmount = currentQuarters > 0 ? currentRemainingAmount / currentQuarters : 0;
+
+    // Calculate new state
+    const newInitialAmount = newAmount * (newInitialPercent / 100);
+    const newRemainingAmount = newAmount - newInitialAmount;
+    const newQuarterlyAmount = newQuarters > 0 ? newRemainingAmount / newQuarters : 0;
+
+    // Get payment statistics
+    const paymentStats = getPaymentStatistics();
+
+    // Calculate impact
+    const amountDifference = newAmount - currentAmount;
+    const initialDifference = newInitialAmount - currentInitialAmount;
+    const remainingDifference = newRemainingAmount - currentRemainingAmount;
+
+    // Calculate adjustment needed
+    let adjustmentNeeded = 0;
+    let adjustmentType = 'none';
+
+    if (initialDifference < 0) {
+        // Initial payment would be less - overpayment
+        adjustmentNeeded = Math.abs(initialDifference);
+        adjustmentType = 'overpayment';
+    } else if (initialDifference > 0) {
+        // Need additional initial payment
+        adjustmentNeeded = initialDifference;
+        adjustmentType = 'additional_payment';
+    }
+
+    // Update comparison
+    updateAmendmentComparison(
+        {
+            amount: currentAmount,
+            initialPercent: currentInitialPercent,
+            initialAmount: currentInitialAmount,
+            remainingAmount: currentRemainingAmount,
+            quarters: currentQuarters,
+            quarterlyAmount: currentQuarterlyAmount
+        },
+        {
+            amount: newAmount,
+            initialPercent: newInitialPercent,
+            initialAmount: newInitialAmount,
+            remainingAmount: newRemainingAmount,
+            quarters: newQuarters,
+            quarterlyAmount: newQuarterlyAmount
+        }
+    );
+
+    // Update calculation details
+    updateAmendmentCalculation({
+        amountDifference,
+        initialDifference,
+        remainingDifference,
+        adjustmentNeeded,
+        adjustmentType,
+        paymentStats
+    });
+
+    // Store preview data
+    currentAmendmentPreview = {
+        type: amendmentType,
+        currentState: {
+            amount: currentAmount,
+            initialPercent: currentInitialPercent,
+            quarters: currentQuarters
+        },
+        newState: {
+            amount: newAmount,
+            initialPercent: newInitialPercent,
+            quarters: newQuarters
+        },
+        calculations: {
+            amountDifference,
+            initialDifference,
+            remainingDifference,
+            adjustmentNeeded,
+            adjustmentType
+        }
+    };
+}
+
+// NEW: Update Amendment Comparison
+function updateAmendmentComparison(current, newState) {
+    const currentStateDiv = document.getElementById('currentState');
+    const newStateDiv = document.getElementById('newState');
+
+    currentStateDiv.innerHTML = `
+        <div class="space-y-2">
+            <div class="flex justify-between">
+                <span class="text-sm text-gray-600">Jami summa:</span>
+                <span class="font-bold">${formatFullCurrency(current.amount)}</span>
+            </div>
+            <div class="flex justify-between">
+                <span class="text-sm text-gray-600">Boshlang'ich:</span>
+                <span class="font-bold">${current.initialPercent}% (${formatFullCurrency(current.initialAmount)})</span>
+            </div>
+            <div class="flex justify-between">
+                <span class="text-sm text-gray-600">Qolgan summa:</span>
+                <span class="font-bold">${formatFullCurrency(current.remainingAmount)}</span>
+            </div>
+            <div class="flex justify-between">
+                <span class="text-sm text-gray-600">Choraklar:</span>
+                <span class="font-bold">${current.quarters} ta</span>
+            </div>
+            <div class="flex justify-between">
+                <span class="text-sm text-gray-600">Chorak to'lovi:</span>
+                <span class="font-bold">${formatFullCurrency(current.quarterlyAmount)}</span>
+            </div>
+        </div>
+    `;
+
+    newStateDiv.innerHTML = `
+        <div class="space-y-2">
+            <div class="flex justify-between">
+                <span class="text-sm text-gray-600">Jami summa:</span>
+                <span class="font-bold">${formatFullCurrency(newState.amount)}</span>
+            </div>
+            <div class="flex justify-between">
+                <span class="text-sm text-gray-600">Boshlang'ich:</span>
+                <span class="font-bold">${newState.initialPercent}% (${formatFullCurrency(newState.initialAmount)})</span>
+            </div>
+            <div class="flex justify-between">
+                <span class="text-sm text-gray-600">Qolgan summa:</span>
+                <span class="font-bold">${formatFullCurrency(newState.remainingAmount)}</span>
+            </div>
+            <div class="flex justify-between">
+                <span class="text-sm text-gray-600">Choraklar:</span>
+                <span class="font-bold">${newState.quarters} ta</span>
+            </div>
+            <div class="flex justify-between">
+                <span class="text-sm text-gray-600">Chorak to'lovi:</span>
+                <span class="font-bold">${formatFullCurrency(newState.quarterlyAmount)}</span>
+            </div>
+        </div>
+    `;
+}
+
+// NEW: Update Amendment Calculation
+function updateAmendmentCalculation(calculations) {
+    const calculationDetails = document.getElementById('calculationDetails');
+    const impactSummary = document.getElementById('impactSummary');
+
+    let calculationHtml = '';
+
+    calculationHtml += `
+        <div class="calculation-row">
+            <span class="calculation-label">Summa farqi:</span>
+            <span class="calculation-value ${calculations.amountDifference >= 0 ? 'value-positive' : 'value-negative'}">
+                ${calculations.amountDifference >= 0 ? '+' : ''}${formatFullCurrency(calculations.amountDifference)}
+            </span>
+        </div>
+        <div class="calculation-row">
+            <span class="calculation-label">Boshlang'ich to'lov farqi:</span>
+            <span class="calculation-value ${calculations.initialDifference >= 0 ? 'value-positive' : 'value-negative'}">
+                ${calculations.initialDifference >= 0 ? '+' : ''}${formatFullCurrency(calculations.initialDifference)}
+            </span>
+        </div>
+        <div class="calculation-row">
+            <span class="calculation-label">Choraklar summasi farqi:</span>
+            <span class="calculation-value ${calculations.remainingDifference >= 0 ? 'value-positive' : 'value-negative'}">
+                ${calculations.remainingDifference >= 0 ? '+' : ''}${formatFullCurrency(calculations.remainingDifference)}
+            </span>
+        </div>
+    `;
+
+    calculationDetails.innerHTML = calculationHtml;
+
+    // Impact summary
+    let impactHtml = '';
+    let impactClass = '';
+
+    if (calculations.adjustmentType === 'overpayment') {
+        impactClass = 'border-green-300 bg-green-50';
+        impactHtml = `
+            <div class="flex items-center">
+                <i data-feather="check-circle" class="w-5 h-5 text-green-600 mr-2"></i>
+                <div>
+                    <span class="font-bold text-green-800">Ortiqcha to'lov mavjud: ${formatFullCurrency(calculations.adjustmentNeeded)}</span>
+                    <p class="text-sm text-green-700 mt-1">
+                        Bu summa yangi choraklar uchun hisoblanadi va to'lov jadvalini qayta tuzish talab qilinadi.
+                    </p>
+                </div>
+            </div>
+        `;
+    } else if (calculations.adjustmentType === 'additional_payment') {
+        impactClass = 'border-orange-300 bg-orange-50';
+        impactHtml = `
+            <div class="flex items-center">
+                <i data-feather="alert-triangle" class="w-5 h-5 text-orange-600 mr-2"></i>
+                <div>
+                    <span class="font-bold text-orange-800">Qo'shimcha to'lov kerak: ${formatFullCurrency(calculations.adjustmentNeeded)}</span>
+                    <p class="text-sm text-orange-700 mt-1">
+                        Mijoz yangi boshlang'ich to'lov miqdorini to'lashi kerak bo'ladi.
+                    </p>
+                </div>
+            </div>
+        `;
+    } else {
+        impactClass = 'border-blue-300 bg-blue-50';
+        impactHtml = `
+            <div class="flex items-center">
+                <i data-feather="info" class="w-5 h-5 text-blue-600 mr-2"></i>
+                <div>
+                    <span class="font-bold text-blue-800">Faqat jadval o'zgaradi</span>
+                    <p class="text-sm text-blue-700 mt-1">
+                        Qo'shimcha to'lov talab qilinmaydi, faqat choraklar jadvali qayta tuziladi.
+                    </p>
+                </div>
+            </div>
+        `;
+    }
+
+    impactSummary.innerHTML = impactHtml;
+    impactSummary.className = `mt-4 p-4 rounded-lg border-2 ${impactClass}`;
+
+    safeFeatherReplace();
+}
+
+// NEW: Get Payment Statistics
+function getPaymentStatistics() {
+    if (!quarterlyData || typeof quarterlyData !== 'object') {
+        return { totalPaid: 0, totalPlan: 0, debt: 0 };
+    }
+
+    let totalPaid = 0;
+    let totalPlan = 0;
+
+    Object.values(quarterlyData).forEach(quarters => {
+        if (quarters && typeof quarters === 'object') {
+            Object.values(quarters).forEach(quarter => {
+                totalPaid += parseFloat(quarter.fact_total) || 0;
+                totalPlan += parseFloat(quarter.plan_amount) || 0;
+            });
+        }
+    });
+
+    return {
+        totalPaid: totalPaid,
+        totalPlan: totalPlan,
+        debt: totalPlan - totalPaid
+    };
+}
+
+// NEW: Handle Amendment Form Submit
+async function handleAmendmentSubmit(e) {
+    e.preventDefault();
+
+    if (isSubmittingAmendment) {
+        showNotification('O\'zgarish yaratilmoqda, iltimos kuting...', 'warning');
+        return false;
+    }
+
+    if (!contractData) {
+        showNotification('Shartnoma ma\'lumotlari topilmadi', 'error');
+        return false;
+    }
+
+    if (!currentAmendmentPreview) {
+        showNotification('Avval o\'zgarish ko\'rinishini hisoblang', 'error');
+        return false;
+    }
+
+    isSubmittingAmendment = true;
+    const submitBtn = e.target.querySelector('button[type="submit"]');
+    const submitText = document.getElementById('amendmentSubmitText');
+    const submitLoader = document.getElementById('amendmentLoader');
+
+    toggleSubmitState(submitBtn, submitText, submitLoader, true);
+
+    try {
+        const formData = new FormData(e.target);
+
+        // Add preview data
+        formData.append('preview_data', JSON.stringify(currentAmendmentPreview));
+
+        // Add current payment statistics
+        const paymentStats = getPaymentStatistics();
+        formData.append('current_payment_stats', JSON.stringify(paymentStats));
+
+        const response = await fetch(`/contracts/${contractData.id}/create-amendment`, {
+            method: 'POST',
+            headers: {
+                'X-CSRF-TOKEN': document.querySelector('meta[name="csrf-token"]').content,
+                'Accept': 'application/json',
+                'X-Requested-With': 'XMLHttpRequest'
+            },
+            body: formData
+        });
+
+        if (!response.ok) {
+            const errorData = await response.json();
+            throw new Error(errorData.message || `Server error: ${response.status}`);
+        }
+
+        const result = await response.json();
+
+        if (result.success) {
+            closeAmendmentModal();
+            showNotification(result.message || 'O\'zgarish muvaffaqiyatli yaratildi', 'success');
+            loadAmendmentHistory();
+        } else {
+            throw new Error(result.message || 'O\'zgarish yaratishda xatolik');
+        }
+    } catch (error) {
+        console.error('Amendment submission error:', error);
+        showNotification(error.message, 'error');
+    } finally {
+        isSubmittingAmendment = false;
+        toggleSubmitState(submitBtn, submitText, submitLoader, false);
+    }
+}
+
+// NEW: View Amendment Details
+function viewAmendmentDetails(amendmentId) {
+    fetch(`/contracts/${contractData.id}/amendments/${amendmentId}`)
+        .then(response => response.json())
+        .then(data => {
+            if (data.success) {
+                showAmendmentDetails(data.amendment);
+            } else {
+                showNotification('Ma\'lumotlarni yuklashda xatolik', 'error');
+            }
+        })
+        .catch(error => {
+            console.error('Error loading amendment details:', error);
+            showNotification('Ma\'lumotlarni yuklashda xatolik', 'error');
+        });
+}
+
+// NEW: Show Amendment Details
+function showAmendmentDetails(amendment) {
+    document.getElementById('amendmentDetailsTitle').textContent =
+        `O'zgarish #${amendment.amendment_number} - Ma'lumotlari`;
+
+    const statusClass = getAmendmentStatusClass(amendment.status);
+    const statusText = getAmendmentStatusText(amendment.status);
+    const typeText = getAmendmentTypeText(amendment.amendment_type);
+
+    const content = `
+        <div class="space-y-6">
+            <!-- Amendment Header -->
+            <div class="bg-gray-50 rounded-lg p-6">
+                <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+                    <div>
+                        <h4 class="font-bold text-gray-900 mb-2">${typeText}</h4>
+                        <p class="text-sm text-gray-600 mb-4">${amendment.reason}</p>
+                        <div class="flex items-center">
+                            <span class="amendment-badge ${statusClass}">${statusText}</span>
+                        </div>
+                    </div>
+                    <div class="text-right">
+                        <p class="text-sm text-gray-500">Yaratilgan:</p>
+                        <p class="font-medium">${new Date(amendment.created_at).toLocaleDateString('uz-UZ')}</p>
+                        <p class="text-sm text-gray-500 mt-2">Yaratuvchi:</p>
+                        <p class="font-medium">${amendment.created_by ? amendment.created_by.name : 'Noma\'lum'}</p>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Financial Changes -->
+            <div>
+                <h5 class="text-lg font-bold text-gray-900 mb-4">Moliyaviy o'zgarishlar</h5>
+                <div class="grid grid-cols-1 md:grid-cols-3 gap-4">
+                    <div class="text-center p-4 bg-gray-50 rounded-lg">
+                        <p class="text-sm text-gray-500 mb-1">ESKI SUMMA</p>
+                        <p class="text-2xl font-bold text-gray-900">${formatFullCurrency(amendment.old_total_amount)}</p>
+                    </div>
+                    <div class="text-center p-4 bg-blue-50 rounded-lg">
+                        <p class="text-sm text-blue-500 mb-1">YANGI SUMMA</p>
+                        <p class="text-2xl font-bold text-blue-900">${formatFullCurrency(amendment.new_total_amount)}</p>
+                    </div>
+                    <div class="text-center p-4 ${amendment.amount_difference >= 0 ? 'bg-green-50' : 'bg-red-50'} rounded-lg">
+                        <p class="text-sm ${amendment.amount_difference >= 0 ? 'text-green-500' : 'text-red-500'} mb-1">FARQ</p>
+                        <p class="text-2xl font-bold ${amendment.amount_difference >= 0 ? 'text-green-900' : 'text-red-900'}">
+                            ${amendment.amount_difference >= 0 ? '+' : ''}${formatFullCurrency(amendment.amount_difference)}
+                        </p>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Payment Terms Changes (if applicable) -->
+            ${amendment.old_initial_payment_percent !== null ? `
+                <div>
+                    <h5 class="text-lg font-bold text-gray-900 mb-4">To'lov shartlari o'zgarishi</h5>
+                    <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+                        <div class="bg-gray-50 rounded-lg p-4">
+                            <h6 class="font-medium text-gray-900 mb-3">Eski shartlar</h6>
+                            <div class="space-y-2 text-sm">
+                                <div class="flex justify-between">
+                                    <span>Boshlang'ich to'lov:</span>
+                                    <span class="font-medium">${amendment.old_initial_payment_percent}%</span>
+                                </div>
+                                <div class="flex justify-between">
+                                    <span>Choraklar soni:</span>
+                                    <span class="font-medium">${amendment.old_quarters_count}</span>
+                                </div>
+                            </div>
+                        </div>
+                        <div class="bg-blue-50 rounded-lg p-4">
+                            <h6 class="font-medium text-blue-900 mb-3">Yangi shartlar</h6>
+                            <div class="space-y-2 text-sm">
+                                <div class="flex justify-between">
+                                    <span>Boshlang'ich to'lov:</span>
+                                    <span class="font-medium">${amendment.new_initial_payment_percent}%</span>
+                                </div>
+                                <div class="flex justify-between">
+                                    <span>Choraklar soni:</span>
+                                    <span class="font-medium">${amendment.new_quarters_count}</span>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            ` : ''}
+
+            <!-- Calculation Results -->
+            ${amendment.calculation_results ? `
+                <div>
+                    <h5 class="text-lg font-bold text-gray-900 mb-4">Hisob-kitob natijalari</h5>
+                    <div class="bg-gray-50 rounded-lg p-4">
+                        <pre class="text-sm text-gray-700">${JSON.stringify(JSON.parse(amendment.calculation_results), null, 2)}</pre>
+                    </div>
+                </div>
+            ` : ''}
+
+            <!-- Approval Actions (if pending) -->
+            ${amendment.status === 'pending' ? `
+                <div class="border-t pt-6">
+                    <h5 class="text-lg font-bold text-gray-900 mb-4">Tasdiqlash amallar</h5>
+                    <div class="flex space-x-4">
+                        <button onclick="approveAmendment(${amendment.id}); closeAmendmentDetailsModal();"
+                                class="flex-1 px-6 py-3 bg-green-600 text-white rounded-lg hover:bg-green-700 transition-colors">
+                            <i data-feather="check" class="w-4 h-4 mr-2"></i>
+                            Tasdiqlash
+                        </button>
+                        <button onclick="rejectAmendment(${amendment.id}); closeAmendmentDetailsModal();"
+                                class="flex-1 px-6 py-3 bg-red-600 text-white rounded-lg hover:bg-red-700 transition-colors">
+                            <i data-feather="x" class="w-4 h-4 mr-2"></i>
+                            Rad etish
+                        </button>
+                    </div>
+                </div>
+            ` : ''}
+        </div>
+    `;
+
+    document.getElementById('amendmentDetailsContent').innerHTML = content;
+    document.getElementById('amendmentDetailsModal').classList.remove('hidden');
+    safeFeatherReplace();
+}
+
+// NEW: Close Amendment Details Modal
+function closeAmendmentDetailsModal() {
+    document.getElementById('amendmentDetailsModal').classList.add('hidden');
+}
+
+// NEW: Approve Amendment
+async function approveAmendment(amendmentId) {
+    if (!confirm('Bu o\'zgarishni tasdiqlashni xohlaysizmi? Bu amal bekor qilinmaydi.')) {
+        return;
+    }
+
+    try {
+        const response = await fetch(`/contracts/${contractData.id}/amendments/${amendmentId}/approve`, {
+            method: 'POST',
+            headers: {
+                'X-CSRF-TOKEN': document.querySelector('meta[name="csrf-token"]').content,
+                'Accept': 'application/json',
+                'X-Requested-With': 'XMLHttpRequest'
+            }
+        });
+
+        const result = await response.json();
+
+        if (result.success) {
+            showNotification(result.message || 'O\'zgarish muvaffaqiyatli tasdiqlandi', 'success');
+            loadAmendmentHistory();
+
+            // Reload contract and quarterly data if approved
+            setTimeout(() => {
+                window.location.reload();
+            }, 2000);
+        } else {
+            showNotification(result.message || 'Tasdiqlashda xatolik', 'error');
+        }
+    } catch (error) {
+        console.error('Amendment approval error:', error);
+        showNotification('Tasdiqlashda xatolik yuz berdi', 'error');
+    }
+}
+
+// NEW: Reject Amendment
+async function rejectAmendment(amendmentId) {
+    const reason = prompt('Rad etish sababini kiriting:');
+    if (!reason || reason.trim().length < 3) {
+        showNotification('Rad etish sababini kiriting (kamida 3 ta belgi)', 'error');
+        return;
+    }
+
+    try {
+        const formData = new FormData();
+        formData.append('rejection_reason', reason);
+
+        const response = await fetch(`/contracts/${contractData.id}/amendments/${amendmentId}/reject`, {
+            method: 'POST',
+            headers: {
+                'X-CSRF-TOKEN': document.querySelector('meta[name="csrf-token"]').content,
+                'Accept': 'application/json',
+                'X-Requested-With': 'XMLHttpRequest'
+            },
+            body: formData
+        });
+
+        const result = await response.json();
+
+        if (result.success) {
+            showNotification(result.message || 'O\'zgarish rad etildi', 'success');
+            loadAmendmentHistory();
+        } else {
+            showNotification(result.message || 'Rad etishda xatolik', 'error');
+        }
+    } catch (error) {
+        console.error('Amendment rejection error:', error);
+        showNotification('Rad etishda xatolik yuz berdi', 'error');
+    }
+}
+
+// Remove date restrictions
 function removeDateRestrictions() {
     const paymentDateInputs = document.querySelectorAll('input[name="payment_date"]');
     paymentDateInputs.forEach(input => {
-        // Remove max attribute that restricts future dates
         input.removeAttribute('max');
 
-        // Update validation to only check contract date minimum
         input.addEventListener('change', function() {
             if (!contractData) return;
 
             const selectedDate = new Date(this.value);
             const contractDate = new Date(contractData.contract_date);
 
-            // Only validate against contract start date
             if (selectedDate < contractDate) {
                 this.setCustomValidity('To\'lov sanasi shartnoma sanasidan oldin bo\'lishi mumkin emas');
             } else {
-                this.setCustomValidity(''); // Clear any validation errors
+                this.setCustomValidity('');
             }
         });
     });
@@ -1264,6 +2297,12 @@ function setupEventListeners() {
     const paymentForm = document.getElementById('paymentForm');
     if (paymentForm) {
         paymentForm.addEventListener('submit', handlePaymentSubmit);
+    }
+
+    // NEW: Amendment form listener
+    const amendmentForm = document.getElementById('amendmentForm');
+    if (amendmentForm) {
+        amendmentForm.addEventListener('submit', handleAmendmentSubmit);
     }
 }
 
@@ -2105,216 +3144,9 @@ async function handleScheduleSubmit(e) {
         }
     } catch (error) {
         console.error('Schedule submission error:', error);
-        showNotification(error.message, 'error');
-    } finally {
-        isSubmittingSchedule = false;
-        submitBtn.disabled = false;
-        submitBtn.innerHTML = originalText;
-        safeFeatherReplace();
     }
 }
 
-// ENHANCED: Payment submission with debug and quarter detection
-async function handlePaymentSubmit(e) {
-    e.preventDefault();
-
-    if (isSubmittingPayment) {
-        showNotification('To\'lov qo\'shilmoqda, iltimos kuting...', 'warning');
-        return false;
-    }
-
-    if (!contractData) {
-        showNotification('Avval shartnomani saqlang', 'error');
-        return false;
-    }
-
-    isSubmittingPayment = true;
-    const submitBtn = e.target.querySelector('button[type="submit"]');
-    const originalText = submitBtn.innerHTML;
-
-    submitBtn.disabled = true;
-    submitBtn.innerHTML = `
-        <i data-feather="loader" class="w-4 h-4 mr-2 animate-spin"></i>
-        To'lov qo'shilmoqda...
-    `;
-
-    try {
-        const formData = new FormData(e.target);
-        const paymentDate = formData.get('payment_date');
-        const paymentAmount = parseFloat(formData.get('payment_amount'));
-
-        if (!paymentDate) {
-            throw new Error('To\'lov sanasini kiriting');
-        }
-
-        if (!paymentAmount || paymentAmount <= 0) {
-            throw new Error('To\'lov summasini to\'g\'ri kiriting');
-        }
-
-        console.log('=== PAYMENT QUARTER CALCULATION DEBUG ===');
-        console.log('Payment Date:', paymentDate);
-        console.log('Contract Data:', contractData);
-        console.log('Quarterly Data:', quarterlyData);
-
-        const paymentDateObj = new Date(paymentDate);
-        const paymentYear = paymentDateObj.getFullYear();
-        const paymentMonth = paymentDateObj.getMonth() + 1;
-        const calculatedQuarter = Math.ceil(paymentMonth / 3);
-
-        console.log('Date Analysis:');
-        console.log('- Payment Year:', paymentYear);
-        console.log('- Payment Month:', paymentMonth);
-        console.log('- Calculated Quarter:', calculatedQuarter);
-
-        console.log('Available Quarters in Schedule:');
-        if (quarterlyData && typeof quarterlyData === 'object') {
-            Object.keys(quarterlyData).forEach(year => {
-                if (quarterlyData[year] && typeof quarterlyData[year] === 'object') {
-                    Object.keys(quarterlyData[year]).forEach(quarter => {
-                        const planAmount = parseFloat(quarterlyData[year][quarter].plan_amount) || 0;
-                        if (planAmount > 0) {
-                            console.log(`- ${quarter}-chorak ${year}: Plan ${planAmount} so'm`);
-                        }
-                    });
-                }
-            });
-        }
-
-        let targetQuarter;
-        if (quarterlyData &&
-            quarterlyData[paymentYear] &&
-            quarterlyData[paymentYear][calculatedQuarter] &&
-            parseFloat(quarterlyData[paymentYear][calculatedQuarter].plan_amount) > 0) {
-
-            targetQuarter = {
-                year: paymentYear,
-                quarter: calculatedQuarter,
-                date: paymentDateObj,
-                isValid: true,
-                source: 'direct_calculation'
-            };
-
-            console.log('✅ Direct quarter found:', targetQuarter);
-        } else {
-            console.log('❌ Direct quarter not found, searching for alternatives...');
-
-            const availableQuarters = [];
-            if (quarterlyData && typeof quarterlyData === 'object') {
-                Object.keys(quarterlyData).forEach(year => {
-                    if (quarterlyData[year] && typeof quarterlyData[year] === 'object') {
-                        Object.keys(quarterlyData[year]).forEach(quarter => {
-                            const planAmount = parseFloat(quarterlyData[year][quarter].plan_amount) || 0;
-                            if (planAmount > 0) {
-                                availableQuarters.push({
-                                    year: parseInt(year),
-                                    quarter: parseInt(quarter),
-                                    planAmount: planAmount
-                                });
-                            }
-                        });
-                    }
-                });
-            }
-
-            console.log('Available quarters for fallback:', availableQuarters);
-
-            if (availableQuarters.length > 0) {
-                let closest = availableQuarters[0];
-                let minDiff = Math.abs(getQuarterMiddleDate(closest.year, closest.quarter) - paymentDateObj);
-
-                availableQuarters.forEach(quarter => {
-                    const quarterMiddle = getQuarterMiddleDate(quarter.year, quarter.quarter);
-                    const diff = Math.abs(quarterMiddle - paymentDateObj);
-
-                    if (diff < minDiff) {
-                        minDiff = diff;
-                        closest = quarter;
-                    }
-                });
-
-                targetQuarter = {
-                    year: closest.year,
-                    quarter: closest.quarter,
-                    date: paymentDateObj,
-                    isValid: true,
-                    source: 'closest_available',
-                    originalCalculation: {
-                        year: paymentYear,
-                        quarter: calculatedQuarter
-                    }
-                };
-
-                console.log('✅ Closest quarter found:', targetQuarter);
-                showNotification(`To'lov ${calculatedQuarter}-chorak ${paymentYear} o'rniga ${closest.quarter}-chorak ${closest.year} ga tayinlanadi`, 'warning');
-            } else {
-                throw new Error('Hech qanday to\'lov jadvali mavjud emas');
-            }
-        }
-
-        console.log('=== FINAL QUARTER ASSIGNMENT ===');
-        console.log('Target Quarter:', targetQuarter);
-
-        formData.append('target_year', targetQuarter.year);
-        formData.append('target_quarter', targetQuarter.quarter);
-        formData.append('quarter_validation', 'true');
-        formData.append('calculation_debug', JSON.stringify({
-            paymentDate: paymentDate,
-            calculatedYear: paymentYear,
-            calculatedQuarter: calculatedQuarter,
-            assignedYear: targetQuarter.year,
-            assignedQuarter: targetQuarter.quarter,
-            source: targetQuarter.source
-        }));
-
-        console.log('Form data being sent:');
-        console.log('- target_year:', targetQuarter.year);
-        console.log('- target_quarter:', targetQuarter.quarter);
-
-        const response = await fetch(`/contracts/${contractData.id}/store-fact-payment`, {
-            method: 'POST',
-            headers: {
-                'X-CSRF-TOKEN': document.querySelector('meta[name="csrf-token"]').content,
-                'Accept': 'application/json',
-                'X-Requested-With': 'XMLHttpRequest'
-            },
-            body: formData
-        });
-
-        console.log('Backend response status:', response.status);
-
-        if (!response.ok) {
-            const errorData = await response.json();
-            console.log('Backend error response:', errorData);
-            throw new Error(errorData.message || `Server error: ${response.status}`);
-        }
-
-        const result = await response.json();
-        console.log('Backend success response:', result);
-
-        if (result.success) {
-            closePaymentModal();
-            showNotification(
-                `To'lov muvaffaqiyatli qo'shildi: ${targetQuarter.quarter}-chorak ${targetQuarter.year}`,
-                'success'
-            );
-            loadQuarterlyData();
-
-            if (typeof loadPaymentHistory === 'function') {
-                loadPaymentHistory();
-            }
-        } else {
-            throw new Error(result.message || 'To\'lov qo\'shishda xatolik');
-        }
-    } catch (error) {
-        console.error('Payment submission error:', error);
-        showNotification(error.message, 'error');
-    } finally {
-        isSubmittingPayment = false;
-        submitBtn.disabled = false;
-        submitBtn.innerHTML = originalText;
-        safeFeatherReplace();
-    }
-}
 
 // Helper function for quarter middle date calculation
 function getQuarterMiddleDate(year, quarter) {
@@ -2323,12 +3155,8 @@ function getQuarterMiddleDate(year, quarter) {
     return new Date(year, quarterMiddleMonth - 1, 15);
 }
 
-// FIXED: Add payment for specific quarter with proper date suggestion
+// Add payment for specific quarter with proper date suggestion
 function addQuarterPayment(year, quarter) {
-    console.log('=== ADD QUARTER PAYMENT DEBUG ===');
-    console.log('Requested year:', year);
-    console.log('Requested quarter:', quarter);
-
     if (!contractData) {
         showNotification('Shartnoma ma\'lumotlari topilmadi', 'error');
         return;
@@ -2341,22 +3169,12 @@ function addQuarterPayment(year, quarter) {
 
     openPaymentModal();
 
-    // FIXED: Calculate proper date for the requested quarter
-    const quarterStartMonth = (quarter - 1) * 3 + 1; // 1, 4, 7, 10
-    const quarterMiddleMonth = quarterStartMonth + 1; // 2, 5, 8, 11
-    const quarterEndMonth = quarter * 3; // 3, 6, 9, 12
+    const quarterStartMonth = (quarter - 1) * 3 + 1;
+    const quarterMiddleMonth = quarterStartMonth + 1;
+    const quarterEndMonth = quarter * 3;
 
-    console.log('Quarter month calculation:', {
-        quarter: quarter,
-        startMonth: quarterStartMonth,
-        middleMonth: quarterMiddleMonth,
-        endMonth: quarterEndMonth
-    });
+    let suggestedDate = new Date(year, quarterMiddleMonth - 1, 15);
 
-    // FIXED: Use proper date for the quarter without restrictive validations
-    let suggestedDate = new Date(year, quarterMiddleMonth - 1, 15); // Middle of quarter
-
-    // ONLY check contract date constraint (not future date constraint)
     const contractStartDate = new Date(contractData.contract_date);
     if (suggestedDate < contractStartDate) {
         const quarterStartDate = new Date(year, quarterStartMonth - 1, 1);
@@ -2366,15 +3184,6 @@ function addQuarterPayment(year, quarter) {
             suggestedDate = quarterStartDate;
         }
     }
-
-    console.log('Final suggested date:', suggestedDate.toISOString().split('T')[0]);
-    console.log('Date verification:', {
-        suggestedDate: suggestedDate.toISOString().split('T')[0],
-        suggestedMonth: suggestedDate.getMonth() + 1,
-        calculatedQuarter: Math.ceil((suggestedDate.getMonth() + 1) / 3),
-        requestedQuarter: quarter,
-        matches: Math.ceil((suggestedDate.getMonth() + 1) / 3) === quarter
-    });
 
     const dateInput = document.querySelector('input[name="payment_date"]');
     if (dateInput) {
@@ -2567,7 +3376,7 @@ function editQuarterPlan(year, quarter) {
 // Close modals on background click
 document.addEventListener('click', function(e) {
     if (e.target.classList.contains('fixed') && e.target.classList.contains('inset-0')) {
-        const modals = ['paymentScheduleModal', 'paymentModal', 'quarterDetailsModal', 'historyModal'];
+        const modals = ['paymentScheduleModal', 'paymentModal', 'quarterDetailsModal', 'historyModal', 'amendmentModal', 'amendmentDetailsModal'];
         modals.forEach(modalId => {
             const modal = document.getElementById(modalId);
             if (modal && !modal.classList.contains('hidden')) {
@@ -2577,12 +3386,11 @@ document.addEventListener('click', function(e) {
     }
 });
 
-// Optional loadPaymentHistory function
+// Payment History Functions
 function loadPaymentHistory() {
     const historyContainer = document.getElementById('paymentHistoryContainer');
     if (!historyContainer || !contractData) return;
 
-    // Show loading state
     historyContainer.innerHTML = `
         <div class="text-center py-8">
             <div class="animate-spin rounded-full h-8 w-8 border-b-2 border-purple-600 mx-auto mb-3"></div>
@@ -2608,7 +3416,6 @@ function loadPaymentHistory() {
 function renderPaymentHistoryDetail(history, contractInfo) {
     let html = `
         <div class="space-y-4">
-            <!-- History Header -->
             <div class="bg-purple-50 rounded-lg p-4 border border-purple-200">
                 <div class="flex items-center justify-between">
                     <div class="flex items-center">
@@ -2624,11 +3431,8 @@ function renderPaymentHistoryDetail(history, contractInfo) {
                 </div>
             </div>
 
-            <!-- History Timeline -->
             <div class="relative">
-                <!-- Timeline line -->
                 <div class="absolute left-6 top-0 bottom-0 w-0.5 bg-gray-200"></div>
-
                 <div class="space-y-4">
     `;
 
@@ -2667,15 +3471,12 @@ function renderHistoryItem(item, isLast) {
 
     return `
         <div class="relative flex items-start space-x-4">
-            <!-- Timeline dot -->
             <div class="flex-shrink-0 w-12 h-12 ${iconColor} rounded-full flex items-center justify-center z-10 border-2 border-white shadow-sm">
                 <i data-feather="${item.icon}" class="w-5 h-5"></i>
             </div>
 
-            <!-- Content -->
             <div class="flex-1 min-w-0 pb-4">
                 <div class="bg-white rounded-lg border border-gray-200 p-4 shadow-sm hover:shadow-md transition-shadow">
-                    <!-- Header -->
                     <div class="flex items-center justify-between mb-2">
                         <div class="flex items-center space-x-2">
                             <span class="px-2 py-1 text-xs font-medium rounded-full ${colorClass}">
@@ -2690,15 +3491,10 @@ function renderHistoryItem(item, isLast) {
                         </div>
                     </div>
 
-                    <!-- Description -->
                     <div class="text-sm text-gray-700 mb-2">
                         ${item.description || item.formatted_description}
                     </div>
 
-                    <!-- Changes details -->
-                    ${item.changes && item.changes.length > 0 ? renderChangesDetail(item.changes) : ''}
-
-                    <!-- Footer -->
                     <div class="flex items-center justify-between text-xs text-gray-500 mt-3 pt-3 border-t border-gray-100">
                         <div class="flex items-center">
                             <i data-feather="user" class="w-3 h-3 mr-1"></i>
@@ -2715,37 +3511,6 @@ function renderHistoryItem(item, isLast) {
     `;
 }
 
-function renderChangesDetail(changes) {
-    if (!changes || changes.length === 0) return '';
-
-    let html = `
-        <div class="bg-gray-50 rounded-md p-3 mt-2">
-            <div class="text-xs font-medium text-gray-700 mb-2">O'zgarishlar:</div>
-            <div class="space-y-1">
-    `;
-
-    changes.forEach(change => {
-        html += `
-            <div class="flex items-center justify-between text-xs">
-                <span class="font-medium text-gray-600">${change.field}:</span>
-                <div class="flex items-center space-x-2">
-                    <span class="text-red-600 line-through">${change.old}</span>
-                    <span class="text-gray-400">→</span>
-                    <span class="text-green-600 font-medium">${change.new}</span>
-                </div>
-            </div>
-        `;
-    });
-
-    html += `
-            </div>
-        </div>
-    `;
-
-    return html;
-}
-
-// Render empty history state
 function renderEmptyHistory() {
     return `
         <div class="text-center py-12">
@@ -2761,7 +3526,6 @@ function renderEmptyHistory() {
     `;
 }
 
-// Render history error state
 function renderHistoryError() {
     return `
         <div class="text-center py-8">
@@ -2779,129 +3543,13 @@ function renderHistoryError() {
     `;
 }
 
-// Load payment history stats (optional)
-function loadPaymentHistoryStats() {
-    if (!contractData) return;
-
-    fetch(`/contracts/${contractData.id}/payment-history-stats`)
-        .then(response => response.json())
-        .then(data => {
-            if (data.success) {
-                updateHistoryStats(data.stats);
-            }
-        })
-        .catch(error => {
-            console.error('Error loading history stats:', error);
-        });
-}
-
-// Update history statistics display
-function updateHistoryStats(stats) {
-    const statsContainer = document.getElementById('historyStatsContainer');
-    if (!statsContainer) return;
-
-    statsContainer.innerHTML = `
-        <div class="grid grid-cols-2 md:grid-cols-4 gap-4 mb-6">
-            <div class="bg-white rounded-lg p-4 border border-gray-200 text-center">
-                <div class="text-2xl font-bold text-purple-600">${stats.total_actions || 0}</div>
-                <div class="text-xs text-gray-500">Jami faoliyat</div>
-            </div>
-            <div class="bg-white rounded-lg p-4 border border-gray-200 text-center">
-                <div class="text-2xl font-bold text-green-600">${stats.payment_actions || 0}</div>
-                <div class="text-xs text-gray-500">To'lov amallar</div>
-            </div>
-            <div class="bg-white rounded-lg p-4 border border-gray-200 text-center">
-                <div class="text-2xl font-bold text-blue-600">${stats.schedule_actions || 0}</div>
-                <div class="text-xs text-gray-500">Jadval amallar</div>
-            </div>
-            <div class="bg-white rounded-lg p-4 border border-gray-200 text-center">
-                <div class="text-2xl font-bold text-orange-600">${stats.recent_activity || 0}</div>
-                <div class="text-xs text-gray-500">Haftalik faoliyat</div>
-            </div>
-        </div>
-    `;
-}
-
-// Export payment history
-function exportPaymentHistory() {
-    if (!contractData) {
-        showNotification('Shartnoma ma\'lumotlari topilmadi', 'error');
-        return;
-    }
-
-    showNotification('Tarix eksport qilinmoqda...', 'info');
-
-    fetch(`/contracts/${contractData.id}/export-payment-history`, {
-        method: 'GET',
-        headers: {
-            'Accept': 'application/json',
-            'X-Requested-With': 'XMLHttpRequest'
-        }
-    })
-    .then(response => {
-        if (response.ok) {
-            return response.blob();
-        }
-        throw new Error('Export failed');
-    })
-    .then(blob => {
-        const url = window.URL.createObjectURL(blob);
-        const a = document.createElement('a');
-        a.href = url;
-        a.download = `shartnoma_${contractData.contract_number}_tarix.xlsx`;
-        document.body.appendChild(a);
-        a.click();
-        document.body.removeChild(a);
-        window.URL.revokeObjectURL(url);
-        showNotification('Tarix muvaffaqiyatli yuklab olindi', 'success');
-    })
-    .catch(error => {
-        console.error('Export error:', error);
-        showNotification('Eksportda xatolik yuz berdi', 'error');
-    });
-}
-
-// Filter payment history
-function filterPaymentHistory(filterType) {
-    const historyContainer = document.getElementById('paymentHistoryContainer');
-    if (!historyContainer || !contractData) return;
-
-    let url = `/contracts/${contractData.id}/payment-history`;
-    if (filterType && filterType !== 'all') {
-        url += `?filter=${filterType}`;
-    }
-
-    historyContainer.innerHTML = `
-        <div class="text-center py-8">
-            <div class="animate-spin rounded-full h-8 w-8 border-b-2 border-purple-600 mx-auto mb-3"></div>
-            <p class="text-gray-500">Filterlash...</p>
-        </div>
-    `;
-
-    fetch(url)
-        .then(response => response.json())
-        .then(data => {
-            if (data.success && data.history && data.history.length > 0) {
-                historyContainer.innerHTML = renderPaymentHistoryDetail(data.history, data.contract_info);
-            } else {
-                historyContainer.innerHTML = renderEmptyHistory();
-            }
-        })
-        .catch(error => {
-            console.error('Error filtering history:', error);
-            historyContainer.innerHTML = renderHistoryError();
-        });
-}
-
 // Initialize payment history when page loads
 document.addEventListener('DOMContentLoaded', function() {
-    // Auto-load payment history if container exists
     setTimeout(() => {
         if (document.getElementById('paymentHistoryContainer') && contractData) {
             loadPaymentHistory();
-            loadPaymentHistoryStats();
         }
-    }, 1000); // Load after other components
+    }, 1000);
 });
 </script>
 @endpush
