@@ -37,10 +37,7 @@ class PaymentSchedule extends Model
     /**
      * Relationship with amendment (agar qo'shimcha kelishuv orqali yaratilgan bo'lsa)
      */
-    public function amendment(): BelongsTo
-    {
-        return $this->belongsTo(ContractAmendment::class, 'amendment_id');
-    }
+
 
     /**
      * Get actual payments for this quarter
@@ -300,4 +297,9 @@ class PaymentSchedule extends Model
             'created_at' => $this->created_at->format('d.m.Y H:i')
         ];
     }
+
+public function amendment()
+{
+    return $this->belongsTo(ContractAmendment::class, 'amendment_id');
+}
 }

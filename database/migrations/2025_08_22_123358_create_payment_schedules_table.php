@@ -17,11 +17,16 @@ return new class extends Migration
         Schema::create('payment_schedules', function (Blueprint $table) {
             $table->id();
             $table->foreignId('contract_id')->constrained('contracts')->onDelete('cascade');
+            $table->unsignedBigInteger('amendment_id')->nullable();
             $table->integer('year');
-            $table->tinyInteger('quarter');
+            $table->integer('quarter');
             $table->decimal('quarter_amount', 15, 2);
+            $table->decimal('custom_percent', 5, 2)->nullable();
             $table->boolean('is_active')->default(true);
             $table->timestamps();
+
+            $table->index(['contract_id', 'year', 'quarter']);
+            $table->index(['contract_id', 'amendment_id', 'is_active']);
         });
 
 
@@ -33,8 +38,6 @@ return new class extends Migration
                 $table->unsignedBigInteger('updated_by')->nullable()->after('created_by');
             }
         });
-
-
     }
 
     /**

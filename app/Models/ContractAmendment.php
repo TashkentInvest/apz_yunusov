@@ -252,6 +252,13 @@ class ContractAmendment extends Model
         }
     }
 
+
+
+    public function paymentSchedules()
+    {
+        return $this->hasMany(PaymentSchedule::class, 'amendment_id');
+    }
+
     private function handleInitialPaymentAdjustment($adjustment)
     {
         $contract = $this->contract;

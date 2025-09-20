@@ -6,42 +6,47 @@ use Illuminate\Support\Facades\Schema;
 
 return new class extends Migration
 {
-    public function up()
+    /**
+     * Run the migrations.
+     */
+    public function up(): void
     {
         Schema::create('contract_amendments', function (Blueprint $table) {
             $table->id();
             $table->foreignId('contract_id')->constrained('contracts')->onDelete('cascade');
-            $table->integer('amendment_number'); // Qo'shimcha kelishuv raqami (1, 2, 3...)
-            $table->date('amendment_date'); // Qo'shimcha kelishuv sanasi
-            $table->text('reason'); // O'zgarish sababi
+            $table->string('amendment_number', 50);
+            $table->date('amendment_date');
 
-            // Eski qiymatlar
-            $table->decimal('old_volume', 12, 2)->nullable(); // Eski hajm
-            $table->decimal('old_coefficient', 5, 4)->nullable(); // Eski koeffitsient
-            $table->decimal('old_amount', 15, 2)->nullable(); // Eski summa
-            $table->foreignId('old_base_amount_id')->nullable()->constrained('base_calculation_amounts');
+            // O'zgartirishlar
+            $table->decimal('new_total_amount', 15, 2)->nullable();
+            $table->date('new_completion_date')->nullable();
+            $table->decimal('new_initial_payment_percent', 5, 2)->nullable();
+            $table->integer('new_quarters_count')->nullable();
 
-            // Yangi qiymatlar
-            $table->decimal('new_volume', 12, 2)->nullable(); // Yangi hajm
-            $table->decimal('new_coefficient', 5, 4)->nullable(); // Yangi koeffitsient
-            $table->decimal('new_amount', 15, 2)->nullable(); // Yangi summa
-            $table->foreignId('new_base_amount_id')->nullable()->constrained('base_calculation_amounts');
+            // Sabab va tavsif
+            $table->text('reason');
+            $table->text('description')->nullable();
 
-            // Qo'shimcha ma'lumotlar
-            $table->text('bank_changes')->nullable(); // Bank rekvizitlari o'zgarishi
-            $table->boolean('is_active')->default(true); // Faol holati
-            $table->unsignedBigInteger('created_by')->nullable(); // Kim tomonidan yaratilgan
+            // Holat
+            $table->boolean('is_approved')->default(false);
+            $table->timestamp('approved_at')->nullable();
+            $table->unsignedBigInteger('approved_by')->nullable();
+
+            // Audit maydonlari
+            $table->unsignedBigInteger('created_by');
+            $table->unsignedBigInteger('updated_by')->nullable();
             $table->timestamps();
 
-            // Indekslar
-            $table->unique(['contract_id', 'amendment_number']); // Bir shartnoma uchun bir xil raqamli kelishuv bo'lmasligi
-            $table->index(['contract_id', 'is_active']);
-            $table->index('amendment_date');
+            // Indexlar
+            $table->index(['contract_id', 'is_approved']);
+            $table->unique(['contract_id', 'amendment_number']);
         });
-
     }
 
-    public function down()
+    /**
+     * Reverse the migrations.
+     */
+    public function down(): void
     {
         Schema::dropIfExists('contract_amendments');
     }

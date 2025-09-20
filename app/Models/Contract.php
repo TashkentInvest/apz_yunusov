@@ -32,18 +32,17 @@ class Contract extends Model
         'amendment_count'
     ];
 
-    protected $casts = [
-        'contract_date' => 'date',
-        'completion_date' => 'date',
-        'contract_volume' => 'decimal:2',
-        'coefficient' => 'decimal:4',
-        'total_amount' => 'decimal:2',
-        'initial_payment_percent' => 'integer',
-        'construction_period_years' => 'integer',
-        'quarters_count' => 'integer',
-        'is_active' => 'boolean'
-    ];
-
+  protected $casts = [
+    'total_amount' => 'decimal:2',
+    'initial_payment_percent' => 'decimal:2',
+    'contract_volume' => 'decimal:2',
+    'coefficient' => 'decimal:4',
+    'construction_period_years' => 'integer',
+    'quarters_count' => 'integer',
+    'contract_date' => 'date',
+    'completion_date' => 'date',
+    'is_active' => 'boolean',
+];
     /**
      * Relationship with subject (property owner)
      */

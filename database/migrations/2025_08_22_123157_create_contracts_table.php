@@ -29,7 +29,7 @@ return new class extends Migration
 
             // Тўлов шартлари
             $table->enum('payment_type', ['full', 'installment'])->default('installment'); // Тўлов тури
-            $table->integer('initial_payment_percent')->default(20); // Бошланғич тўлов фоизи
+            $table->decimal('initial_payment_percent',5,2); // Бошланғич тўлов фоизи
             $table->integer('construction_period_years')->default(2); // Қурилиш муддати (йил)
             $table->integer('quarters_count')->default(8); // Чорак йиллар сони
 
