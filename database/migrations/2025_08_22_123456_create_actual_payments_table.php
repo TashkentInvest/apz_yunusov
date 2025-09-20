@@ -10,29 +10,17 @@ return new class extends Migration
     {
         // Амалий тўловлар - ҳақиқий тўловлар маълумоти
 
-        Schema::create('actual_payments', function (Blueprint $table) {
-            $table->id(); // Тўлов ID рақами
-            $table->foreignId('contract_id')->constrained('contracts'); // Шартнома маълумоти
-            $table->string('payment_number', 50)->nullable(); // Тўлов рақами
-            $table->date('payment_date'); // Тўлов санаси
-            $table->decimal('amount', 15, 2); // Тўлов суммаси
+        Schema::table('actual_payments', function (Blueprint $table) {
+            $table->boolean('is_initial_payment')->default(false)->after('quarter');
+            $table->foreignId('amendment_id')->nullable()->after('is_initial_payment')->constrained('contract_amendments')->onDelete('set null');
+            $table->string('payment_category', 50)->default('quarterly')->after('amendment_id'); // 'initial', 'quarterly', 'final'
+            $table->decimal('exchange_rate', 10, 4)->nullable()->after('amount');
+            $table->string('currency', 3)->default('UZS')->after('exchange_rate');
+            $table->foreignId('updated_by')->nullable()->after('created_by')->constrained('users');
 
-            $table->integer('year'); // Йил
-            $table->integer('quarter'); // Чорак йил
-
-            $table->text('notes')->nullable(); // Изоҳлар
-            $table->unsignedBigInteger('created_by')->nullable(); // Ким томонидан яратилган
-            $table->timestamps(); // Яратилган ва янгиланган санаси
-
-            // Тизимлаштириш учун индекслар
-            $table->index(['contract_id', 'payment_date']); // Шартнома ва сана бўйича
-            $table->index(['year', 'quarter']); // Вақт бўйича индекс
-
-            $table->boolean('is_initial_payment')->default(false);
-            $table->foreignId('amendment_id')->nullable()->constrained('contract_amendments');
-
-                $table->text('amendment_notes')->nullable(); // Qo'shimcha kelishuv bilan bog'liq izohlar
-
+            $table->index(['contract_id', 'is_initial_payment']);
+            $table->index(['contract_id', 'payment_category']);
+            $table->index(['contract_id', 'year', 'quarter']);
         });
     }
 

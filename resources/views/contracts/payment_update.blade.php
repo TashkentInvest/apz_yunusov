@@ -26,6 +26,7 @@
 .danger-gradient { background: linear-gradient(135deg, #fee2e2 0%, #fecaca 100%); }
 .info-gradient { background: linear-gradient(135deg, #dbeafe 0%, #bfdbfe 100%); }
 .purple-gradient { background: linear-gradient(135deg, #f3e8ff 0%, #e9d5ff 100%); }
+.initial-gradient { background: linear-gradient(135deg, #fdf4ff 0%, #fae8ff 100%); }
 .btn { @apply inline-flex items-center px-4 py-2 rounded-lg font-medium transition-colors; }
 .btn-primary { @apply bg-blue-600 text-white hover:bg-blue-700; }
 .btn-secondary { @apply bg-gray-600 text-white hover:bg-gray-700; }
@@ -37,6 +38,10 @@
 .quarter-item.completed { @apply border-green-400 bg-green-50; }
 .quarter-item.partial { @apply border-yellow-400 bg-yellow-50; }
 .quarter-item.overdue { @apply border-red-400 bg-red-50; }
+.initial-payment-card { @apply bg-white border-2 border-purple-300 rounded-xl p-6 hover:shadow-lg transition-all; }
+.initial-payment-card.completed { @apply border-purple-500 bg-purple-50; }
+.initial-payment-card.partial { @apply border-purple-400 bg-purple-25; }
+.initial-payment-card.pending { @apply border-purple-300 bg-white; }
 .status-badge { @apply px-3 py-1 rounded-full text-xs font-semibold uppercase; }
 .status-completed { @apply bg-green-100 text-green-800; }
 .status-partial { @apply bg-yellow-100 text-yellow-800; }
@@ -205,24 +210,24 @@
                     <i data-feather="plus" class="w-4 h-4 mr-2"></i>
                     Jadval tuzish
                 </a>
-                <button onclick="showAddPaymentModal()" class="btn btn-success">
+                <button onclick="showAddPaymentModal('initial')" class="btn btn-purple">
                     <i data-feather="credit-card" class="w-4 h-4 mr-2"></i>
-                    To'lov qo'shish
+                    Boshlang'ich to'lov
                 </button>
-                <button onclick="showAmendments()" class="btn btn-warning">
+                <button onclick="showAddPaymentModal('quarterly')" class="btn btn-success">
+                    <i data-feather="calendar" class="w-4 h-4 mr-2"></i>
+                    Chorak to'lovi
+                </button>
+                <a href="{{ route('contracts.amendments.create', $paymentData['contract']['id']) }}" class="btn btn-warning">
                     <i data-feather="file-plus" class="w-4 h-4 mr-2"></i>
-                    Qo'shimcha kelishuvlar
-                </button>
-                <a href="{{ route('contracts.amendments.create', $paymentData['contract']['id']) }}" class="btn btn-purple">
-                    <i data-feather="plus-circle" class="w-4 h-4 mr-2"></i>
-                    Yangi kelishuv
+                    Qo'shimcha kelishuv
                 </a>
             </div>
         </div>
 
         <div class="p-8">
             <!-- Summary Cards -->
-            <div class="grid grid-cols-1 md:grid-cols-4 gap-6 mb-8">
+            <div class="grid grid-cols-1 md:grid-cols-5 gap-6 mb-8">
                 <div class="info-gradient rounded-xl p-6 text-center">
                     <div class="w-12 h-12 bg-blue-100 rounded-full flex items-center justify-center mx-auto mb-3">
                         <i data-feather="target" class="w-6 h-6 text-blue-600"></i>
@@ -234,14 +239,25 @@
                     </div>
                 </div>
 
+                <div class="initial-gradient rounded-xl p-6 text-center">
+                    <div class="w-12 h-12 bg-purple-100 rounded-full flex items-center justify-center mx-auto mb-3">
+                        <i data-feather="star" class="w-6 h-6 text-purple-600"></i>
+                    </div>
+                    <p class="text-sm font-medium text-purple-800">BOSHLANG'ICH</p>
+                    <p class="text-2xl font-bold text-purple-900">{{ $paymentData['summary_cards']['initial_payment_paid_formatted'] }}</p>
+                    <div class="mt-2 text-xs text-purple-600">
+                        Plan: {{ $paymentData['summary_cards']['initial_payment_plan_formatted'] }}
+                    </div>
+                </div>
+
                 <div class="success-gradient rounded-xl p-6 text-center">
                     <div class="w-12 h-12 bg-green-100 rounded-full flex items-center justify-center mx-auto mb-3">
                         <i data-feather="check-circle" class="w-6 h-6 text-green-600"></i>
                     </div>
-                    <p class="text-sm font-medium text-green-800">TO'LANGAN</p>
-                    <p class="text-2xl font-bold text-green-900">{{ $paymentData['summary_cards']['total_paid_formatted'] }}</p>
+                    <p class="text-sm font-medium text-green-800">CHORAK TO'LOVLARI</p>
+                    <p class="text-2xl font-bold text-green-900">{{ $paymentData['summary_cards']['quarterly_paid_formatted'] }}</p>
                     <div class="mt-2 text-xs text-green-600">
-                        {{ $paymentData['payment_history']['total_count'] ?? 0 }} ta to'lov
+                        Plan: {{ $paymentData['summary_cards']['quarterly_plan_formatted'] }}
                     </div>
                 </div>
 
@@ -263,6 +279,84 @@
                     <div class="mt-2 text-xs text-red-600">Tezda to'lash kerak</div>
                 </div>
             </div>
+
+            <!-- Initial Payment Section -->
+            @if(isset($paymentData['initial_payments']))
+            <div class="mb-8">
+                <div class="flex items-center justify-between mb-6">
+                    <h3 class="text-xl font-bold text-gray-900 flex items-center">
+                        <i data-feather="star" class="w-5 h-5 mr-2 text-purple-600"></i>
+                        Boshlang'ich to'lov
+                    </h3>
+                    <button onclick="showAddPaymentModal('initial')" class="btn btn-purple">
+                        <i data-feather="plus" class="w-4 h-4 mr-2"></i>
+                        To'lov qo'shish
+                    </button>
+                </div>
+
+                <div class="initial-payment-card {{ $paymentData['initial_payments']['status_class'] }}">
+                    <div class="flex justify-between items-center mb-4">
+                        <h4 class="text-lg font-semibold text-purple-900">Boshlang'ich to'lov holati</h4>
+                        <span class="status-badge status-{{ $paymentData['initial_payments']['status_class'] }}">
+                            {{ $paymentData['initial_payments']['status'] }}
+                        </span>
+                    </div>
+
+                    <div class="grid grid-cols-1 md:grid-cols-4 gap-4 mb-4">
+                        <div class="text-center">
+                            <div class="text-sm text-purple-700">Plan</div>
+                            <div class="text-xl font-bold text-purple-900">{{ $paymentData['initial_payments']['plan_amount_formatted'] }}</div>
+                        </div>
+                        <div class="text-center">
+                            <div class="text-sm text-purple-700">To'langan</div>
+                            <div class="text-xl font-bold text-green-700">{{ $paymentData['initial_payments']['total_paid_formatted'] }}</div>
+                        </div>
+                        <div class="text-center">
+                            <div class="text-sm text-purple-700">Qolgan</div>
+                            <div class="text-xl font-bold text-red-700">{{ $paymentData['initial_payments']['remaining_formatted'] }}</div>
+                        </div>
+                        <div class="text-center">
+                            <div class="text-sm text-purple-700">Foiz</div>
+                            <div class="text-xl font-bold text-purple-900">{{ $paymentData['initial_payments']['payment_percent'] }}%</div>
+                        </div>
+                    </div>
+
+                    <div class="w-full bg-purple-200 rounded-full h-3 mb-4">
+                        <div class="bg-purple-600 h-3 rounded-full transition-all" 
+                             style="width: {{ min(100, $paymentData['initial_payments']['payment_percent']) }}%"></div>
+                    </div>
+
+                    @if(count($paymentData['initial_payments']['payments']) > 0)
+                    <div class="mt-4">
+                        <h5 class="text-sm font-medium text-purple-800 mb-2">
+                            To'lovlar ({{ $paymentData['initial_payments']['payments_count'] }} ta):
+                        </h5>
+                        <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-3">
+                            @foreach($paymentData['initial_payments']['payments'] as $payment)
+                            <div class="bg-white border border-purple-200 rounded-lg p-3">
+                                <div class="flex justify-between items-start">
+                                    <div>
+                                        <div class="font-medium text-purple-900">{{ $payment['amount_formatted'] }}</div>
+                                        <div class="text-sm text-purple-600">{{ $payment['date'] }}</div>
+                                        @if($payment['payment_number'])
+                                        <div class="text-xs text-purple-500">{{ $payment['payment_number'] }}</div>
+                                        @endif
+                                    </div>
+                                    <div class="flex space-x-1">
+                                        <button onclick="editPayment({{ $payment['id'] }})" 
+                                               class="p-1 bg-purple-100 text-purple-600 rounded hover:bg-purple-200">
+                                            <i data-feather="edit-2" class="w-3 h-3"></i>
+                                        </button>
+                                    </div>
+                                </div>
+                            </div>
+                            @endforeach
+                        </div>
+                    </div>
+                    @endif
+                </div>
+            </div>
+            @endif
 
             <!-- Quarterly Breakdown -->
             @forelse($paymentData['quarterly_breakdown'] as $year => $yearData)
@@ -376,15 +470,17 @@
                     <h3 class="text-lg font-bold text-gray-900">To'lovlar tarixi</h3>
                     <div class="text-sm text-gray-500">
                         Jami: {{ $paymentData['payment_history']['total_count'] }} ta •
-                        Summa: {{ $paymentData['payment_history']['total_amount_formatted'] }}
+                        Boshlang'ich: {{ $paymentData['payment_history']['initial_payments_count'] }} ta •
+                        Chorak: {{ $paymentData['payment_history']['quarterly_payments_count'] }} ta
                     </div>
                 </div>
                 <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
                     @foreach(array_slice($paymentData['payment_history']['payments'], 0, 9) as $payment)
-                    <div class="payment-card" onclick="showPaymentDetails({{ $payment['id'] }})">
+                    <div class="payment-card {{ $payment['is_initial_payment'] ? 'border-purple-200' : 'border-gray-200' }}" 
+                         onclick="showPaymentDetails({{ $payment['id'] }})">
                         <div class="flex justify-between items-start mb-2">
                             <div class="font-medium text-lg">{{ $payment['amount_formatted'] }}</div>
-                            <div class="text-xs bg-gray-100 text-gray-600 px-2 py-1 rounded">
+                            <div class="text-xs {{ $payment['is_initial_payment'] ? 'bg-purple-100 text-purple-600' : 'bg-gray-100 text-gray-600' }} px-2 py-1 rounded">
                                 {{ $payment['quarter_info'] }}
                             </div>
                         </div>
@@ -455,10 +551,10 @@
                                 <span class="status-badge status-{{ $amendment['status_class'] }}">
                                     {{ $amendment['status_text'] }}
                                 </span>
-                                <button onclick="showAmendmentDetails({{ $amendment['id'] }})"
-                                       class="p-1 bg-purple-100 text-purple-600 rounded hover:bg-purple-200">
+                                <a href="{{ route('contracts.amendments.show', [$paymentData['contract']['id'], $amendment['id']]) }}"
+                                   class="p-1 bg-purple-100 text-purple-600 rounded hover:bg-purple-200">
                                     <i data-feather="eye" class="w-4 h-4"></i>
-                                </button>
+                                </a>
                             </div>
                         </div>
                     </div>
@@ -476,7 +572,7 @@
     <div class="relative top-20 mx-auto p-5 border w-full max-w-2xl shadow-lg rounded-md bg-white">
         <div class="mt-3">
             <div class="flex items-center justify-between mb-4">
-                <h3 class="text-lg font-bold text-gray-900">Yangi to'lov qo'shish</h3>
+                <h3 class="text-lg font-bold text-gray-900" id="modalTitle">Yangi to'lov qo'shish</h3>
                 <button onclick="hideAddPaymentModal()" class="text-gray-400 hover:text-gray-600">
                     <i data-feather="x" class="w-6 h-6"></i>
                 </button>
@@ -484,6 +580,8 @@
 
             <form id="addPaymentForm" class="space-y-4">
                 @csrf
+                <input type="hidden" id="paymentCategory" name="payment_category" value="quarterly">
+
                 <div>
                     <label class="block text-sm font-medium text-gray-700 mb-2">To'lov sanasi *</label>
                     <input type="date" id="modalPaymentDate" name="payment_date" required
@@ -569,15 +667,28 @@ function togglePaymentType(select) {
     }
 }
 
-function showAddPaymentModal(targetYear = null, targetQuarter = null) {
-    document.getElementById('addPaymentModal').classList.remove('hidden');
-
-    if (targetYear && targetQuarter) {
-        // Pre-fill date for specific quarter
-        const middleMonth = (targetQuarter - 1) * 3 + 2;
-        const suggestedDate = `${targetYear}-${String(middleMonth).padStart(2, '0')}-15`;
-        document.getElementById('modalPaymentDate').value = suggestedDate;
-        updateQuarterInfo(suggestedDate);
+function showAddPaymentModal(type = 'quarterly', targetYear = null, targetQuarter = null) {
+    const modal = document.getElementById('addPaymentModal');
+    const modalTitle = document.getElementById('modalTitle');
+    const paymentCategory = document.getElementById('paymentCategory');
+    
+    modal.classList.remove('hidden');
+    
+    if (type === 'initial') {
+        modalTitle.textContent = 'Boshlang\'ich to\'lov qo\'shish';
+        paymentCategory.value = 'initial';
+        document.getElementById('modalQuarterInfo').value = 'Boshlang\'ich to\'lov';
+    } else {
+        modalTitle.textContent = 'Chorak to\'lovi qo\'shish';
+        paymentCategory.value = 'quarterly';
+        
+        if (targetYear && targetQuarter) {
+            // Pre-fill date for specific quarter
+            const middleMonth = (targetQuarter - 1) * 3 + 2;
+            const suggestedDate = `${targetYear}-${String(middleMonth).padStart(2, '0')}-15`;
+            document.getElementById('modalPaymentDate').value = suggestedDate;
+            updateQuarterInfo(suggestedDate);
+        }
     }
 
     feather.replace();
@@ -586,13 +697,21 @@ function showAddPaymentModal(targetYear = null, targetQuarter = null) {
 function hideAddPaymentModal() {
     document.getElementById('addPaymentModal').classList.add('hidden');
     document.getElementById('addPaymentForm').reset();
+    document.getElementById('paymentCategory').value = 'quarterly';
 }
 
 function addQuarterPayment(year, quarter) {
-    showAddPaymentModal(year, quarter);
+    showAddPaymentModal('quarterly', year, quarter);
 }
 
 function updateQuarterInfo(dateStr) {
+    const paymentCategory = document.getElementById('paymentCategory').value;
+    
+    if (paymentCategory === 'initial') {
+        document.getElementById('modalQuarterInfo').value = 'Boshlang\'ich to\'lov';
+        return;
+    }
+    
     if (!dateStr) return;
 
     const date = new Date(dateStr);
@@ -609,6 +728,12 @@ function submitAddPayment() {
     // Add contract ID
     const contractId = {{ $paymentData['contract']['id'] ?? 0 }};
 
+    // Disable submit button
+    const submitBtn = form.querySelector('button[type="submit"]');
+    const originalText = submitBtn.innerHTML;
+    submitBtn.disabled = true;
+    submitBtn.innerHTML = 'Saqlanmoqda...';
+
     fetch(`/contracts/${contractId}/store-payment`, {
         method: 'POST',
         body: formData,
@@ -620,14 +745,19 @@ function submitAddPayment() {
     .then(data => {
         if (data.success) {
             hideAddPaymentModal();
-            location.reload(); // Refresh to show new payment
+            showSuccessMessage(data.message);
+            setTimeout(() => location.reload(), 1500);
         } else {
-            alert('Xatolik: ' + (data.message || 'Noma\'lum xatolik'));
+            showErrorMessage(data.message || 'Noma\'lum xatolik');
         }
     })
     .catch(error => {
         console.error('Error:', error);
-        alert('To\'lov qo\'shishda xatolik yuz berdi');
+        showErrorMessage('To\'lov qo\'shishda xatolik yuz berdi');
+    })
+    .finally(() => {
+        submitBtn.disabled = false;
+        submitBtn.innerHTML = originalText;
     });
 }
 
@@ -643,34 +773,103 @@ function showQuarterPayments(year, quarter) {
 
 function showPaymentDetails(paymentId) {
     // Show payment details modal
-    console.log('Show payment details:', paymentId);
+    fetch(`/contracts/payments/${paymentId}/details`)
+    .then(response => response.json())
+    .then(data => {
+        if (data.success) {
+            // Display payment details in a modal or popup
+            alert(`To'lov tafsilotlari:\nSumma: ${data.payment.amount_formatted}\nSana: ${data.payment.payment_date}\nTuri: ${data.payment.quarter_info}`);
+        } else {
+            showErrorMessage('To\'lov ma\'lumotlari topilmadi');
+        }
+    })
+    .catch(error => {
+        console.error('Error:', error);
+        showErrorMessage('To\'lov ma\'lumotlarini yuklashda xatolik');
+    });
 }
 
 function editPayment(paymentId) {
     // Open edit payment modal
     console.log('Edit payment:', paymentId);
+    // TODO: Implement edit payment modal
 }
 
 function deletePayment(paymentId) {
     if (confirm('Bu to\'lovni o\'chirishni tasdiqlaysizmi?')) {
-        // Delete payment
-        console.log('Delete payment:', paymentId);
+        fetch(`/contracts/payments/${paymentId}/delete`, {
+            method: 'DELETE',
+            headers: {
+                'X-CSRF-TOKEN': document.querySelector('meta[name="csrf-token"]').getAttribute('content'),
+                'Content-Type': 'application/json'
+            }
+        })
+        .then(response => response.json())
+        .then(data => {
+            if (data.success) {
+                showSuccessMessage(data.message);
+                setTimeout(() => location.reload(), 1500);
+            } else {
+                showErrorMessage(data.message || 'To\'lovni o\'chirishda xatolik');
+            }
+        })
+        .catch(error => {
+            console.error('Error:', error);
+            showErrorMessage('To\'lovni o\'chirishda xatolik yuz berdi');
+        });
     }
 }
 
 function showAllPayments() {
     // Show all payments modal or page
     console.log('Show all payments');
+    // TODO: Implement show all payments functionality
 }
 
-function showAmendments() {
-    // Show amendments modal
-    console.log('Show amendments');
+// Utility functions
+function showSuccessMessage(message) {
+    const alert = document.createElement('div');
+    alert.className = 'fixed top-4 right-4 bg-green-500 text-white px-6 py-3 rounded-lg shadow-lg z-[60] transform transition-all duration-300 max-w-md';
+    alert.innerHTML = `
+        <div class="flex items-center">
+            <svg class="w-5 h-5 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7"></path>
+            </svg>
+            <span class="text-sm">${message}</span>
+        </div>
+    `;
+
+    document.body.appendChild(alert);
+
+    // Animate in
+    setTimeout(() => alert.classList.remove('translate-x-full', 'opacity-0'), 100);
+
+    // Remove after delay
+    setTimeout(() => {
+        alert.classList.add('translate-x-full', 'opacity-0');
+        setTimeout(() => alert.remove(), 300);
+    }, 4000);
 }
 
-function showAmendmentDetails(amendmentId) {
-    const contractId = {{ $paymentData['contract']['id'] ?? 0 }};
-    window.location.href = `/contracts/${contractId}/amendments/${amendmentId}`;
+function showErrorMessage(message) {
+    const alert = document.createElement('div');
+    alert.className = 'fixed top-4 right-4 bg-red-500 text-white px-6 py-3 rounded-lg shadow-lg z-[60] transform transition-all duration-300 max-w-md';
+    alert.innerHTML = `
+        <div class="flex items-center">
+            <svg class="w-5 h-5 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-2.5L13.732 4c-.77-.833-1.732-.833-2.464 0L4.268 16.5c-.77.833.192 2.5 1.732 2.5z"></path>
+            </svg>
+            <span class="text-sm">${message}</span>
+        </div>
+    `;
+
+    document.body.appendChild(alert);
+
+    // Remove after delay
+    setTimeout(() => {
+        alert.classList.add('translate-x-full', 'opacity-0');
+        setTimeout(() => alert.remove(), 300);
+    }, 5000);
 }
 </script>
 @endsection

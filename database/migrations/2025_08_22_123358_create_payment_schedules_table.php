@@ -14,20 +14,16 @@ return new class extends Migration
     public function up()
     {
         // PaymentSchedule jadvaliga amendment_id maydonini qo'shish
-        Schema::create('payment_schedules', function (Blueprint $table) {
-            $table->id();
-            $table->foreignId('contract_id')->constrained('contracts')->onDelete('cascade');
-            $table->unsignedBigInteger('amendment_id')->nullable();
-            $table->integer('year');
-            $table->integer('quarter');
-            $table->decimal('quarter_amount', 15, 2);
-            $table->decimal('custom_percent', 5, 2)->nullable();
-            $table->boolean('is_active')->default(true);
-            $table->timestamps();
-
-            $table->index(['contract_id', 'year', 'quarter']);
+            
+        Schema::table('payment_schedules', function (Blueprint $table) {
+            $table->foreignId('amendment_id')->nullable()->after('contract_id')->constrained('contract_amendments')->onDelete('cascade');
+            $table->boolean('is_initial_payment')->default(false)->after('quarter_amount');
+            $table->decimal('custom_percent', 5, 2)->nullable()->after('is_initial_payment');
+            
             $table->index(['contract_id', 'amendment_id', 'is_active']);
+            $table->index(['contract_id', 'is_initial_payment']);
         });
+
 
 
         // ContractAmendments jadvalini yaratish

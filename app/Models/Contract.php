@@ -1,18 +1,25 @@
 <?php
 
+// ================================
+// Enhanced Contract Model
+// ================================
+
 namespace App\Models;
 
+use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
+use Illuminate\Database\Eloquent\Relations\BelongsTo;
+use Illuminate\Database\Eloquent\Relations\HasMany;
 use Illuminate\Database\Eloquent\SoftDeletes;
 
 class Contract extends Model
 {
-    use SoftDeletes;
+    use HasFactory, SoftDeletes;
 
     protected $fillable = [
         'contract_number',
-        'object_id',
         'subject_id',
+        'object_id',
         'contract_date',
         'completion_date',
         'status_id',
@@ -27,246 +34,438 @@ class Contract extends Model
         'formula',
         'is_active',
         'created_by',
-        'updated_by',
-        'last_amendment_id',
-        'amendment_count'
+        'updated_by'
     ];
 
-  protected $casts = [
-    'total_amount' => 'decimal:2',
-    'initial_payment_percent' => 'decimal:2',
-    'contract_volume' => 'decimal:2',
-    'coefficient' => 'decimal:4',
-    'construction_period_years' => 'integer',
-    'quarters_count' => 'integer',
-    'contract_date' => 'date',
-    'completion_date' => 'date',
-    'is_active' => 'boolean',
-];
-    /**
-     * Relationship with subject (property owner)
-     */
-    public function subject()
+    protected $casts = [
+        'contract_date' => 'date',
+        'completion_date' => 'date',
+        'total_amount' => 'decimal:2',
+        'contract_volume' => 'decimal:2',
+        'coefficient' => 'decimal:4',
+        'initial_payment_percent' => 'decimal:2',
+        'construction_period_years' => 'integer',
+        'quarters_count' => 'integer',
+        'is_active' => 'boolean'
+    ];
+
+    // Relationships
+    public function subject(): BelongsTo
     {
         return $this->belongsTo(Subject::class);
     }
 
-    /**
-     * Relationship with object (construction object)
-     */
-    public function object()
+    public function object(): BelongsTo
     {
         return $this->belongsTo(Objectt::class, 'object_id');
     }
 
-    /**
-     * Relationship with contract status
-     */
-    public function status()
+    public function status(): BelongsTo
     {
         return $this->belongsTo(ContractStatus::class, 'status_id');
     }
 
-    /**
-     * Relationship with base calculation amount
-     */
-    public function baseAmount()
+    public function baseAmount(): BelongsTo
     {
         return $this->belongsTo(BaseCalculationAmount::class, 'base_amount_id');
     }
 
-    /**
-     * Relationship with payment schedules
-     */
-    public function paymentSchedules()
+    public function paymentSchedules(): HasMany
     {
         return $this->hasMany(PaymentSchedule::class);
     }
 
-    /**
-     * Relationship with actual payments
-     */
-    public function actualPayments()
+    public function actualPayments(): HasMany
     {
         return $this->hasMany(ActualPayment::class);
     }
 
-    /**
-     * Relationship with contract amendments
-     */
-    public function amendments()
+    public function amendments(): HasMany
     {
         return $this->hasMany(ContractAmendment::class);
     }
 
-    /**
-     * Relationship with payment history
-     */
-    public function paymentHistory()
+    public function createdBy(): BelongsTo
     {
-        return $this->hasMany(PaymentHistory::class);
+        return $this->belongsTo(User::class, 'created_by');
     }
 
-    /**
-     * Scope for active contracts
-     */
+    public function updatedBy(): BelongsTo
+    {
+        return $this->belongsTo(User::class, 'updated_by');
+    }
+
+    // Accessors & Mutators
+    public function getInitialPaymentAmountAttribute(): float
+    {
+        return $this->total_amount * (($this->initial_payment_percent ?? 0) / 100);
+    }
+
+    public function getRemainingAmountAttribute(): float
+    {
+        return $this->total_amount - $this->initial_payment_amount;
+    }
+
+    public function getQuarterlyAmountAttribute(): float
+    {
+        return $this->quarters_count > 0 ? $this->remaining_amount / $this->quarters_count : 0;
+    }
+
+    public function getTotalPaidAmountAttribute(): float
+    {
+        return $this->actualPayments()->sum('amount');
+    }
+
+    public function getInitialPaymentsPaidAttribute(): float
+    {
+        return $this->actualPayments()->where('is_initial_payment', true)->sum('amount');
+    }
+
+    public function getQuarterlyPaymentsPaidAttribute(): float
+    {
+        return $this->actualPayments()->where('is_initial_payment', false)->sum('amount');
+    }
+
+    public function getRemainingDebtAttribute(): float
+    {
+        return max(0, $this->total_amount - $this->total_paid_amount);
+    }
+
+    public function getPaymentPercentAttribute(): float
+    {
+        return $this->total_amount > 0 ? ($this->total_paid_amount / $this->total_amount) * 100 : 0;
+    }
+
+    // Helper Methods
+    public function hasActiveSchedule(): bool
+    {
+        return $this->paymentSchedules()->where('is_active', true)->exists();
+    }
+
+    public function hasAmendments(): bool
+    {
+        return $this->amendments()->exists();
+    }
+
+    public function getApprovedAmendments()
+    {
+        return $this->amendments()->approved()->get();
+    }
+
+    public function canCreateSchedule(): bool
+    {
+        return $this->payment_type === 'installment' && $this->quarters_count > 0;
+    }
+
+    public function isCompleted(): bool
+    {
+        return $this->payment_percent >= 100;
+    }
+
+    // Scopes
     public function scopeActive($query)
     {
         return $query->where('is_active', true);
     }
 
-    /**
-     * Scope for contracts by payment type
-     */
-    public function scopeByPaymentType($query, $type)
+    public function scopeWithDebt($query)
     {
-        return $query->where('payment_type', $type);
+        return $query->whereRaw('total_amount > (SELECT COALESCE(SUM(amount), 0) FROM actual_payments WHERE contract_id = contracts.id)');
     }
 
-    /**
-     * Get remaining debt amount
-     */
-    public function getRemainingDebtAttribute()
+    public function scopeCompleted($query)
     {
-        $totalPaid = $this->actualPayments()->sum('amount');
-        return $this->total_amount - $totalPaid;
+        return $query->whereRaw('total_amount <= (SELECT COALESCE(SUM(amount), 0) FROM actual_payments WHERE contract_id = contracts.id)');
+    }
+}
+
+// ================================
+// Enhanced PaymentSchedule Model
+// ================================
+
+class PaymentSchedule extends Model
+{
+    use HasFactory;
+
+    protected $fillable = [
+        'contract_id',
+        'amendment_id',
+        'year',
+        'quarter',
+        'quarter_amount',
+        'is_initial_payment',
+        'custom_percent',
+        'is_active'
+    ];
+
+    protected $casts = [
+        'quarter_amount' => 'decimal:2',
+        'custom_percent' => 'decimal:2',
+        'year' => 'integer',
+        'quarter' => 'integer',
+        'is_initial_payment' => 'boolean',
+        'is_active' => 'boolean'
+    ];
+
+    // Relationships
+    public function contract(): BelongsTo
+    {
+        return $this->belongsTo(Contract::class);
     }
 
-    /**
-     * Get payment completion percentage
-     */
-    public function getPaymentCompletionPercentageAttribute()
+    public function amendment(): BelongsTo
     {
-        if ($this->total_amount <= 0) return 0;
-
-        $totalPaid = $this->actualPayments()->sum('amount');
-        return min(100, ($totalPaid / $this->total_amount) * 100);
+        return $this->belongsTo(ContractAmendment::class, 'amendment_id');
     }
 
-    /**
-     * Get initial payment amount
-     */
-    public function getInitialPaymentAmountAttribute()
+    public function actualPayments(): HasMany
     {
-        return ($this->total_amount * $this->initial_payment_percent) / 100;
+        return $this->hasMany(ActualPayment::class, 'contract_id', 'contract_id')
+            ->where('year', $this->year)
+            ->where('quarter', $this->quarter)
+            ->where('is_initial_payment', $this->is_initial_payment);
     }
 
-    /**
-     * Get remaining amount after initial payment
-     */
-    public function getRemainingAmountAttribute()
+    // Accessors
+    public function getTotalPaidAttribute(): float
     {
-        return $this->total_amount - $this->initial_payment_amount;
-    }
+        if ($this->is_initial_payment) {
+            return $this->contract->actualPayments()
+                ->where('is_initial_payment', true)
+                ->sum('amount');
+        }
 
-    /**
-     * Check if contract is overdue
-     */
-    public function getIsOverdueAttribute()
-    {
-        if (!$this->completion_date) return false;
-
-        return now() > $this->completion_date && $this->remaining_debt > 0;
-    }
-
-    /**
-     * Get contract age in days
-     */
-    public function getAgeInDaysAttribute()
-    {
-        return $this->contract_date ? $this->contract_date->diffInDays(now()) : 0;
-    }
-
-    /**
-     * Format contract number for display
-     */
-    public function getFormattedContractNumberAttribute()
-    {
-        return $this->contract_number;
-    }
-
-    /**
-     * Get status color for UI
-     */
-    public function getStatusColorAttribute()
-    {
-        return $this->status ? $this->status->color : 'gray';
-    }
-
-    /**
-     * Boot method for model events
-     */
-    protected static function boot()
-    {
-        parent::boot();
-
-        // Auto-set created_by and updated_by if auth is available
-        static::creating(function ($model) {
-            if (auth()->check()) {
-                $model->created_by = auth()->id();
-            }
-        });
-
-        static::updating(function ($model) {
-            if (auth()->check()) {
-                $model->updated_by = auth()->id();
-            }
-        });
-    }
-
-//
-
-
- // Relationships
-
-
-    public function lastAmendment()
-    {
-        return $this->belongsTo(ContractAmendment::class, 'last_amendment_id');
-    }
-
-    // Methods
-    public function getExistingPayments()
-    {
-        return ActualPayment::where('contract_id', $this->id)->get();
-    }
-
-    public function getTotalPaidAmount()
-    {
-        return $this->getExistingPayments()->sum('amount');
-    }
-
-    public function getInitialPaymentsMade()
-    {
-        return ActualPayment::where('contract_id', $this->id)
-            ->where('is_initial_payment', true)
-            ->sum('amount');
-    }
-
-    public function getQuarterlyPaymentsMade()
-    {
-        return ActualPayment::where('contract_id', $this->id)
+        return $this->contract->actualPayments()
+            ->where('year', $this->year)
+            ->where('quarter', $this->quarter)
             ->where('is_initial_payment', false)
             ->sum('amount');
     }
 
-    public function hasAmendments()
+    public function getRemainingAmountAttribute(): float
     {
-        return $this->amendments()->count() > 0;
+        return max(0, $this->quarter_amount - $this->total_paid);
     }
 
-    public function getCurrentStructure()
+    public function getPaymentPercentAttribute(): float
     {
-        $initialPayment = $this->total_amount * ($this->initial_payment_percent / 100);
-        $remainingAmount = $this->total_amount - $initialPayment;
-        $quarterlyAmount = $this->quarters_count > 0 ? $remainingAmount / $this->quarters_count : 0;
+        return $this->quarter_amount > 0 ? ($this->total_paid / $this->quarter_amount) * 100 : 0;
+    }
 
-        return [
-            'total_amount' => $this->total_amount,
-            'initial_payment' => $initialPayment,
-            'remaining_amount' => $remainingAmount,
-            'quarterly_amount' => $quarterlyAmount,
-            'quarters_count' => $this->quarters_count
-        ];
+    public function getIsOverdueAttribute(): bool
+    {
+        if ($this->is_initial_payment) return false;
+        
+        $quarterEnd = now()->create($this->year, $this->quarter * 3, 1)->endOfMonth();
+        return $quarterEnd->isPast() && $this->remaining_amount > 0;
+    }
+
+    public function getQuarterNameAttribute(): string
+    {
+        if ($this->is_initial_payment) {
+            return 'Boshlang\'ich to\'lov';
+        }
+        
+        return "{$this->quarter}-chorak {$this->year}";
+    }
+
+    // Scopes
+    public function scopeActive($query)
+    {
+        return $query->where('is_active', true);
+    }
+
+    public function scopeInitialPayments($query)
+    {
+        return $query->where('is_initial_payment', true);
+    }
+
+    public function scopeQuarterlyPayments($query)
+    {
+        return $query->where('is_initial_payment', false);
+    }
+
+    public function scopeForContract($query, $contractId)
+    {
+        return $query->where('contract_id', $contractId);
+    }
+
+    public function scopeForQuarter($query, $year, $quarter)
+    {
+        return $query->where('year', $year)->where('quarter', $quarter);
+    }
+
+    public function scopeOverdue($query)
+    {
+        $currentDate = now();
+        return $query->where('is_initial_payment', false)
+            ->whereRaw("DATE(CONCAT(year, '-', quarter * 3, '-01')) + INTERVAL 1 MONTH - INTERVAL 1 DAY < ?", [$currentDate]);
+    }
+}
+
+// ================================
+// Enhanced ActualPayment Model
+// ================================
+
+class ActualPayment extends Model
+{
+    use HasFactory;
+
+    protected $fillable = [
+        'contract_id',
+        'payment_date',
+        'amount',
+        'year',
+        'quarter',
+        'is_initial_payment',
+        'amendment_id',
+        'payment_category',
+        'payment_number',
+        'notes',
+        'exchange_rate',
+        'currency',
+        'created_by',
+        'updated_by'
+    ];
+
+    protected $casts = [
+        'payment_date' => 'date',
+        'amount' => 'decimal:2',
+        'year' => 'integer',
+        'quarter' => 'integer',
+        'is_initial_payment' => 'boolean',
+        'exchange_rate' => 'decimal:4',
+        'created_at' => 'datetime',
+        'updated_at' => 'datetime'
+    ];
+
+    // Relationships
+    public function contract(): BelongsTo
+    {
+        return $this->belongsTo(Contract::class);
+    }
+
+    public function amendment(): BelongsTo
+    {
+        return $this->belongsTo(ContractAmendment::class, 'amendment_id');
+    }
+
+    public function createdBy(): BelongsTo
+    {
+        return $this->belongsTo(User::class, 'created_by');
+    }
+
+    public function updatedBy(): BelongsTo
+    {
+        return $this->belongsTo(User::class, 'updated_by');
+    }
+
+    // Accessors
+    public function getQuarterInfoAttribute(): string
+    {
+        if ($this->is_initial_payment) {
+            return 'Boshlang\'ich to\'lov';
+        }
+        
+        return "{$this->quarter}-chorak {$this->year}";
+    }
+
+    public function getFormattedAmountAttribute(): string
+    {
+        return number_format($this->amount, 0, '.', ' ') . ' so\'m';
+    }
+
+    public function getCanEditAttribute(): bool
+    {
+        return $this->created_at->diffInDays(now()) <= 30;
+    }
+
+    public function getCanDeleteAttribute(): bool
+    {
+        return $this->created_at->diffInDays(now()) <= 30;
+    }
+
+    public function getPaymentTypeAttribute(): string
+    {
+        return $this->is_initial_payment ? 'initial' : 'quarterly';
+    }
+
+    // Helper Methods
+    public function isEditable(): bool
+    {
+        return $this->can_edit;
+    }
+
+    public function isDeletable(): bool
+    {
+        return $this->can_delete;
+    }
+
+    public function getRelatedSchedule()
+    {
+        return PaymentSchedule::where('contract_id', $this->contract_id)
+            ->where('year', $this->year)
+            ->where('quarter', $this->quarter)
+            ->where('is_initial_payment', $this->is_initial_payment)
+            ->where('is_active', true)
+            ->first();
+    }
+
+    // Scopes
+    public function scopeInitialPayments($query)
+    {
+        return $query->where('is_initial_payment', true);
+    }
+
+    public function scopeQuarterlyPayments($query)
+    {
+        return $query->where('is_initial_payment', false);
+    }
+
+    public function scopeForContract($query, $contractId)
+    {
+        return $query->where('contract_id', $contractId);
+    }
+
+    public function scopeForQuarter($query, $year, $quarter)
+    {
+        return $query->where('year', $year)->where('quarter', $quarter);
+    }
+
+    public function scopeForPeriod($query, $startDate, $endDate)
+    {
+        return $query->whereBetween('payment_date', [$startDate, $endDate]);
+    }
+
+    public function scopeEditable($query)
+    {
+        return $query->where('created_at', '>=', now()->subDays(30));
+    }
+
+    public function scopeByCategory($query, $category)
+    {
+        return $query->where('payment_category', $category);
+    }
+
+    // Events
+    protected static function boot()
+    {
+        parent::boot();
+
+        static::creating(function ($payment) {
+            if (!$payment->created_by) {
+                $payment->created_by = auth()->id();
+            }
+            
+            // Auto-determine quarter if not set
+            if (!$payment->year || !$payment->quarter) {
+                $payment->year = $payment->payment_date->year;
+                $payment->quarter = ceil($payment->payment_date->month / 3);
+            }
+        });
+
+        static::updating(function ($payment) {
+            $payment->updated_by = auth()->id();
+        });
     }
 }

@@ -16,30 +16,20 @@ return new class extends Migration
             $table->foreignId('contract_id')->constrained('contracts')->onDelete('cascade');
             $table->string('amendment_number', 50);
             $table->date('amendment_date');
-
-            // O'zgartirishlar
-            $table->decimal('new_total_amount', 15, 2)->nullable();
+            $table->decimal('new_total_amount', 20, 2)->nullable();
             $table->date('new_completion_date')->nullable();
             $table->decimal('new_initial_payment_percent', 5, 2)->nullable();
             $table->integer('new_quarters_count')->nullable();
-
-            // Sabab va tavsif
             $table->text('reason');
             $table->text('description')->nullable();
-
-            // Holat
             $table->boolean('is_approved')->default(false);
             $table->timestamp('approved_at')->nullable();
-            $table->unsignedBigInteger('approved_by')->nullable();
-
-            // Audit maydonlari
-            $table->unsignedBigInteger('created_by');
-            $table->unsignedBigInteger('updated_by')->nullable();
+            $table->foreignId('approved_by')->nullable()->constrained('users');
+            $table->foreignId('created_by')->constrained('users');
             $table->timestamps();
-
-            // Indexlar
-            $table->index(['contract_id', 'is_approved']);
+            
             $table->unique(['contract_id', 'amendment_number']);
+            $table->index(['contract_id', 'is_approved']);
         });
     }
 
