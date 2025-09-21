@@ -169,7 +169,7 @@
             <div class="px-6 py-4 border-b border-gray-200">
                 <div class="flex items-center justify-between">
                     <h3 class="text-lg font-semibold text-gray-900">Последние платежи</h3>
-                    <a href="{{ route('contracts.payments.index') }}" class="text-sm text-blue-600 hover:text-blue-700">Все платежи</a>
+                    <a href="" class="text-sm text-blue-600 hover:text-blue-700">Все платежи</a>
                 </div>
             </div>
             <div class="p-6">
