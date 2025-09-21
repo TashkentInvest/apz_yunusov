@@ -337,29 +337,69 @@ class ContractController extends Controller
     /**
      * Store payment
      */
-    public function storePayment(Request $request, Contract $contract): JsonResponse
-    {
-        $validator = Validator::make($request->all(), [
-            'payment_date' => 'required|date',
-            'payment_amount' => 'required|numeric|min:0.01',
-            'payment_category' => 'required|in:initial,quarterly',
-            'payment_number' => 'nullable|string|max:50',
-            'payment_notes' => 'nullable|string|max:500'
-        ]);
+public function storePayment(Request $request, Contract $contract): RedirectResponse
+{
+    $validator = Validator::make($request->all(), [
+        'payment_date' => 'required|date|after_or_equal:' . $contract->contract_date->format('Y-m-d'),
+        'payment_amount' => 'required|numeric|min:0.01',
+        'payment_number' => 'nullable|string|max:50',
+        'payment_notes' => 'nullable|string|max:500',
+        'target_year' => 'nullable|integer',
+        'target_quarter' => 'nullable|integer|min:1|max:4'
+    ]);
 
-        if ($validator->fails()) {
-            return response()->json([
-                'success' => false,
-                'message' => 'Ma\'lumotlar noto\'g\'ri',
-                'errors' => $validator->errors()
-            ], 422);
-        }
-
-        $result = $this->paymentService->addPayment($contract, $request->all());
-
-        return response()->json($result);
+    if ($validator->fails()) {
+        return redirect()->back()
+            ->withErrors($validator)
+            ->withInput();
     }
 
+    try {
+        // Debug: Log request data
+        \Log::info('Payment request data: ', $request->all());
+        
+        // Prepare data for the payment service with correct field names
+        $paymentData = [
+            'payment_date' => $request->input('payment_date'),
+            'payment_amount' => $request->input('payment_amount'), // Keep original name
+            'amount' => $request->input('payment_amount'), // Also add as 'amount' for service
+            'payment_number' => $request->input('payment_number'),
+            'payment_notes' => $request->input('payment_notes'),
+            'notes' => $request->input('payment_notes'), // Also add as 'notes' for service
+            'year' => $request->input('target_year'),
+            'quarter' => $request->input('target_quarter'),
+            'target_year' => $request->input('target_year'), // Keep original name
+            'target_quarter' => $request->input('target_quarter'), // Keep original name
+            'payment_category' => $request->input('target_quarter') ? 'quarterly' : 'initial',
+            'created_by' => auth()->id()
+        ];
+
+        // Check if required fields exist
+        if (!$request->has('payment_amount') || !$request->has('payment_date')) {
+            return redirect()->back()
+                ->withErrors(['error' => 'Majburiy maydonlar to\'ldirilmagan'])
+                ->withInput();
+        }
+
+        $result = $this->paymentService->addPayment($contract, $paymentData);
+
+        if ($result['success']) {
+            return redirect()->route('contracts.payment_update', $contract)
+                ->with('success', 'To\'lov muvaffaqiyatli qo\'shildi');
+        } else {
+            return redirect()->back()
+                ->withErrors(['error' => $result['message']])
+                ->withInput();
+        }
+
+    } catch (\Exception $e) {
+        \Log::error('Payment creation error: ' . $e->getMessage());
+        
+        return redirect()->back()
+            ->withErrors(['error' => 'To\'lov qo\'shishda xatolik yuz berdi'])
+            ->withInput();
+    }
+}
     /**
      * Show quarter payment form
      */
@@ -751,7 +791,10 @@ class ContractController extends Controller
                 return response()->json(['valid' => false, 'message' => 'Xatolik: ' . $e->getMessage()]);
         }
     }
-
+    catch (\Exception $e) {
+            return response()->json(['success' => false, 'message' => $e->getMessage()]);
+        }
+    }
     /**
      * Get quarter from date (API)
      */
@@ -1044,5 +1087,5 @@ class ContractController extends Controller
         $result = $this->paymentService->deletePayment($payment);
         return response()->json($result);
     }
-    };
+    
 };

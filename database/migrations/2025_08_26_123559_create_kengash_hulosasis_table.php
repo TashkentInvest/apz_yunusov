@@ -13,42 +13,17 @@ return new class extends Migration
     {
         Schema::create('kengash_hulosasi', function (Blueprint $table) {
             $table->id();
-            $table->string('kengash_hulosa_raqami')->nullable();
-            $table->date('kengash_hulosa_sanasi')->nullable();
-            $table->string('apz_raqami')->nullable();
-            $table->date('apz_berilgan_sanasi')->nullable();
-            $table->string('buyurtmachi')->nullable();
-            $table->string('buyurtmachi_stir_pinfl')->nullable();
-            $table->text('buyurtmachi_telefon')->nullable();
-            $table->enum('bino_turi', ['турар', 'нотурар'])->nullable();
-            $table->text('muammo_turi')->nullable();
-            $table->string('loyihachi')->nullable();
-            $table->string('loyihachi_stir_pinfl')->nullable();
-            $table->string('loyihachi_telefon')->nullable();
-            $table->text('loyiha_smeta_nomi')->nullable();
-            $table->string('tuman')->nullable();
-            $table->text('manzil')->nullable();
-            $table->enum('status', [
-                'Тўловдан озод этилган',
-                'Мажбурий тўлов'
-            ])->default('Мажбурий тўлов');
-            $table->text('ozod_sababi')->nullable(); // Reason for exemption
-            $table->string('qurilish_turi')->nullable();
-            $table->string('shartnoma_raqami')->nullable();
-            $table->date('shartnoma_sanasi')->nullable();
-            $table->decimal('shartnoma_qiymati', 20, 2)->nullable(); // Increased precision
-            $table->decimal('fakt_tulov', 20, 2)->default(0);
-            $table->decimal('qarzdarlik', 20, 2)->default(0);
-            $table->string('tic_apz_id')->nullable();
-            $table->unsignedBigInteger('creator_user_id')->nullable();
-            $table->unsignedBigInteger('updater_user_id')->nullable();
+            $table->string('number')->unique();
+            $table->date('date');
+            $table->string('title');
+            $table->text('description')->nullable();
+            $table->enum('status', ['active', 'inactive', 'archived'])->default('active');
+            $table->json('data')->nullable(); // For storing additional data
+            $table->foreignId('created_by')->nullable()->constrained('users');
             $table->timestamps();
 
-            $table->index(['kengash_hulosa_raqami']);
-            $table->index(['apz_raqami']);
-            $table->index(['buyurtmachi_stir_pinfl']);
-            $table->index(['status']);
-            $table->index(['tuman']);
+            $table->index(['status', 'date']);
+            $table->index('created_by');
         });
 
         Schema::create('kengash_hulosasi_files', function (Blueprint $table) {

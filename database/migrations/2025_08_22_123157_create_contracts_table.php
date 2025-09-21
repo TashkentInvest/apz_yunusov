@@ -14,6 +14,8 @@ return new class extends Migration
             $table->string('contract_number', 50)->unique(); // Шартнома рақами (ноёб)
             $table->foreignId('object_id')->constrained('objects'); // Объект маълумоти
             $table->foreignId('subject_id')->constrained('subjects'); // Субъект маълумоти
+            $table->foreignId('updated_by')->nullable()->constrained('users')->onDelete('set null');
+
 
             // Шартнома асосий маълумотлари
             $table->date('contract_date'); // Шартнома санаси
@@ -29,7 +31,7 @@ return new class extends Migration
 
             // Тўлов шартлари
             $table->enum('payment_type', ['full', 'installment'])->default('installment'); // Тўлов тури
-            $table->decimal('initial_payment_percent',5,2); // Бошланғич тўлов фоизи
+            $table->decimal('initial_payment_percent', 5, 2); // Бошланғич тўлов фоизи
             $table->integer('construction_period_years')->default(2); // Қурилиш муддати (йил)
             $table->integer('quarters_count')->default(8); // Чорак йиллар сони
 
@@ -43,7 +45,7 @@ return new class extends Migration
             $table->index(['contract_date', 'completion_date']); // Санасалар бўйича индекс
             $table->index('is_active'); // Фаол ҳолат бўйича индекс
 
- $table->foreignId('last_amendment_id')->nullable();
+            $table->foreignId('last_amendment_id')->nullable();
             $table->integer('amendment_count')->default(0);
         });
     }
