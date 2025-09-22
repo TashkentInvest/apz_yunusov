@@ -11,11 +11,27 @@ class NumberToTextService
 
     public function convert($number)
     {
+        // Handle null or invalid input
+        if ($number === null || $number === '' || !is_numeric($number)) {
+            return "ноль";
+        }
+
         $number = round($number);
 
         if ($number == 0) return "ноль";
 
+        // Handle negative numbers
+        $isNegative = $number < 0;
+        $number = abs($number);
+
         $text = "";
+
+        // Триллионлар (for very large numbers)
+        if ($number >= 1000000000000) {
+            $trillions = floor($number / 1000000000000);
+            $text .= $this->convertTriade($trillions) . " триллион ";
+            $number = $number % 1000000000000;
+        }
 
         // Миллиардлар
         if ($number >= 1000000000) {
@@ -43,33 +59,53 @@ class NumberToTextService
             $text .= $this->convertTriade($number);
         }
 
-        return trim($text);
+        return ($isNegative ? "минус " : "") . trim($text);
     }
 
     private function convertTriade($number)
     {
         $number = floor($number);
+
+        // Safety check - triade should be 0-999
+        if ($number < 0 || $number > 999) {
+            return "";
+        }
+
         $text = "";
 
-        // Юзликлар
+        // Юзликлар (100-900)
         if ($number >= 100) {
             $hundredDigit = floor($number / 100);
-            $text .= $this->hundreds[$hundredDigit - 1] . " ";
+
+            // Safety check to prevent array index error
+            if ($hundredDigit >= 1 && $hundredDigit <= 9) {
+                $text .= $this->hundreds[$hundredDigit - 1] . " ";
+            }
+
             $number = $number % 100;
         }
 
-        // Ўнликлар
+        // Ўнликлар (20-90)
         if ($number >= 20) {
             $tenDigit = floor($number / 10);
-            $text .= $this->tens[$tenDigit - 2] . " ";
+
+            // Safety check (2-9 corresponds to index 0-7)
+            if ($tenDigit >= 2 && $tenDigit <= 9) {
+                $text .= $this->tens[$tenDigit - 2] . " ";
+            }
+
             $number = $number % 10;
         } elseif ($number >= 10) {
-            $text .= $this->teens[$number - 10] . " ";
+            // Ўнлар (10-19)
+            $teenIndex = $number - 10;
+            if ($teenIndex >= 0 && $teenIndex < count($this->teens)) {
+                $text .= $this->teens[$teenIndex] . " ";
+            }
             $number = 0;
         }
 
-        // Бирликлар
-        if ($number > 0) {
+        // Бирликлар (1-9)
+        if ($number > 0 && $number <= 9) {
             $text .= $this->units[$number - 1] . " ";
         }
 

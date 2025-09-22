@@ -21,16 +21,17 @@ Route::post('/logout', [AuthController::class, 'logout'])->name('logout');
 
 Route::middleware(['auth'])->group(function () {
 
-    // Dashboard
+    // Dashboard routes
     Route::get('/dashboard', [DashboardController::class, 'index'])->name('dashboard');
-    Route::get('/dashboard/chart-data', [DashboardController::class, 'getChartDataAjax'])->name('dashboard.chart-data');
+    Route::get('/dashboard/chart-data', [DashboardController::class, 'getChartData'])->name('dashboard.chart-data');
     Route::get('/dashboard/export', [DashboardController::class, 'export'])->name('dashboard.export');
-    Route::get('/dashboard/district/{district}', [DashboardController::class, 'districtDetails'])->name('dashboard.district');
+    Route::get('/dashboard/contracts/{status}', [DashboardController::class, 'contractsByStatus'])->name('dashboard.contracts.status');
+    Route::get('/dashboard/district/{district}/contracts', [DashboardController::class, 'districtContracts'])->name('dashboard.district.contracts');
 
     // Contracts Management - Enhanced with Initial Payment Logic
     Route::prefix('contracts')->name('contracts.')->group(function () {
-    Route::patch('/{contract}/update-status', [ContractController::class, 'updateStatus'])
-    ->name('update-status');
+        Route::patch('/{contract}/update-status', [ContractController::class, 'updateStatus'])
+            ->name('update-status');
         // Basic CRUD
         Route::get('/', [ContractController::class, 'index'])->name('index');
         Route::get('/create', [ContractController::class, 'create'])->name('create');
@@ -411,7 +412,7 @@ Route::middleware(['auth'])->group(function () {
             }
 
             if ($request->district_id) {
-                $query->whereHas('object', function($q) use ($request) {
+                $query->whereHas('object', function ($q) use ($request) {
                     $q->where('district_id', $request->district_id);
                 });
             }
