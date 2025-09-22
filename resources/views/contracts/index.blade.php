@@ -174,14 +174,27 @@
                             </td>
 
                             <!-- Subject/Customer -->
+
+
+                            <!-- Subject/Customer -->
                             <td class="px-6 py-4">
                                 <div class="text-sm font-medium text-gray-900">
-                                    {{ $contract->subject->display_name ?? $contract->subject->company_name }}
+                                    {{ $contract->subject->company_name ?? 'Не указан' }}
                                 </div>
                                 <div class="text-sm text-gray-500">
-                                    {{ $contract->subject->is_legal_entity ? 'ИНН: ' . $contract->subject->inn : 'ПИНФЛ: ' . $contract->subject->pinfl }}
+                                    @if($contract->subject->is_legal_entity)
+                                        ИНН: {{ $contract->subject->inn ?? 'Не найден' }}
+                                    @else
+                                        @if($contract->subject->document_series)
+                                            Паспорт: {{ $contract->subject->document_series ?? 'Не найден' }} <br>  ПИНФЛ: {{ $contract->subject->pinfl ?? 'Не найден' }}
+
+                                        @else
+                                            Не найден
+                                        @endif
+                                    @endif
                                 </div>
                             </td>
+
 
                             <!-- District -->
                             <td class="px-6 py-4 text-sm text-gray-900">
