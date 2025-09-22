@@ -173,7 +173,7 @@
                                 </div>
                                 <div class="text-right">
                                     <p class="text-sm font-medium text-gray-900">
-                                        {{ number_format($contract->total_amount / 1000000, 1) }}М</p>
+                                        {{ number_format($contract->total_amount) }}сўм</p>
                                     <p class="text-xs text-gray-500">{{ $contract->created_at->format('d.m.Y') }}</p>
                                 </div>
                             </div>
@@ -207,7 +207,7 @@
                                 </div>
                                 <div class="text-right">
                                     <p class="text-sm font-medium text-green-600">
-                                        +{{ number_format($payment->amount / 1000000, 1) }}М</p>
+                                        +{{ number_format($payment->amount) }}сўм</p>
                                     <p class="text-xs text-gray-500">{{ $payment->payment_date->format('d.m.Y') }}</p>
                                 </div>
                             </div>

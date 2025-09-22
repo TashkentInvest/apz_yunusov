@@ -147,8 +147,16 @@ class DashboardController extends Controller
         return view('contracts.index', compact('contracts', 'statuses', 'districts', 'totalAmount', 'activeCount'));
     }
 
-    public function districtContracts(District $district)
+    public function districtContracts(Request $request, District $district)
     {
+        $period = $request->get('period', 'month');
+
+        // Handle AJAX requests for chart data updates
+        if ($request->get('ajax')) {
+            $chartData = $this->getDistrictChartData($district, $period);
+            return response()->json($chartData);
+        }
+
         $contracts = Contract::whereHas('object', function($q) use ($district) {
             $q->where('district_id', $district->id);
         })
@@ -161,7 +169,11 @@ class DashboardController extends Controller
 
         $contractIds = Contract::whereHas('object', function($q) use ($district) {
             $q->where('district_id', $district->id);
-        })->where('is_active', true)->pluck('id');
+        })->where('is_active', true)
+          ->whereHas('status', function($q) {
+              $q->where('name_uz', '!=', 'Бекор қилинган');
+          })
+          ->pluck('id');
 
         $stats = [
             'total_contracts' => $contracts->total(),
@@ -180,36 +192,140 @@ class DashboardController extends Controller
         $stats['debt'] = $stats['total_amount'] - $stats['total_paid'];
         $stats['payment_percent'] = $stats['total_amount'] > 0 ? ($stats['total_paid'] / $stats['total_amount']) * 100 : 0;
 
-        $chartData = $this->getDistrictChartData($district);
+        $chartData = $this->getDistrictChartData($district, $period);
         $statuses = \App\Models\ContractStatus::where('is_active', true)->get();
         $districts = \App\Models\District::where('is_active', true)
             ->where('name_uz', 'REGEXP', '^[А-Яа-яЎўҚқҒғҲҳ]')
             ->get();
 
-        return view('dashboard.district', compact('district', 'contracts', 'stats', 'chartData', 'statuses', 'districts'));
+        return view('dashboard.district', compact('district', 'contracts', 'stats', 'chartData', 'statuses', 'districts', 'period'));
     }
 
-    private function getDistrictChartData($district)
+    private function getDistrictChartData($district, $period = 'month')
     {
         $now = Carbon::now();
         $data = [];
 
-        for ($i = 11; $i >= 0; $i--) {
-            $date = $now->copy()->subMonths($i);
-            $year = $date->year;
-            $month = $date->month;
+        switch ($period) {
+            case 'month':
+                for ($i = 11; $i >= 0; $i--) {
+                    $date = $now->copy()->subMonths($i);
+                    $year = $date->year;
+                    $month = $date->month;
 
-            $actualAmount = ActualPayment::whereYear('payment_date', $year)
-                ->whereMonth('payment_date', $month)
-                ->whereHas('contract.object', function($q) use ($district) {
-                    $q->where('district_id', $district->id);
-                })
-                ->sum('amount');
+                    // Get contract IDs for this district (active and not cancelled)
+                    $contractIds = Contract::where('is_active', true)
+                        ->whereHas('status', function($q) {
+                            $q->where('name_uz', '!=', 'Бекор қилинган');
+                        })
+                        ->whereHas('object', function($q) use ($district) {
+                            $q->where('district_id', $district->id);
+                        })
+                        ->pluck('id');
 
-            $data[] = [
-                'label' => $date->format('M Y'),
-                'actual' => (float) $actualAmount,
-            ];
+                    // Get actual payments for these contracts
+                    $actualAmount = ActualPayment::whereYear('payment_date', $year)
+                        ->whereMonth('payment_date', $month)
+                        ->whereIn('contract_id', $contractIds)
+                        ->sum('amount');
+
+                    // Get contract amounts signed in this period for this district
+                    $contractAmount = Contract::whereYear('contract_date', $year)
+                        ->whereMonth('contract_date', $month)
+                        ->where('is_active', true)
+                        ->whereHas('status', function($q) {
+                            $q->where('name_uz', '!=', 'Бекор қилинган');
+                        })
+                        ->whereHas('object', function($q) use ($district) {
+                            $q->where('district_id', $district->id);
+                        })
+                        ->sum('total_amount');
+
+                    $data[] = [
+                        'label' => $date->format('M Y'),
+                        'actual' => (float) $actualAmount,
+                        'planned' => (float) $contractAmount,
+                    ];
+                }
+                break;
+
+            case 'quarter':
+                for ($i = 7; $i >= 0; $i--) {
+                    $date = $now->copy()->subQuarters($i);
+                    $year = $date->year;
+                    $quarter = $date->quarter;
+
+                    $contractIds = Contract::where('is_active', true)
+                        ->whereHas('status', function($q) {
+                            $q->where('name_uz', '!=', 'Бекор қилинган');
+                        })
+                        ->whereHas('object', function($q) use ($district) {
+                            $q->where('district_id', $district->id);
+                        })
+                        ->pluck('id');
+
+                    $actualAmount = ActualPayment::whereBetween('payment_date', [
+                        Carbon::create($year, ($quarter - 1) * 3 + 1, 1)->startOfDay(),
+                        Carbon::create($year, $quarter * 3, 1)->endOfMonth()
+                    ])
+                    ->whereIn('contract_id', $contractIds)
+                    ->sum('amount');
+
+                    $contractAmount = Contract::whereBetween('contract_date', [
+                        Carbon::create($year, ($quarter - 1) * 3 + 1, 1)->startOfDay(),
+                        Carbon::create($year, $quarter * 3, 1)->endOfMonth()
+                    ])
+                    ->where('is_active', true)
+                    ->whereHas('status', function($q) {
+                        $q->where('name_uz', '!=', 'Бекор қилинган');
+                    })
+                    ->whereHas('object', function($q) use ($district) {
+                        $q->where('district_id', $district->id);
+                    })
+                    ->sum('total_amount');
+
+                    $data[] = [
+                        'label' => "Ч{$quarter} {$year}",
+                        'actual' => (float) $actualAmount,
+                        'planned' => (float) $contractAmount,
+                    ];
+                }
+                break;
+
+            case 'year':
+                for ($i = 4; $i >= 0; $i--) {
+                    $year = $now->copy()->subYears($i)->year;
+
+                    $contractIds = Contract::where('is_active', true)
+                        ->whereHas('status', function($q) {
+                            $q->where('name_uz', '!=', 'Бекор қилинган');
+                        })
+                        ->whereHas('object', function($q) use ($district) {
+                            $q->where('district_id', $district->id);
+                        })
+                        ->pluck('id');
+
+                    $actualAmount = ActualPayment::whereYear('payment_date', $year)
+                        ->whereIn('contract_id', $contractIds)
+                        ->sum('amount');
+
+                    $contractAmount = Contract::whereYear('contract_date', $year)
+                        ->where('is_active', true)
+                        ->whereHas('status', function($q) {
+                            $q->where('name_uz', '!=', 'Бекор қилинган');
+                        })
+                        ->whereHas('object', function($q) use ($district) {
+                            $q->where('district_id', $district->id);
+                        })
+                        ->sum('total_amount');
+
+                    $data[] = [
+                        'label' => (string)$year,
+                        'actual' => (float) $actualAmount,
+                        'planned' => (float) $contractAmount,
+                    ];
+                }
+                break;
         }
 
         return $data;

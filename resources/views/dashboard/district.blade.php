@@ -29,13 +29,10 @@
         <div class="bg-white rounded-xl shadow-sm border border-gray-200 p-6">
             <div class="flex items-center justify-between">
                 <div>
-                    <p class="text-sm font-medium text-gray-600">Умумий сумма</p>
-                    <p class="text-2xl font-bold text-gray-900 mt-2">{{ number_format($stats['total_amount'] ) }} сўм</p>
-                    {{-- <p class="text-xs text-gray-500 mt-1">{{ ucfirst(number_to_uzbek_text($stats['total_amount'])) }} сўм</p> --}}
- <p class="text-xm text-gray-500 mt-2 italic leading-relaxed">
-                        {{-- {{ ucfirst(number_to_uzbek_text($stats['total_amount'])) }} сўм --}}
+                    <p class="text-sm font-medium text-gray-600">Режа учун умумий сумма</p>
+                    <p class="text-2xl font-bold text-gray-900 mt-2">{{ number_format($stats['total_amount']) }} сўм</p>
+                    <p class="text-xm text-gray-500 mt-2 italic leading-relaxed">
                         {{ ucfirst(app(\App\Services\NumberToTextService::class)->convert($stats['total_amount'])) }} сўм
-
                     </p>
                 </div>
                 <div class="w-12 h-12 bg-green-50 rounded-lg flex items-center justify-center">
@@ -48,7 +45,7 @@
             <div class="flex items-center justify-between">
                 <div>
                     <p class="text-sm font-medium text-gray-600">Тўланган</p>
-                    <p class="text-2xl font-bold text-green-600 mt-2">{{ number_format($stats['total_paid'] ) }} млн</p>
+                    <p class="text-2xl font-bold text-green-600 mt-2">{{ number_format($stats['total_paid']) }} сўм</p>
                     <p class="text-xs text-gray-500 mt-1">{{ number_format($stats['payment_percent'], 1) }}% бажарилди</p>
                 </div>
                 <div class="w-12 h-12 bg-blue-50 rounded-lg flex items-center justify-center">
@@ -61,7 +58,7 @@
             <div class="flex items-center justify-between">
                 <div>
                     <p class="text-sm font-medium text-gray-600">Қарз</p>
-                    <p class="text-2xl font-bold text-red-600 mt-2">{{ number_format($stats['debt'] ) }} млн</p>
+                    <p class="text-2xl font-bold text-red-600 mt-2">{{ number_format($stats['debt']) }} сўм</p>
                     <p class="text-xs text-gray-500 mt-1">тўланиши керак</p>
                 </div>
                 <div class="w-12 h-12 bg-red-50 rounded-lg flex items-center justify-center">
@@ -73,7 +70,7 @@
 
     <!-- Chart -->
     <div class="bg-white rounded-xl shadow-sm border border-gray-200 p-6">
-        <h3 class="text-lg font-semibold text-gray-900 mb-6">{{ $district->name_uz }} тўловлар тарихи</h3>
+        <h3 class="text-lg font-semibold text-gray-900 mb-6">{{ $district->name_uz }} - Шартномалар ва тўловлар</h3>
         <div class="h-80">
             <canvas id="districtChart"></canvas>
         </div>
@@ -107,8 +104,8 @@
                                 </a>
                             </td>
                             <td class="px-6 py-4 text-sm">{{ $contract->subject->company_name ?? 'Кўрсатилмаган' }}</td>
-                            <td class="px-6 py-4 text-sm">{{ number_format($contract->total_amount ) }} млн</td>
-                            <td class="px-6 py-4 text-sm">{{ number_format($contract->total_paid ) }} млн</td>
+                            <td class="px-6 py-4 text-sm">{{ number_format($contract->total_amount) }} сўм</td>
+                            <td class="px-6 py-4 text-sm">{{ number_format($contract->total_paid) }} сўм</td>
                             <td class="px-6 py-4">
                                 <span class="inline-flex px-2 py-1 text-xs font-semibold rounded-full"
                                       style="background-color: {{ $contract->status->color ?? '#6b7280' }}20; color: {{ $contract->status->color ?? '#6b7280' }}">
@@ -146,46 +143,112 @@
 @push('scripts')
 <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
 <script>
+console.log('District Chart Initialization');
 const chartData = @json($chartData);
-const ctx = document.getElementById('districtChart').getContext('2d');
 
-new Chart(ctx, {
-    type: 'bar',
-    data: {
-        labels: chartData.map(item => item.label),
-        datasets: [{
-            label: 'Тўловлар (млн сўм)',
-            data: chartData.map(item => item.actual / 1000000),
-            backgroundColor: 'rgba(59, 130, 246, 0.5)',
-            borderColor: 'rgb(59, 130, 246)',
-            borderWidth: 2
-        }]
-    },
-    options: {
-        responsive: true,
-        maintainAspectRatio: false,
-        plugins: {
-            legend: {
-                display: false
+console.log('Chart Data:', chartData);
+console.log('Data points:', chartData.length);
+
+const ctx = document.getElementById('districtChart');
+if (ctx) {
+    console.log('Canvas found');
+} else {
+    console.error('Canvas not found!');
+}
+
+if (typeof Chart !== 'undefined') {
+    console.log('Chart.js loaded');
+
+    new Chart(ctx, {
+        type: 'bar',
+        data: {
+            labels: chartData.map(item => item.label),
+            datasets: [
+                {
+                    label: 'Шартнома суммаси',
+                    data: chartData.map(item => item.planned),
+                    backgroundColor: 'rgba(59, 130, 246, 0.2)',
+                    borderColor: 'rgb(59, 130, 246)',
+                    borderWidth: 2,
+                    order: 2
+                },
+                {
+                    label: 'Тўловлар',
+                    data: chartData.map(item => item.actual),
+                    backgroundColor: 'rgba(34, 197, 94, 0.8)',
+                    borderColor: 'rgb(34, 197, 94)',
+                    borderWidth: 2,
+                    order: 1
+                }
+            ]
+        },
+        options: {
+            responsive: true,
+            maintainAspectRatio: false,
+            interaction: {
+                mode: 'index',
+                intersect: false,
             },
-            tooltip: {
-                callbacks: {
-                    label: function(context) {
-                        return new Intl.NumberFormat('ru-RU').format(context.parsed.y) + ' млн сўм';
+            plugins: {
+                legend: {
+                    position: 'top',
+                    labels: {
+                        usePointStyle: true,
+                        padding: 15,
+                        font: {
+                            size: 12
+                        }
+                    }
+                },
+                tooltip: {
+                    backgroundColor: 'rgba(0, 0, 0, 0.8)',
+                    padding: 12,
+                    titleFont: {
+                        size: 14
+                    },
+                    bodyFont: {
+                        size: 13
+                    },
+                    callbacks: {
+                        label: function(context) {
+                            let label = context.dataset.label || '';
+                            if (label) {
+                                label += ': ';
+                            }
+                            label += new Intl.NumberFormat('ru-RU').format(context.parsed.y) + ' сўм';
+                            return label;
+                        }
+                    }
+                }
+            },
+            scales: {
+                x: {
+                    grid: {
+                        display: false
+                    }
+                },
+                y: {
+                    beginAtZero: true,
+                    grid: {
+                        color: 'rgba(0, 0, 0, 0.05)'
+                    },
+                    ticks: {
+                        callback: function(value) {
+                            return new Intl.NumberFormat('ru-RU', {
+                                notation: 'compact',
+                                compactDisplay: 'short'
+                            }).format(value);
+                        }
                     }
                 }
             }
-        },
-        scales: {
-            y: {
-                beginAtZero: true,
-                ticks: {
-                    callback: value => value + 'М'
-                }
-            }
         }
-    }
-});
+    });
+
+    console.log('Chart created successfully!');
+} else {
+    console.error('Chart.js not loaded!');
+}
 </script>
 @endpush
 @endsection
