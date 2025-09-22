@@ -4,7 +4,7 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <meta name="csrf-token" content="{{ csrf_token() }}">
-    <title>@yield('title', 'АПЗ Система управления')</title>
+    <title>@yield('title', 'АРТ Бошқарув тизими')</title>
 
     <!-- Tailwind CSS -->
     <script src="https://cdn.tailwindcss.com"></script>
@@ -67,7 +67,7 @@
                         <div class="w-8 h-8 bg-blue-600 rounded-lg flex items-center justify-center">
                             <i data-feather="building" class="w-5 h-5 text-white"></i>
                         </div>
-                        <span class="text-lg font-bold text-gray-900">АПЗ Система</span>
+                        <span class="text-lg font-bold text-gray-900">АРТ тизими</span>
                     </div>
                 </div>
 
@@ -76,13 +76,13 @@
                     <a href="{{ route('dashboard') }}"
                        class="flex items-center px-4 py-3 text-gray-700 rounded-lg hover:bg-gray-100 group transition-colors {{ request()->routeIs('dashboard') ? 'bg-blue-50 text-blue-700' : '' }}">
                         <i data-feather="home" class="w-5 h-5 mr-3 text-gray-400 group-hover:text-gray-600 {{ request()->routeIs('dashboard') ? 'text-blue-600' : '' }}"></i>
-                        <span class="font-medium">Главная</span>
+                       <span class="font-medium">Бош саҳифа</span>
                     </a>
 
                     <a href="{{ route('contracts.index') }}"
                        class="flex items-center px-4 py-3 text-gray-700 rounded-lg hover:bg-gray-100 group transition-colors {{ request()->routeIs('contracts.*') ? 'bg-blue-50 text-blue-700' : '' }}">
                         <i data-feather="file-text" class="w-5 h-5 mr-3 text-gray-400 group-hover:text-gray-600 {{ request()->routeIs('contracts.*') ? 'text-blue-600' : '' }}"></i>
-                        <span class="font-medium">Договоры</span>
+                        <span class="font-medium">Шартномалар</span>
                         <span class="ml-auto bg-gray-100 text-gray-600 px-2 py-1 rounded-full text-xs font-semibold">
                             {{ \App\Models\Contract::where('is_active', true)->count() }}
                         </span>
@@ -103,13 +103,13 @@
                     <a href="{{ route('contracts.index') }}"
                        class="flex items-center px-4 py-3 text-gray-700 rounded-lg hover:bg-gray-100 group transition-colors {{ request()->routeIs('payments.*') ? 'bg-blue-50 text-blue-700' : '' }}">
                         <i data-feather="credit-card" class="w-5 h-5 mr-3 text-gray-400 group-hover:text-gray-600 {{ request()->routeIs('payments.*') ? 'text-blue-600' : '' }}"></i>
-                        <span class="font-medium">Платежи</span>
+                      <span class="font-medium">Тўловлар</span>
                     </a>
 
                     <a href="{{ route('subjects.index') }}"
                        class="flex items-center px-4 py-3 text-gray-700 rounded-lg hover:bg-gray-100 group transition-colors {{ request()->routeIs('subjects.*') ? 'bg-blue-50 text-blue-700' : '' }}">
                         <i data-feather="users" class="w-5 h-5 mr-3 text-gray-400 group-hover:text-gray-600 {{ request()->routeIs('subjects.*') ? 'text-blue-600' : '' }}"></i>
-                        <span class="font-medium">Заказчики</span>
+                       <span class="font-medium">Буюртмачилар</span>
                     </a>
 
                     <!-- <div class="pt-4 mt-4 border-t border-gray-200">
