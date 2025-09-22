@@ -34,15 +34,16 @@
 
             <div>
                 <label class="block text-sm font-medium text-gray-700 mb-1">Район</label>
-                <select name="district_id"
-                        class="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500">
-                    <option value="">Все районы</option>
-                    @foreach($districts ?? [] as $district)
-                        <option value="{{ $district->id }}" {{ request('district_id') == $district->id ? 'selected' : '' }}>
-                            {{ $district->name_ru }}
-                        </option>
-                    @endforeach
-                </select>
+                    <select name="district_id" class="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500">
+                        <option value="">Барча туманлар</option>
+                        @foreach($districts ?? [] as $district)
+                            @if(preg_match('/^[А-Яа-яЎўҚқҒғҲҳ]/u', $district->name_uz))
+                                <option value="{{ $district->id }}" {{ request('district_id') == $district->id ? 'selected' : '' }}>
+                                    {{ $district->name_uz }}
+                                </option>
+                            @endif
+                        @endforeach
+                    </select>
             </div>
 
             <div>
@@ -52,7 +53,7 @@
                     <option value="">Все статусы</option>
                     @foreach($statuses ?? [] as $status)
                         <option value="{{ $status->id }}" {{ request('status_id') == $status->id ? 'selected' : '' }}>
-                            {{ $status->name_ru }}
+                            {{ $status->name_uz }}
                         </option>
                     @endforeach
                 </select>
@@ -73,63 +74,50 @@
         </form>
     </div>
 
-    <!-- Statistics Summary -->
-    <div class="grid grid-cols-1 md:grid-cols-3 gap-6">
-        <div class="bg-white rounded-xl shadow-sm border border-gray-200 p-6">
-            <div class="flex items-center justify-between">
-                <div>
-                    <p class="text-sm font-medium text-gray-600">Найдено договоров</p>
-                    <p class="text-2xl font-bold text-gray-900 mt-1">{{ $contracts->total() }}</p>
-                </div>
-                <div class="w-10 h-10 bg-blue-50 rounded-lg flex items-center justify-center">
-                    <i data-feather="file-text" class="w-5 h-5 text-blue-600"></i>
-                </div>
+  <!-- Statistics Summary -->
+<div class="grid grid-cols-1 md:grid-cols-3 gap-6">
+    <div class="bg-white rounded-xl shadow-sm border border-gray-200 p-6">
+        <div class="flex items-center justify-between">
+            <div>
+                <p class="text-sm font-medium text-gray-600">Шартномалар сони</p>
+                <p class="text-2xl font-bold text-gray-900 mt-1">{{ $contracts->total() }}
+</p>
             </div>
-        </div>
-
-        <div class="bg-white rounded-xl shadow-sm border border-gray-200 p-6">
-            <div class="flex items-center justify-between">
-                <div>
-                    <p class="text-sm font-medium text-gray-600">Общая сумма</p>
-                    <p class="text-2xl font-bold text-gray-900 mt-1">
-                        @php
-                            $totalAmount = 0;
-                            foreach($contracts->items() as $contract) {
-                                $totalAmount += $contract->total_amount;
-                            }
-                        @endphp
-                        {{ number_format($totalAmount , 0) }}
-                        <!-- {{ number_format($totalAmount / 1000000000, 1) }}Б -->
-                    </p>
-                </div>
-                <div class="w-10 h-10 bg-green-50 rounded-lg flex items-center justify-center">
-                    <i data-feather="dollar-sign" class="w-5 h-5 text-green-600"></i>
-                </div>
-            </div>
-        </div>
-
-        <div class="bg-white rounded-xl shadow-sm border border-gray-200 p-6">
-            <div class="flex items-center justify-between">
-                <div>
-                    <p class="text-sm font-medium text-gray-600">Активные</p>
-                    <p class="text-2xl font-bold text-gray-900 mt-1">
-                        @php
-                            $activeCount = 0;
-                            foreach($contracts->items() as $contract) {
-                                if($contract->status && $contract->status->code === 'ACTIVE') {
-                                    $activeCount++;
-                                }
-                            }
-                        @endphp
-                        {{ $activeCount }}
-                    </p>
-                </div>
-                <div class="w-10 h-10 bg-green-50 rounded-lg flex items-center justify-center">
-                    <i data-feather="check-circle" class="w-5 h-5 text-green-600"></i>
-                </div>
+            <div class="w-10 h-10 bg-blue-50 rounded-lg flex items-center justify-center">
+                <i data-feather="file-text" class="w-5 h-5 text-blue-600"></i>
             </div>
         </div>
     </div>
+
+   <div class="bg-white rounded-xl shadow-sm border border-gray-200 p-6">
+    <div class="flex items-center justify-between">
+        <div class="flex-1">
+            <p class="text-sm font-medium text-gray-600 mb-2">Умумий сумма</p>
+            <p class="text-2xl font-bold text-gray-900">
+                {{ number_format($totalAmount, 0, '.', ' ') }} сўм
+            </p>
+            <p class="text-xm text-gray-500 mt-2 italic leading-relaxed">
+                {{ ucfirst(app(\App\Services\NumberToTextService::class)->convert($totalAmount)) }} сўм
+            </p>
+        </div>
+        <div class="w-10 h-10 bg-green-50 rounded-lg flex items-center justify-center flex-shrink-0 ml-4">
+            <i data-feather="dollar-sign" class="w-5 h-5 text-green-600"></i>
+        </div>
+    </div>
+</div>
+
+    <div class="bg-white rounded-xl shadow-sm border border-gray-200 p-6">
+        <div class="flex items-center justify-between">
+            <div>
+                <p class="text-sm font-medium text-gray-600">Фаол шартномалар</p>
+                <p class="text-2xl font-bold text-gray-900 mt-1">{{ $activeCount }}</p>
+            </div>
+            <div class="w-10 h-10 bg-green-50 rounded-lg flex items-center justify-center">
+                <i data-feather="check-circle" class="w-5 h-5 text-green-600"></i>
+            </div>
+        </div>
+    </div>
+</div>
 
     <!-- Contracts Table -->
     <div class="bg-white rounded-xl shadow-sm border border-gray-200 overflow-hidden">
@@ -149,6 +137,7 @@
                         <th class="px-6 py-4 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Оплачено</th>
                         <th class="px-6 py-4 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Статус</th>
                         <th class="px-6 py-4 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Дата</th>
+                        <th class="px-6 py-4 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Ижрочи</th>
                         <th class="px-6 py-4 text-right text-xs font-medium text-gray-500 uppercase tracking-wider">Действия</th>
                     </tr>
                 </thead>
@@ -230,7 +219,7 @@
                             <td class="px-6 py-4">
                                 <span class="inline-flex px-2 py-1 text-xs font-semibold rounded-full"
                                       style="background-color: {{ $contract->status->color ?? '#6b7280' }}20; color: {{ $contract->status->color ?? '#6b7280' }}">
-                                    {{ $contract->status->name_ru ?? 'Не указан' }}
+                                    {{ $contract->status->name_uz ?? 'Не указан' }}
                                 </span>
                             </td>
 
@@ -239,6 +228,9 @@
                                 {{ $contract->contract_date ? $contract->contract_date->format('d.m.Y') : 'Не указана' }}
                             </td>
 
+                        <td class="px-6 py-4 text-sm text-gray-900">
+                                 {{ $contract->updatedBy ? $contract->updatedBy->email : 'Не указана' }}
+                            </td>
                             <!-- Actions -->
                             <td class="px-6 py-4 text-right">
                                 <div class="flex items-center justify-end space-x-2">

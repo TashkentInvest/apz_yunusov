@@ -9,6 +9,7 @@ use App\Models\PaymentSchedule;
 use App\Models\Subject;
 use App\Models\Objectt;
 use App\Services\ContractPaymentService;
+use App\Services\NumberToTextService;
 use Illuminate\Http\Request;
 use Illuminate\Http\JsonResponse;
 use Illuminate\View\View;
@@ -21,10 +22,12 @@ use Carbon\Carbon;
 class ContractController extends Controller
 {
     protected ContractPaymentService $paymentService;
+    protected $numberToText;
 
-    public function __construct(ContractPaymentService $paymentService)
+    public function __construct(ContractPaymentService $paymentService, NumberToTextService $numberToText)
     {
         $this->paymentService = $paymentService;
+        $this->numberToText = $numberToText;
     }
 
     /**
@@ -32,18 +35,23 @@ class ContractController extends Controller
      */
     public function index(Request $request): View
     {
-        $query = Contract::with(['subject', 'object.district', 'status'])
+        $query = Contract::with(['subject', 'object.district', 'status', 'updatedBy'])
             ->where('is_active', true);
 
-        // Search filters
+        // Contract number filter
+        if ($request->contract_number) {
+            $query->where('contract_number', 'like', "%{$request->contract_number}%");
+        }
+
+        // General search filter (if you still want to keep it)
         if ($request->search) {
             $search = $request->search;
-            $query->where(function($q) use ($search) {
+            $query->where(function ($q) use ($search) {
                 $q->where('contract_number', 'like', "%{$search}%")
-                  ->orWhereHas('subject', function($sq) use ($search) {
-                      $sq->where('company_name', 'like', "%{$search}%")
-                        ->orWhere('inn', 'like', "%{$search}%");
-                  });
+                    ->orWhereHas('subject', function ($sq) use ($search) {
+                        $sq->where('company_name', 'like', "%{$search}%")
+                            ->orWhere('inn', 'like', "%{$search}%");
+                    });
             });
         }
 
@@ -52,20 +60,33 @@ class ContractController extends Controller
         }
 
         if ($request->district_id) {
-            $query->whereHas('object', function($q) use ($request) {
+            $query->whereHas('object', function ($q) use ($request) {
                 $q->where('district_id', $request->district_id);
             });
         }
 
+        // Calculate statistics BEFORE pagination - EXCLUDE CANCELLED
+        $totalAmount = (clone $query)
+            ->whereHas('status', function ($q) {
+                $q->where('name_uz', '!=', 'Бекор қилинган');
+            })
+            ->sum('total_amount');
+
+        $activeCount = (clone $query)->whereHas('status', function ($q) {
+            $q->where('code', 'ACTIVE');
+        })->count();
+
+        // Paginate results
         $contracts = $query->paginate(20)->appends($request->query());
 
         // Get filter options
         $statuses = \App\Models\ContractStatus::where('is_active', true)->get();
-        $districts = \App\Models\District::where('is_active', true)->get();
+        $districts = \App\Models\District::where('is_active', true)
+            ->where('name_uz', 'REGEXP', '^[А-Яа-яЎўҚқҒғҲҳ]')
+            ->get();
 
-        return view('contracts.index', compact('contracts', 'statuses', 'districts'));
+        return view('contracts.index', compact('contracts', 'statuses', 'districts', 'totalAmount', 'activeCount'));
     }
-
     /**
      * Show the form for creating a new contract
      */
@@ -167,7 +188,6 @@ class ContractController extends Controller
             return redirect()
                 ->route('contracts.payment_update', $contract)
                 ->with('success', 'Shartnoma muvaffaqiyatli yaratildi');
-
         } catch (\Exception $e) {
             DB::rollBack();
             Log::error('Contract creation failed:', [
@@ -261,7 +281,6 @@ class ContractController extends Controller
             }
 
             return back()->with('success', 'Shartnoma muvaffaqiyatli yangilandi');
-
         } catch (\Exception $e) {
             DB::rollBack();
             return back()->withInput()->with('error', 'Shartnoma yangilashda xatolik: ' . $e->getMessage());
@@ -286,74 +305,73 @@ class ContractController extends Controller
     /**
      * Display contract payment management page
      */
-public function payment_update(Contract $contract): View
-{
-    $contract->load(['subject', 'object.district', 'status', 'payments', 'schedules']);
+    public function payment_update(Contract $contract): View
+    {
+        $contract->load(['subject', 'object.district', 'status', 'payments', 'schedules']);
 
-    $paymentData = $this->paymentService->getContractPaymentData($contract);
+        $paymentData = $this->paymentService->getContractPaymentData($contract);
 
-    $statuses = \App\Models\ContractStatus::where('is_active', true)
-        ->orderBy('id')
-        ->get();
+        $statuses = \App\Models\ContractStatus::where('is_active', true)
+            ->orderBy('id')
+            ->get();
 
-    return view('contracts.payment_update', compact('paymentData', 'statuses', 'contract'));
-}
-
-/**
- * Update contract status
- */
-public function updateStatus(Request $request, Contract $contract): RedirectResponse
-{
-    // Validate input
-    $request->validate([
-        'status_id' => 'required|exists:contract_statuses,id',
-    ]);
-
-    try {
-        DB::beginTransaction();
-
-        $oldStatus = $contract->status;
-        $newStatus = \App\Models\ContractStatus::findOrFail($request->status_id);
-
-        // Update contract status
-        $contract->update([
-            'status_id' => $request->status_id,
-            'updated_by' => auth()->id()
-        ]);
-        // dd($contract->status_id);
-
-        DB::commit();
-
-        return redirect()->back()->with([
-            'success' => 'Shartnoma holati muvaffaqiyatli o\'zgartirildi',
-            'status_updated' => "{$oldStatus->name_uz} → {$newStatus->name_uz}"
-        ]);
-
-    } catch (\Exception $e) {
-        DB::rollBack();
-
-        \Log::error('Status update failed:', [
-            'contract_id' => $contract->id,
-            'error' => $e->getMessage(),
-            'trace' => $e->getTraceAsString()
-        ]);
-
-        return redirect()->back()->with('error', 'Holat o\'zgartirishda xatolik: ' . $e->getMessage());
+        return view('contracts.payment_update', compact('paymentData', 'statuses', 'contract'));
     }
-}
 
-/**
- * Get status change history
- */
-public function getStatusHistory(Contract $contract)
-{
-    $history = \App\Models\ContractStatusHistory::where('contract_id', $contract->id)
-        ->with(['oldStatus', 'newStatus', 'changedBy'])
-        ->orderBy('changed_at', 'desc')
-        ->get();
+    /**
+     * Update contract status
+     */
+    public function updateStatus(Request $request, Contract $contract): RedirectResponse
+    {
+        // Validate input
+        $request->validate([
+            'status_id' => 'required|exists:contract_statuses,id',
+        ]);
 
-    return response()->json($history);
-}
+        try {
+            DB::beginTransaction();
+
+            $oldStatus = $contract->status;
+            $newStatus = \App\Models\ContractStatus::findOrFail($request->status_id);
+
+            // Update contract status
+            $contract->update([
+                'status_id' => $request->status_id,
+                'updated_by' => auth()->id()
+            ]);
+            // dd($contract->status_id);
+
+            DB::commit();
+
+            return redirect()->back()->with([
+                'success' => 'Shartnoma holati muvaffaqiyatli o\'zgartirildi',
+                'status_updated' => "{$oldStatus->name_uz} → {$newStatus->name_uz}"
+            ]);
+        } catch (\Exception $e) {
+            DB::rollBack();
+
+            \Log::error('Status update failed:', [
+                'contract_id' => $contract->id,
+                'error' => $e->getMessage(),
+                'trace' => $e->getTraceAsString()
+            ]);
+
+            return redirect()->back()->with('error', 'Holat o\'zgartirishda xatolik: ' . $e->getMessage());
+        }
+    }
+
+    /**
+     * Get status change history
+     */
+    public function getStatusHistory(Contract $contract)
+    {
+        $history = \App\Models\ContractStatusHistory::where('contract_id', $contract->id)
+            ->with(['oldStatus', 'newStatus', 'changedBy'])
+            ->orderBy('changed_at', 'desc')
+            ->get();
+
+        return response()->json($history);
+    }
 
     /**
      * Show payment schedule creation form
@@ -400,69 +418,68 @@ public function getStatusHistory(Contract $contract)
     /**
      * Store payment
      */
-public function storePayment(Request $request, Contract $contract): RedirectResponse
-{
-    $validator = Validator::make($request->all(), [
-        'payment_date' => 'required|date|after_or_equal:' . $contract->contract_date->format('Y-m-d'),
-        'payment_amount' => 'required|numeric|min:0.01',
-        'payment_number' => 'nullable|string|max:50',
-        'payment_notes' => 'nullable|string|max:500',
-        'target_year' => 'nullable|integer',
-        'target_quarter' => 'nullable|integer|min:1|max:4'
-    ]);
+    public function storePayment(Request $request, Contract $contract): RedirectResponse
+    {
+        $validator = Validator::make($request->all(), [
+            'payment_date' => 'required|date|after_or_equal:' . $contract->contract_date->format('Y-m-d'),
+            'payment_amount' => 'required|numeric|min:0.01',
+            'payment_number' => 'nullable|string|max:50',
+            'payment_notes' => 'nullable|string|max:500',
+            'target_year' => 'nullable|integer',
+            'target_quarter' => 'nullable|integer|min:1|max:4'
+        ]);
 
-    if ($validator->fails()) {
-        return redirect()->back()
-            ->withErrors($validator)
-            ->withInput();
-    }
-
-    try {
-        // Debug: Log request data
-        \Log::info('Payment request data: ', $request->all());
-
-        // Prepare data for the payment service with correct field names
-        $paymentData = [
-            'payment_date' => $request->input('payment_date'),
-            'payment_amount' => $request->input('payment_amount'), // Keep original name
-            'amount' => $request->input('payment_amount'), // Also add as 'amount' for service
-            'payment_number' => $request->input('payment_number'),
-            'payment_notes' => $request->input('payment_notes'),
-            'notes' => $request->input('payment_notes'), // Also add as 'notes' for service
-            'year' => $request->input('target_year'),
-            'quarter' => $request->input('target_quarter'),
-            'target_year' => $request->input('target_year'), // Keep original name
-            'target_quarter' => $request->input('target_quarter'), // Keep original name
-            'payment_category' => $request->input('target_quarter') ? 'quarterly' : 'initial',
-            'created_by' => auth()->id()
-        ];
-
-        // Check if required fields exist
-        if (!$request->has('payment_amount') || !$request->has('payment_date')) {
+        if ($validator->fails()) {
             return redirect()->back()
-                ->withErrors(['error' => 'Majburiy maydonlar to\'ldirilmagan'])
+                ->withErrors($validator)
                 ->withInput();
         }
 
-        $result = $this->paymentService->addPayment($contract, $paymentData);
+        try {
+            // Debug: Log request data
+            \Log::info('Payment request data: ', $request->all());
 
-        if ($result['success']) {
-            return redirect()->route('contracts.payment_update', $contract)
-                ->with('success', 'To\'lov muvaffaqiyatli qo\'shildi');
-        } else {
+            // Prepare data for the payment service with correct field names
+            $paymentData = [
+                'payment_date' => $request->input('payment_date'),
+                'payment_amount' => $request->input('payment_amount'), // Keep original name
+                'amount' => $request->input('payment_amount'), // Also add as 'amount' for service
+                'payment_number' => $request->input('payment_number'),
+                'payment_notes' => $request->input('payment_notes'),
+                'notes' => $request->input('payment_notes'), // Also add as 'notes' for service
+                'year' => $request->input('target_year'),
+                'quarter' => $request->input('target_quarter'),
+                'target_year' => $request->input('target_year'), // Keep original name
+                'target_quarter' => $request->input('target_quarter'), // Keep original name
+                'payment_category' => $request->input('target_quarter') ? 'quarterly' : 'initial',
+                'created_by' => auth()->id()
+            ];
+
+            // Check if required fields exist
+            if (!$request->has('payment_amount') || !$request->has('payment_date')) {
+                return redirect()->back()
+                    ->withErrors(['error' => 'Majburiy maydonlar to\'ldirilmagan'])
+                    ->withInput();
+            }
+
+            $result = $this->paymentService->addPayment($contract, $paymentData);
+
+            if ($result['success']) {
+                return redirect()->route('contracts.payment_update', $contract)
+                    ->with('success', 'To\'lov muvaffaqiyatli qo\'shildi');
+            } else {
+                return redirect()->back()
+                    ->withErrors(['error' => $result['message']])
+                    ->withInput();
+            }
+        } catch (\Exception $e) {
+            \Log::error('Payment creation error: ' . $e->getMessage());
+
             return redirect()->back()
-                ->withErrors(['error' => $result['message']])
+                ->withErrors(['error' => 'To\'lov qo\'shishda xatolik yuz berdi'])
                 ->withInput();
         }
-
-    } catch (\Exception $e) {
-        \Log::error('Payment creation error: ' . $e->getMessage());
-
-        return redirect()->back()
-            ->withErrors(['error' => 'To\'lov qo\'shishda xatolik yuz berdi'])
-            ->withInput();
     }
-}
     /**
      * Show quarter payment form
      */
@@ -612,7 +629,6 @@ public function storePayment(Request $request, Contract $contract): RedirectResp
 
             $result = $this->paymentService->updatePayment($payment, $request->all());
             return response()->json($result);
-
         } catch (\Exception $e) {
             Log::error('Payment update failed: ' . $e->getMessage());
             return response()->json([
@@ -640,7 +656,6 @@ public function storePayment(Request $request, Contract $contract): RedirectResp
 
             $result = $this->paymentService->deletePayment($payment);
             return response()->json($result);
-
         } catch (\Exception $e) {
             Log::error('Payment deletion failed: ' . $e->getMessage());
             return response()->json([
@@ -683,7 +698,6 @@ public function storePayment(Request $request, Contract $contract): RedirectResp
                     ]
                 ]
             ]);
-
         } catch (\Exception $e) {
             return response()->json([
                 'success' => false,
@@ -745,7 +759,6 @@ public function storePayment(Request $request, Contract $contract): RedirectResp
             return response()->json($reportData)
                 ->header('Content-Disposition', 'attachment; filename="' . $filename . '"')
                 ->header('Content-Type', 'application/json');
-
         } catch (\Exception $e) {
             return back()->with('error', 'Hisobot yaratishda xatolik: ' . $e->getMessage());
         }
@@ -852,9 +865,8 @@ public function storePayment(Request $request, Contract $contract): RedirectResp
 
             if (!$paymentDate || !$contractId) {
                 return response()->json(['valid' => false, 'message' => 'Xatolik: ' . $e->getMessage()]);
-        }
-    }
-    catch (\Exception $e) {
+            }
+        } catch (\Exception $e) {
             return response()->json(['success' => false, 'message' => $e->getMessage()]);
         }
     }
@@ -921,7 +933,7 @@ public function storePayment(Request $request, Contract $contract): RedirectResp
         }
 
         if ($request->district_id) {
-            $query->whereHas('object', function($q) use ($request) {
+            $query->whereHas('object', function ($q) use ($request) {
                 $q->where('district_id', $request->district_id);
             });
         }
@@ -1030,7 +1042,6 @@ public function storePayment(Request $request, Contract $contract): RedirectResp
                 'message' => "{$updatedCount} ta to'lov {$action} amaliyoti bajarildi",
                 'updated_count' => $updatedCount
             ]);
-
         } catch (\Exception $e) {
             DB::rollBack();
             return response()->json([
@@ -1075,7 +1086,7 @@ public function storePayment(Request $request, Contract $contract): RedirectResp
                     ->groupBy('month')
                     ->orderBy('month')
                     ->get()
-                    ->map(function($item) {
+                    ->map(function ($item) {
                         return [
                             'month' => $item->month,
                             'month_name' => date('F', mktime(0, 0, 0, $item->month, 1)),
@@ -1089,7 +1100,7 @@ public function storePayment(Request $request, Contract $contract): RedirectResp
                     ->groupBy('quarter')
                     ->orderBy('quarter')
                     ->get()
-                    ->map(function($item) {
+                    ->map(function ($item) {
                         return [
                             'quarter' => $item->quarter,
                             'quarter_name' => "{$item->quarter}-chorak",
@@ -1104,7 +1115,6 @@ public function storePayment(Request $request, Contract $contract): RedirectResp
                 'success' => true,
                 'statistics' => $statistics
             ]);
-
         } catch (\Exception $e) {
             return response()->json([
                 'success' => false,
@@ -1150,5 +1160,4 @@ public function storePayment(Request $request, Contract $contract): RedirectResp
         $result = $this->paymentService->deletePayment($payment);
         return response()->json($result);
     }
-
 };

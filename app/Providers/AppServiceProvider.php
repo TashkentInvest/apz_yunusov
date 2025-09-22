@@ -3,22 +3,23 @@
 namespace App\Providers;
 
 use Illuminate\Support\ServiceProvider;
+use App\Services\NumberToTextService;
 
 class AppServiceProvider extends ServiceProvider
 {
-    /**
-     * Register any application services.
-     */
-    public function register(): void
+    public function register()
     {
-        //
+        $this->app->singleton(NumberToTextService::class, function ($app) {
+            return new NumberToTextService();
+        });
     }
 
-    /**
-     * Bootstrap any application services.
-     */
-    public function boot(): void
+    public function boot()
     {
-        //
+        if (!function_exists('number_to_uzbek_text')) {
+            function number_to_uzbek_text($number) {
+                return app(\App\Services\NumberToTextService::class)->convert($number);
+            }
+        }
     }
 }
