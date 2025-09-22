@@ -59,6 +59,104 @@
                 <h1 class="text-3xl font-bold mb-2">TIC</h1>
                 <p class="text-xl opacity-90">Shartnoma to'lov boshqaruv tizimi</p>
             </div>
+<!-- Complete Working Status Selector -->
+@if(isset($paymentData['contract']) && isset($statuses))
+<div class="flex-1 px-8">
+    <form id="status-update-form"
+          method="POST"
+          action="{{ route('contracts.update-status', ['contract' => $contract->id]) }}"
+          class="space-y-2">
+        @csrf
+        @method('PATCH')
+
+        <label for="status_id" class="block text-sm font-medium opacity-90">
+            Shartnoma holati
+        </label>
+        <div class="flex items-center space-x-3">
+            <select id="status_id"
+                    name="status_id"
+                    class="flex-1 rounded-lg border-white/20 bg-white/10 text-white focus:ring-2 focus:ring-white/50 px-4 py-2"
+                    required>
+                @foreach($statuses as $status)
+                    <option value="{{ $status->id }}"
+                            data-color="{{ $status->color }}"
+                            {{ $contract->status_id == $status->id ? 'selected' : '' }}
+                            style="color: #000; background: #fff;">
+                        {{ $status->name_uz }}
+                    </option>
+                @endforeach
+            </select>
+
+            <button type="submit"
+                    id="save-status-btn"
+                    class="px-4 py-2 bg-green-500 hover:bg-green-600 text-white text-sm font-medium rounded-lg transition-colors">
+                <svg class="w-4 h-4 inline-block mr-1" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7"/>
+                </svg>
+                Saqlash
+            </button>
+        </div>
+    </form>
+</div>
+
+
+<script>
+(function() {
+    'use strict';
+
+    const form = document.getElementById('status-update-form');
+    const select = document.getElementById('status_id');
+    const saveBtn = document.getElementById('save-status-btn');
+
+    if (!form || !select || !saveBtn) {
+        console.error('Status form elements not found');
+        return;
+    }
+
+    // Store original value
+    const originalValue = '{{ $contract->status_id }}';
+    console.log('Original status ID:', originalValue);
+
+    // Initially hide save button if no change
+    if (select.value === originalValue) {
+        saveBtn.classList.add('hidden');
+    }
+
+    // Handle select change
+    select.addEventListener('change', function() {
+        console.log('Status changed from', originalValue, 'to', this.value);
+
+        if (this.value !== originalValue) {
+            saveBtn.classList.remove('hidden');
+            saveBtn.classList.add('animate-pulse');
+        } else {
+            saveBtn.classList.add('hidden');
+            saveBtn.classList.remove('animate-pulse');
+        }
+    });
+
+    // Handle form submission
+    form.addEventListener('submit', function(e) {
+        e.preventDefault();
+
+        const selectedOption = select.options[select.selectedIndex];
+        const statusName = selectedOption.text;
+
+        console.log('Submitting status change to:', statusName);
+
+        if (confirm('Shartnoma holatini "' + statusName + '" ga o\'zgartirishni tasdiqlaysizmi?')) {
+            // Disable button and show loading
+            saveBtn.disabled = true;
+            saveBtn.innerHTML = '<svg class="animate-spin h-4 w-4 inline-block mr-1" fill="none" viewBox="0 0 24 24"><circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle><path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path></svg> Saqlanmoqda...';
+
+            // Submit form
+            console.log('Form action:', this.action);
+            this.submit();
+        }
+    });
+})();
+</script>
+@endif
             <div class="text-right">
                 <p class="text-lg font-semibold">{{ date('d.m.Y') }}</p>
                 <p class="opacity-90">{{ date('H:i') }}</p>
@@ -186,16 +284,97 @@
                 </div>
             </div>
 
-            <div class="flex justify-end space-x-4 pt-6 border-t border-gray-200">
-                <button type="button" onclick="this.form.reset()" class="btn bg-gray-100 text-gray-700 hover:bg-gray-200">
-                    Tozalash
-                </button>
-                <button type="submit" class="btn btn-primary">
-                    {{ isset($paymentData['contract']) ? 'Yangilash' : 'Saqlash' }}
-                </button>
-            </div>
+         <div class="flex justify-end space-x-4 pt-6 border-t border-gray-200">
+        <button type="button" onclick="clearFinancialFields()" class="btn bg-gray-100 text-gray-700 hover:bg-gray-200">
+                <svg class="w-4 h-4 inline mr-1" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15"/>
+                </svg>
+                Tozalash1
+            </button>
+            <button type="submit" class="btn btn-primary">
+                <svg class="w-4 h-4 inline mr-1" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7"/>
+                </svg>
+                {{ isset($paymentData['contract']) ? 'Yangilash' : 'Saqlash' }}
+            </button>
+        </div>
         </form>
     </div>
+
+<script>
+function clearFinancialFields() {
+    // Check if we're editing an existing contract
+    const isEditMode = document.querySelector('input[name="_method"][value="PUT"]') !== null;
+
+    if (isEditMode) {
+        alert('Tahrirlash rejimida moliyaviy ma\'lumotlarni tozalab bo\'lmaydi. O\'zgartirishlar kiriting va saqlang.');
+        return; // Don't clear anything
+    }
+
+    // Only clear if creating new contract
+    document.querySelector('input[name="total_amount"]').value = '';
+    document.querySelector('select[name="payment_type"]').selectedIndex = 0;
+    document.querySelector('input[name="initial_payment_percent"]').value = '';
+    document.querySelector('input[name="construction_period_years"]').value = '';
+    document.querySelector('input[name="quarters_count"]').value = '';
+    document.getElementById('installmentSettings').style.display = 'none';
+}
+
+function showInfoMessage(message) {
+    const existingAlert = document.getElementById('clear-info-alert');
+    if (existingAlert) existingAlert.remove();
+
+    const alert = document.createElement('div');
+    alert.id = 'clear-info-alert';
+    alert.className = 'fixed top-4 right-4 bg-blue-500 text-white px-6 py-3 rounded-lg shadow-lg z-50 animate-fade-in';
+    alert.innerHTML = `
+        <div class="flex items-center">
+            <svg class="w-5 h-5 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z"/>
+            </svg>
+            <span>${message}</span>
+        </div>
+    `;
+
+    document.body.appendChild(alert);
+
+    setTimeout(() => {
+        alert.style.opacity = '0';
+        setTimeout(() => alert.remove(), 300);
+    }, 4000);
+}
+
+function togglePaymentType(select) {
+    const installmentDiv = document.getElementById('installmentSettings');
+    if (select.value === 'full') {
+        installmentDiv.style.display = 'none';
+    } else {
+        installmentDiv.style.display = 'block';
+    }
+}
+
+// Re-add required attributes when user starts typing
+document.addEventListener('DOMContentLoaded', function() {
+    const totalAmount = document.querySelector('input[name="total_amount"]');
+    const paymentType = document.querySelector('select[name="payment_type"]');
+
+    if (totalAmount) {
+        totalAmount.addEventListener('input', function() {
+            if (this.value) {
+                this.setAttribute('required', 'required');
+            }
+        });
+    }
+
+    if (paymentType) {
+        paymentType.addEventListener('change', function() {
+            if (this.value) {
+                this.setAttribute('required', 'required');
+            }
+        });
+    }
+});
+</script>
 
     @if(isset($paymentData['contract']))
     <!-- Payment Management -->
@@ -322,7 +501,7 @@
                     </div>
 
                     <div class="w-full bg-purple-200 rounded-full h-3 mb-4">
-                        <div class="bg-purple-600 h-3 rounded-full transition-all" 
+                        <div class="bg-purple-600 h-3 rounded-full transition-all"
                              style="width: {{ min(100, $paymentData['initial_payments']['payment_percent']) }}%"></div>
                     </div>
 
@@ -343,7 +522,7 @@
                                         @endif
                                     </div>
                                     <div class="flex space-x-1">
-                                        <button onclick="editPayment({{ $payment['id'] }})" 
+                                        <button onclick="editPayment({{ $payment['id'] }})"
                                                class="p-1 bg-purple-100 text-purple-600 rounded hover:bg-purple-200">
                                             <i data-feather="edit-2" class="w-3 h-3"></i>
                                         </button>
@@ -476,7 +655,7 @@
                 </div>
                 <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
                     @foreach(array_slice($paymentData['payment_history']['payments'], 0, 9) as $payment)
-                    <div class="payment-card {{ $payment['is_initial_payment'] ? 'border-purple-200' : 'border-gray-200' }}" 
+                    <div class="payment-card {{ $payment['is_initial_payment'] ? 'border-purple-200' : 'border-gray-200' }}"
                          onclick="showPaymentDetails({{ $payment['id'] }})">
                         <div class="flex justify-between items-start mb-2">
                             <div class="font-medium text-lg">{{ $payment['amount_formatted'] }}</div>
@@ -671,9 +850,9 @@ function showAddPaymentModal(type = 'quarterly', targetYear = null, targetQuarte
     const modal = document.getElementById('addPaymentModal');
     const modalTitle = document.getElementById('modalTitle');
     const paymentCategory = document.getElementById('paymentCategory');
-    
+
     modal.classList.remove('hidden');
-    
+
     if (type === 'initial') {
         modalTitle.textContent = 'Boshlang\'ich to\'lov qo\'shish';
         paymentCategory.value = 'initial';
@@ -681,7 +860,7 @@ function showAddPaymentModal(type = 'quarterly', targetYear = null, targetQuarte
     } else {
         modalTitle.textContent = 'Chorak to\'lovi qo\'shish';
         paymentCategory.value = 'quarterly';
-        
+
         if (targetYear && targetQuarter) {
             // Pre-fill date for specific quarter
             const middleMonth = (targetQuarter - 1) * 3 + 2;
@@ -706,12 +885,12 @@ function addQuarterPayment(year, quarter) {
 
 function updateQuarterInfo(dateStr) {
     const paymentCategory = document.getElementById('paymentCategory').value;
-    
+
     if (paymentCategory === 'initial') {
         document.getElementById('modalQuarterInfo').value = 'Boshlang\'ich to\'lov';
         return;
     }
-    
+
     if (!dateStr) return;
 
     const date = new Date(dateStr);

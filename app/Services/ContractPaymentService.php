@@ -17,6 +17,9 @@ class ContractPaymentService
      */
     public function getContractPaymentData(Contract $contract): array
     {
+  if (!$contract->relationLoaded('status')) {
+        $contract->load('status');
+    }
         return [
             'contract' => $this->formatContractData($contract),
             'quarterly_breakdown' => $this->getQuarterlyBreakdown($contract),
@@ -25,7 +28,15 @@ class ContractPaymentService
             'initial_payments' => $this->getInitialPayments($contract),
             'amendments' => $this->getAmendments($contract),
             'available_years' => $this->getAvailableYears($contract),
-            'quarter_options' => $this->getQuarterOptions()
+            'quarter_options' => $this->getQuarterOptions(),
+            'status_id' => $contract->status_id, // ADD THIS LINE
+            'status' => $contract->status ? [ // ADD THIS BLOCK
+                'id' => $contract->status->id,
+                'name_uz' => $contract->status->name_uz,
+                'name_ru' => $contract->status->name_ru,
+                'code' => $contract->status->code,
+                'color' => $contract->status->color,
+            ] : null,
         ];
     }
 
@@ -152,7 +163,7 @@ class ContractPaymentService
     public function getInitialPayments(Contract $contract): array
     {
         $initialPaymentAmount = $contract->total_amount * (($contract->initial_payment_percent ?? 20) / 100);
-        
+
         // Get all initial payments
         $initialPayments = ActualPayment::where('contract_id', $contract->id)
             ->where('is_initial_payment', true)
@@ -287,7 +298,7 @@ class ContractPaymentService
             // Create initial payment schedule first
             if (!$amendmentId) {
                 $initialPaymentAmount = $contract->total_amount * (($contract->initial_payment_percent ?? 20) / 100);
-                
+
                 PaymentSchedule::create([
                     'contract_id' => $contract->id,
                     'year' => $currentYear,
@@ -415,7 +426,7 @@ class ContractPaymentService
             } else {
                 // Determine target quarter for regular payments
                 $targetQuarter = $this->determineTargetQuarter($contract, $paymentDate, $data);
-                
+
                 if (!$targetQuarter) {
                     throw new \Exception('Ushbu sana uchun to\'lov jadvali topilmadi');
                 }
@@ -448,7 +459,7 @@ class ContractPaymentService
 
             DB::commit();
 
-            $message = $isInitialPayment ? 
+            $message = $isInitialPayment ?
                 "Boshlang'ich to'lov muvaffaqiyatli qo'shildi" :
                 "To'lov muvaffaqiyatli qo'shildi: {$targetQuarter['quarter']}-chorak {$targetQuarter['year']}";
 
@@ -692,7 +703,7 @@ class ContractPaymentService
             // Update initial payment schedule if initial payment percent changed
             if (isset($updateData['initial_payment_percent']) || isset($updateData['total_amount'])) {
                 $newInitialAmount = $contract->fresh()->total_amount * (($contract->fresh()->initial_payment_percent ?? 20) / 100);
-                
+
                 PaymentSchedule::where('contract_id', $contract->id)
                     ->where('is_initial_payment', true)
                     ->where('is_active', true)
@@ -785,8 +796,8 @@ class ContractPaymentService
         $history = [];
 
         foreach ($payments as $payment) {
-            $quarterInfo = $payment->is_initial_payment ? 
-                'Boshlang\'ich to\'lov' : 
+            $quarterInfo = $payment->is_initial_payment ?
+                'Boshlang\'ich to\'lov' :
                 "{$payment->quarter}-chorak {$payment->year}";
 
             $history[] = [

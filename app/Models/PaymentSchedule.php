@@ -5,16 +5,20 @@ namespace App\Models;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
 use Illuminate\Database\Eloquent\Relations\HasMany;
+use Illuminate\Database\Eloquent\Factories\HasFactory;
 
 class PaymentSchedule extends Model
 {
+    use HasFactory;
+
     protected $fillable = [
         'contract_id',
-        'amendment_id', // Yangi maydon
+        'amendment_id',
         'year',
         'quarter',
         'quarter_amount',
         'custom_percent',
+        'is_initial_payment',
         'is_active'
     ];
 
@@ -23,25 +27,22 @@ class PaymentSchedule extends Model
         'custom_percent' => 'decimal:2',
         'year' => 'integer',
         'quarter' => 'integer',
+        'is_initial_payment' => 'boolean',
         'is_active' => 'boolean',
     ];
 
-    /**
-     * Relationship with contract
-     */
+    // ========== RELATIONSHIPS ==========
+
     public function contract(): BelongsTo
     {
         return $this->belongsTo(Contract::class);
     }
 
-    /**
-     * Relationship with amendment (agar qo'shimcha kelishuv orqali yaratilgan bo'lsa)
-     */
+    public function amendment(): BelongsTo
+    {
+        return $this->belongsTo(ContractAmendment::class, 'amendment_id');
+    }
 
-
-    /**
-     * Get actual payments for this quarter
-     */
     public function actualPayments(): HasMany
     {
         return $this->hasMany(ActualPayment::class, 'contract_id', 'contract_id')
@@ -49,9 +50,8 @@ class PaymentSchedule extends Model
             ->where('quarter', $this->quarter);
     }
 
-    /**
-     * Get paid amount for this quarter
-     */
+    // ========== ACCESSORS ==========
+
     public function getPaidAmountAttribute(): float
     {
         return $this->contract->actualPayments()
@@ -60,32 +60,22 @@ class PaymentSchedule extends Model
             ->sum('amount');
     }
 
-    /**
-     * Get remaining amount to be paid
-     */
     public function getRemainingAmountAttribute(): float
     {
         return max(0, $this->quarter_amount - $this->paid_amount);
     }
 
-    /**
-     * Get payment completion percentage
-     */
     public function getPaymentPercentAttribute(): float
     {
         if ($this->quarter_amount <= 0) return 0;
         return min(100, ($this->paid_amount / $this->quarter_amount) * 100);
     }
 
-    /**
-     * Check if this quarter is overdue
-     */
     public function getIsOverdueAttribute(): bool
     {
         $currentYear = now()->year;
         $currentQuarter = ceil(now()->month / 3);
 
-        // If it's a past quarter and not fully paid
         if ($this->year < $currentYear) {
             return $this->remaining_amount > 0;
         } elseif ($this->year == $currentYear && $this->quarter < $currentQuarter) {
@@ -95,9 +85,6 @@ class PaymentSchedule extends Model
         return false;
     }
 
-    /**
-     * Get payment status
-     */
     public function getStatusAttribute(): string
     {
         if ($this->remaining_amount <= 0) {
@@ -109,25 +96,19 @@ class PaymentSchedule extends Model
         }
     }
 
-    /**
-     * Get quarter display name
-     */
     public function getQuarterDisplayAttribute(): string
     {
+        if ($this->is_initial_payment) {
+            return 'Boshlang\'ich to\'lov';
+        }
         return "{$this->quarter}-chorak {$this->year}";
     }
 
-    /**
-     * Check if created by amendment
-     */
     public function getIsAmendmentBasedAttribute(): bool
     {
         return !is_null($this->amendment_id);
     }
 
-    /**
-     * Get source description (original contract or amendment)
-     */
     public function getSourceDescriptionAttribute(): string
     {
         if ($this->is_amendment_based) {
@@ -136,70 +117,6 @@ class PaymentSchedule extends Model
         return "Asosiy shartnoma";
     }
 
-    /**
-     * Scope for active schedules
-     */
-    public function scopeActive($query)
-    {
-        return $query->where('is_active', true);
-    }
-
-    /**
-     * Scope for original contract schedules (not from amendments)
-     */
-    public function scopeOriginal($query)
-    {
-        return $query->whereNull('amendment_id');
-    }
-
-    /**
-     * Scope for amendment-based schedules
-     */
-    public function scopeAmendmentBased($query)
-    {
-        return $query->whereNotNull('amendment_id');
-    }
-
-    /**
-     * Scope for overdue payments
-     */
-    public function scopeOverdue($query)
-    {
-        $currentYear = now()->year;
-        $currentQuarter = ceil(now()->month / 3);
-
-        return $query->where(function ($q) use ($currentYear, $currentQuarter) {
-            $q->where('year', '<', $currentYear)
-                ->orWhere(function ($subQ) use ($currentYear, $currentQuarter) {
-                    $subQ->where('year', $currentYear)
-                        ->where('quarter', '<', $currentQuarter);
-                });
-        });
-    }
-
-    /**
-     * Scope for current quarter
-     */
-    public function scopeCurrentQuarter($query)
-    {
-        $currentYear = now()->year;
-        $currentQuarter = ceil(now()->month / 3);
-
-        return $query->where('year', $currentYear)
-            ->where('quarter', $currentQuarter);
-    }
-
-    /**
-     * Scope for specific amendment
-     */
-    public function scopeForAmendment($query, $amendmentId)
-    {
-        return $query->where('amendment_id', $amendmentId);
-    }
-
-    /**
-     * Get overdue days
-     */
     public function getOverdueDaysAttribute(): int
     {
         if (!$this->is_overdue) return 0;
@@ -211,9 +128,6 @@ class PaymentSchedule extends Model
         return max(0, now()->diffInDays($quarterEndDate));
     }
 
-    /**
-     * Get formatted amounts
-     */
     public function getFormattedAmountsAttribute(): array
     {
         return [
@@ -223,9 +137,6 @@ class PaymentSchedule extends Model
         ];
     }
 
-    /**
-     * Get status color for UI
-     */
     public function getStatusColorAttribute(): string
     {
         switch ($this->status) {
@@ -240,9 +151,6 @@ class PaymentSchedule extends Model
         }
     }
 
-    /**
-     * Get CSS classes for status display
-     */
     public function getStatusClassesAttribute(): string
     {
         switch ($this->status) {
@@ -257,17 +165,12 @@ class PaymentSchedule extends Model
         }
     }
 
-    /**
-     * Check if schedule can be modified
-     */
     public function getCanModifyAttribute(): bool
     {
-        // Amendment-based schedules generally shouldn't be modified directly
         if ($this->is_amendment_based) {
             return false;
         }
 
-        // Don't allow modification if there are payments
         if ($this->paid_amount > 0) {
             return false;
         }
@@ -275,9 +178,73 @@ class PaymentSchedule extends Model
         return true;
     }
 
-    /**
-     * Export format
-     */
+    // ========== SCOPES ==========
+
+    public function scopeActive($query)
+    {
+        return $query->where('is_active', true);
+    }
+
+    public function scopeOriginal($query)
+    {
+        return $query->whereNull('amendment_id');
+    }
+
+    public function scopeAmendmentBased($query)
+    {
+        return $query->whereNotNull('amendment_id');
+    }
+
+    public function scopeOverdue($query)
+    {
+        $currentYear = now()->year;
+        $currentQuarter = ceil(now()->month / 3);
+
+        return $query->where(function ($q) use ($currentYear, $currentQuarter) {
+            $q->where('year', '<', $currentYear)
+                ->orWhere(function ($subQ) use ($currentYear, $currentQuarter) {
+                    $subQ->where('year', $currentYear)
+                        ->where('quarter', '<', $currentQuarter);
+                });
+        });
+    }
+
+    public function scopeCurrentQuarter($query)
+    {
+        $currentYear = now()->year;
+        $currentQuarter = ceil(now()->month / 3);
+
+        return $query->where('year', $currentYear)
+            ->where('quarter', $currentQuarter);
+    }
+
+    public function scopeForAmendment($query, $amendmentId)
+    {
+        return $query->where('amendment_id', $amendmentId);
+    }
+
+    public function scopeInitialPayments($query)
+    {
+        return $query->where('is_initial_payment', true);
+    }
+
+    public function scopeQuarterlyPayments($query)
+    {
+        return $query->where('is_initial_payment', false);
+    }
+
+    public function scopeForContract($query, $contractId)
+    {
+        return $query->where('contract_id', $contractId);
+    }
+
+    public function scopeForQuarter($query, $year, $quarter)
+    {
+        return $query->where('year', $year)->where('quarter', $quarter);
+    }
+
+    // ========== HELPER METHODS ==========
+
     public function toExportArray(): array
     {
         return [
@@ -297,9 +264,4 @@ class PaymentSchedule extends Model
             'created_at' => $this->created_at->format('d.m.Y H:i')
         ];
     }
-
-public function amendment()
-{
-    return $this->belongsTo(ContractAmendment::class, 'amendment_id');
-}
 }

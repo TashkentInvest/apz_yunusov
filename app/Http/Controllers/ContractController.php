@@ -286,11 +286,74 @@ class ContractController extends Controller
     /**
      * Display contract payment management page
      */
-    public function payment_update(Contract $contract): View
-    {
-        $paymentData = $this->paymentService->getContractPaymentData($contract);
-        return view('contracts.payment_update', compact('paymentData'));
+public function payment_update(Contract $contract): View
+{
+    $contract->load(['subject', 'object.district', 'status', 'payments', 'schedules']);
+
+    $paymentData = $this->paymentService->getContractPaymentData($contract);
+
+    $statuses = \App\Models\ContractStatus::where('is_active', true)
+        ->orderBy('id')
+        ->get();
+
+    return view('contracts.payment_update', compact('paymentData', 'statuses', 'contract'));
+}
+
+/**
+ * Update contract status
+ */
+public function updateStatus(Request $request, Contract $contract): RedirectResponse
+{
+    // Validate input
+    $request->validate([
+        'status_id' => 'required|exists:contract_statuses,id',
+    ]);
+
+    try {
+        DB::beginTransaction();
+
+        $oldStatus = $contract->status;
+        $newStatus = \App\Models\ContractStatus::findOrFail($request->status_id);
+
+        // Update contract status
+        $contract->update([
+            'status_id' => $request->status_id,
+            'updated_by' => auth()->id()
+        ]);
+        // dd($contract->status_id);
+
+        DB::commit();
+
+        return redirect()->back()->with([
+            'success' => 'Shartnoma holati muvaffaqiyatli o\'zgartirildi',
+            'status_updated' => "{$oldStatus->name_uz} → {$newStatus->name_uz}"
+        ]);
+
+    } catch (\Exception $e) {
+        DB::rollBack();
+
+        \Log::error('Status update failed:', [
+            'contract_id' => $contract->id,
+            'error' => $e->getMessage(),
+            'trace' => $e->getTraceAsString()
+        ]);
+
+        return redirect()->back()->with('error', 'Holat o\'zgartirishda xatolik: ' . $e->getMessage());
     }
+}
+
+/**
+ * Get status change history
+ */
+public function getStatusHistory(Contract $contract)
+{
+    $history = \App\Models\ContractStatusHistory::where('contract_id', $contract->id)
+        ->with(['oldStatus', 'newStatus', 'changedBy'])
+        ->orderBy('changed_at', 'desc')
+        ->get();
+
+    return response()->json($history);
+}
 
     /**
      * Show payment schedule creation form
@@ -357,7 +420,7 @@ public function storePayment(Request $request, Contract $contract): RedirectResp
     try {
         // Debug: Log request data
         \Log::info('Payment request data: ', $request->all());
-        
+
         // Prepare data for the payment service with correct field names
         $paymentData = [
             'payment_date' => $request->input('payment_date'),
@@ -394,7 +457,7 @@ public function storePayment(Request $request, Contract $contract): RedirectResp
 
     } catch (\Exception $e) {
         \Log::error('Payment creation error: ' . $e->getMessage());
-        
+
         return redirect()->back()
             ->withErrors(['error' => 'To\'lov qo\'shishda xatolik yuz berdi'])
             ->withInput();
@@ -1087,5 +1150,5 @@ public function storePayment(Request $request, Contract $contract): RedirectResp
         $result = $this->paymentService->deletePayment($payment);
         return response()->json($result);
     }
-    
+
 };

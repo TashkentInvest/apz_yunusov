@@ -1,9 +1,5 @@
 <?php
 
-// ================================
-// Enhanced Contract Model
-// ================================
-
 namespace App\Models;
 
 use Illuminate\Database\Eloquent\Factories\HasFactory;
@@ -49,7 +45,8 @@ class Contract extends Model
         'is_active' => 'boolean'
     ];
 
-    // Relationships
+    // ========== RELATIONSHIPS ==========
+
     public function subject(): BelongsTo
     {
         return $this->belongsTo(Subject::class);
@@ -95,7 +92,19 @@ class Contract extends Model
         return $this->belongsTo(User::class, 'updated_by');
     }
 
-    // Accessors & Mutators
+    // Alias methods for backward compatibility
+    public function payments()
+    {
+        return $this->hasMany(ActualPayment::class);
+    }
+
+    public function schedules()
+    {
+        return $this->hasMany(PaymentSchedule::class);
+    }
+
+    // ========== ACCESSORS ==========
+
     public function getInitialPaymentAmountAttribute(): float
     {
         return $this->total_amount * (($this->initial_payment_percent ?? 0) / 100);
@@ -136,7 +145,8 @@ class Contract extends Model
         return $this->total_amount > 0 ? ($this->total_paid_amount / $this->total_amount) * 100 : 0;
     }
 
-    // Helper Methods
+    // ========== HELPER METHODS ==========
+
     public function hasActiveSchedule(): bool
     {
         return $this->paymentSchedules()->where('is_active', true)->exists();
@@ -162,7 +172,8 @@ class Contract extends Model
         return $this->payment_percent >= 100;
     }
 
-    // Scopes
+    // ========== SCOPES ==========
+
     public function scopeActive($query)
     {
         return $query->where('is_active', true);
@@ -177,295 +188,23 @@ class Contract extends Model
     {
         return $query->whereRaw('total_amount <= (SELECT COALESCE(SUM(amount), 0) FROM actual_payments WHERE contract_id = contracts.id)');
     }
-}
 
-// ================================
-// Enhanced PaymentSchedule Model
-// ================================
-
-class PaymentSchedule extends Model
-{
-    use HasFactory;
-
-    protected $fillable = [
-        'contract_id',
-        'amendment_id',
-        'year',
-        'quarter',
-        'quarter_amount',
-        'is_initial_payment',
-        'custom_percent',
-        'is_active'
-    ];
-
-    protected $casts = [
-        'quarter_amount' => 'decimal:2',
-        'custom_percent' => 'decimal:2',
-        'year' => 'integer',
-        'quarter' => 'integer',
-        'is_initial_payment' => 'boolean',
-        'is_active' => 'boolean'
-    ];
-
-    // Relationships
-    public function contract(): BelongsTo
+    public function scopeByStatus($query, $statusId)
     {
-        return $this->belongsTo(Contract::class);
+        return $query->where('status_id', $statusId);
     }
 
-    public function amendment(): BelongsTo
+    public function scopeCurrent($query)
     {
-        return $this->belongsTo(ContractAmendment::class, 'amendment_id');
-    }
-
-    public function actualPayments(): HasMany
-    {
-        return $this->hasMany(ActualPayment::class, 'contract_id', 'contract_id')
-            ->where('year', $this->year)
-            ->where('quarter', $this->quarter)
-            ->where('is_initial_payment', $this->is_initial_payment);
-    }
-
-    // Accessors
-    public function getTotalPaidAttribute(): float
-    {
-        if ($this->is_initial_payment) {
-            return $this->contract->actualPayments()
-                ->where('is_initial_payment', true)
-                ->sum('amount');
-        }
-
-        return $this->contract->actualPayments()
-            ->where('year', $this->year)
-            ->where('quarter', $this->quarter)
-            ->where('is_initial_payment', false)
-            ->sum('amount');
-    }
-
-    public function getRemainingAmountAttribute(): float
-    {
-        return max(0, $this->quarter_amount - $this->total_paid);
-    }
-
-    public function getPaymentPercentAttribute(): float
-    {
-        return $this->quarter_amount > 0 ? ($this->total_paid / $this->quarter_amount) * 100 : 0;
-    }
-
-    public function getIsOverdueAttribute(): bool
-    {
-        if ($this->is_initial_payment) return false;
-        
-        $quarterEnd = now()->create($this->year, $this->quarter * 3, 1)->endOfMonth();
-        return $quarterEnd->isPast() && $this->remaining_amount > 0;
-    }
-
-    public function getQuarterNameAttribute(): string
-    {
-        if ($this->is_initial_payment) {
-            return 'Boshlang\'ich to\'lov';
-        }
-        
-        return "{$this->quarter}-chorak {$this->year}";
-    }
-
-    // Scopes
-    public function scopeActive($query)
-    {
-        return $query->where('is_active', true);
-    }
-
-    public function scopeInitialPayments($query)
-    {
-        return $query->where('is_initial_payment', true);
-    }
-
-    public function scopeQuarterlyPayments($query)
-    {
-        return $query->where('is_initial_payment', false);
-    }
-
-    public function scopeForContract($query, $contractId)
-    {
-        return $query->where('contract_id', $contractId);
-    }
-
-    public function scopeForQuarter($query, $year, $quarter)
-    {
-        return $query->where('year', $year)->where('quarter', $quarter);
-    }
-
-    public function scopeOverdue($query)
-    {
-        $currentDate = now();
-        return $query->where('is_initial_payment', false)
-            ->whereRaw("DATE(CONCAT(year, '-', quarter * 3, '-01')) + INTERVAL 1 MONTH - INTERVAL 1 DAY < ?", [$currentDate]);
-    }
-}
-
-// ================================
-// Enhanced ActualPayment Model
-// ================================
-
-class ActualPayment extends Model
-{
-    use HasFactory;
-
-    protected $fillable = [
-        'contract_id',
-        'payment_date',
-        'amount',
-        'year',
-        'quarter',
-        'is_initial_payment',
-        'amendment_id',
-        'payment_category',
-        'payment_number',
-        'notes',
-        'exchange_rate',
-        'currency',
-        'created_by',
-        'updated_by'
-    ];
-
-    protected $casts = [
-        'payment_date' => 'date',
-        'amount' => 'decimal:2',
-        'year' => 'integer',
-        'quarter' => 'integer',
-        'is_initial_payment' => 'boolean',
-        'exchange_rate' => 'decimal:4',
-        'created_at' => 'datetime',
-        'updated_at' => 'datetime'
-    ];
-
-    // Relationships
-    public function contract(): BelongsTo
-    {
-        return $this->belongsTo(Contract::class);
-    }
-
-    public function amendment(): BelongsTo
-    {
-        return $this->belongsTo(ContractAmendment::class, 'amendment_id');
-    }
-
-    public function createdBy(): BelongsTo
-    {
-        return $this->belongsTo(User::class, 'created_by');
-    }
-
-    public function updatedBy(): BelongsTo
-    {
-        return $this->belongsTo(User::class, 'updated_by');
-    }
-
-    // Accessors
-    public function getQuarterInfoAttribute(): string
-    {
-        if ($this->is_initial_payment) {
-            return 'Boshlang\'ich to\'lov';
-        }
-        
-        return "{$this->quarter}-chorak {$this->year}";
-    }
-
-    public function getFormattedAmountAttribute(): string
-    {
-        return number_format($this->amount, 0, '.', ' ') . ' so\'m';
-    }
-
-    public function getCanEditAttribute(): bool
-    {
-        return $this->created_at->diffInDays(now()) <= 30;
-    }
-
-    public function getCanDeleteAttribute(): bool
-    {
-        return $this->created_at->diffInDays(now()) <= 30;
-    }
-
-    public function getPaymentTypeAttribute(): string
-    {
-        return $this->is_initial_payment ? 'initial' : 'quarterly';
-    }
-
-    // Helper Methods
-    public function isEditable(): bool
-    {
-        return $this->can_edit;
-    }
-
-    public function isDeletable(): bool
-    {
-        return $this->can_delete;
-    }
-
-    public function getRelatedSchedule()
-    {
-        return PaymentSchedule::where('contract_id', $this->contract_id)
-            ->where('year', $this->year)
-            ->where('quarter', $this->quarter)
-            ->where('is_initial_payment', $this->is_initial_payment)
-            ->where('is_active', true)
-            ->first();
-    }
-
-    // Scopes
-    public function scopeInitialPayments($query)
-    {
-        return $query->where('is_initial_payment', true);
-    }
-
-    public function scopeQuarterlyPayments($query)
-    {
-        return $query->where('is_initial_payment', false);
-    }
-
-    public function scopeForContract($query, $contractId)
-    {
-        return $query->where('contract_id', $contractId);
-    }
-
-    public function scopeForQuarter($query, $year, $quarter)
-    {
-        return $query->where('year', $year)->where('quarter', $quarter);
-    }
-
-    public function scopeForPeriod($query, $startDate, $endDate)
-    {
-        return $query->whereBetween('payment_date', [$startDate, $endDate]);
-    }
-
-    public function scopeEditable($query)
-    {
-        return $query->where('created_at', '>=', now()->subDays(30));
-    }
-
-    public function scopeByCategory($query, $category)
-    {
-        return $query->where('payment_category', $category);
-    }
-
-    // Events
-    protected static function boot()
-    {
-        parent::boot();
-
-        static::creating(function ($payment) {
-            if (!$payment->created_by) {
-                $payment->created_by = auth()->id();
-            }
-            
-            // Auto-determine quarter if not set
-            if (!$payment->year || !$payment->quarter) {
-                $payment->year = $payment->payment_date->year;
-                $payment->quarter = ceil($payment->payment_date->month / 3);
-            }
+        return $query->whereHas('status', function($q) {
+            $q->where('code', 'current');
         });
+    }
 
-        static::updating(function ($payment) {
-            $payment->updated_by = auth()->id();
+    public function scopeInProcess($query)
+    {
+        return $query->whereHas('status', function($q) {
+            $q->where('code', 'process');
         });
     }
 }

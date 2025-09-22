@@ -175,33 +175,80 @@
             </div>
 
             <!-- Custom Schedule Grid -->
-            <div id="customScheduleGrid" class="hidden">
-                <h4 class="text-lg font-medium text-gray-900 mb-4">Choraklar bo'yicha foiz taqsimlash</h4>
+           <div id="customScheduleGrid" class="hidden">
+                <div class="flex items-center justify-between mb-4">
+                    <h4 class="text-lg font-medium text-gray-900">Choraklar bo'yicha taqsimlash</h4>
+
+                    <!-- Toggle between Percent and Amount -->
+                    <div class="flex items-center space-x-2 bg-gray-100 rounded-lg p-1">
+                        <button type="button" id="percentModeBtn" onclick="switchInputMode('percent')"
+                                class="px-3 py-1 text-sm rounded-md transition-colors bg-blue-600 text-white">
+                            Foiz (%)
+                        </button>
+                        <button type="button" id="amountModeBtn" onclick="switchInputMode('amount')"
+                                class="px-3 py-1 text-sm rounded-md transition-colors text-gray-600 hover:bg-white">
+                            Summa (so'm)
+                        </button>
+                    </div>
+                </div>
+
                 <div class="grid grid-cols-2 md:grid-cols-4 gap-4">
                     @php $equalPercent = 100 / $quartersCount; @endphp
                     @foreach($quartersData as $quarterData)
                     <div class="bg-white border border-gray-300 rounded-lg p-3">
                         <div class="text-sm font-medium text-gray-700 mb-2">{{ $quarterData['label'] }}</div>
-                        <div class="flex items-center">
-                            <input type="number"
-                                   name="quarter_{{ $quarterData['index'] }}_percent"
-                                   value="{{ number_format($equalPercent, 2) }}"
-                                   min="0" max="100" step="0.01"
-                                   class="custom-percent-input w-full px-2 py-1 border border-gray-300 rounded text-center"
-                                   onchange="validateCustomPercentages()">
-                            <span class="ml-1 text-sm text-gray-500">%</span>
+
+                        <!-- Percent Input -->
+                        <div class="percent-input-wrapper">
+                            <div class="flex items-center">
+                                <input type="number"
+                                    name="quarter_{{ $quarterData['index'] }}_percent"
+                                    data-quarter="{{ $quarterData['index'] }}"
+                                    value="{{ number_format($equalPercent, 2) }}"
+                                    min="0" max="100" step="0.01"
+                                    class="custom-percent-input w-full px-2 py-1 border border-gray-300 rounded text-center"
+                                    onchange="onPercentChange(this)">
+                                <span class="ml-1 text-sm text-gray-500">%</span>
+                            </div>
+                        </div>
+
+                        <!-- Amount Input (hidden by default) -->
+                        <div class="amount-input-wrapper hidden">
+                            <div class="flex items-center">
+                                <input type="number"
+                                    name="quarter_{{ $quarterData['index'] }}_amount"
+                                    data-quarter="{{ $quarterData['index'] }}"
+                                    value="{{ number_format($remainingAmount / $quartersCount, 0, '', '') }}"
+                                    min="0" step="0.01"
+                                    class="custom-amount-input w-full px-2 py-1 border border-gray-300 rounded text-sm"
+                                    onchange="onAmountChange(this)">
+                            </div>
+                            <div class="text-xs text-gray-500 mt-1 quarter-percent-display">
+                                {{ number_format($equalPercent, 1) }}%
+                            </div>
                         </div>
                     </div>
                     @endforeach
                 </div>
 
+                <!-- Summary -->
                 <div class="mt-4 p-4 bg-yellow-50 border border-yellow-200 rounded-lg">
-                    <p class="text-sm text-yellow-800">
-                        <i data-feather="info" class="w-4 h-4 inline mr-1"></i>
-                        Barcha foizlar yig'indisi 100% bo'lishi kerak
-                    </p>
-                    <div id="percentageTotal" class="mt-2 font-medium text-yellow-900">
-                        Jami: 100.00%
+                    <div class="flex items-center justify-between">
+                        <div>
+                            <p class="text-sm text-yellow-800">
+                                <i data-feather="info" class="w-4 h-4 inline mr-1"></i>
+                                <span id="validationMessage">Barcha foizlar yig'indisi 100% bo'lishi kerak</span>
+                            </p>
+                            <div id="percentageTotal" class="mt-1 font-medium text-yellow-900">
+                                Jami: 100.00%
+                            </div>
+                        </div>
+                        <div class="text-right">
+                            <div class="text-sm text-yellow-700">Jami summa:</div>
+                            <div id="totalAmountDisplay" class="font-bold text-yellow-900">
+                                {{ formatMoney($remainingAmount) }}
+                            </div>
+                        </div>
                     </div>
                 </div>
             </div>
@@ -283,6 +330,122 @@
 
 @push('scripts')
 <script src="https://unpkg.com/feather-icons"></script>
+
+
+<script>
+let currentInputMode = 'percent';
+const remainingAmount = {{ $remainingAmount }};
+const quartersCount = {{ $quartersCount }};
+
+function switchInputMode(mode) {
+    currentInputMode = mode;
+
+    // Update button styles
+    const percentBtn = document.getElementById('percentModeBtn');
+    const amountBtn = document.getElementById('amountModeBtn');
+
+    if (mode === 'percent') {
+        percentBtn.className = 'px-3 py-1 text-sm rounded-md transition-colors bg-blue-600 text-white';
+        amountBtn.className = 'px-3 py-1 text-sm rounded-md transition-colors text-gray-600 hover:bg-white';
+
+        document.querySelectorAll('.percent-input-wrapper').forEach(el => el.classList.remove('hidden'));
+        document.querySelectorAll('.amount-input-wrapper').forEach(el => el.classList.add('hidden'));
+
+        document.getElementById('validationMessage').textContent = 'Barcha foizlar yig\'indisi 100% bo\'lishi kerak';
+    } else {
+        amountBtn.className = 'px-3 py-1 text-sm rounded-md transition-colors bg-blue-600 text-white';
+        percentBtn.className = 'px-3 py-1 text-sm rounded-md transition-colors text-gray-600 hover:bg-white';
+
+        document.querySelectorAll('.percent-input-wrapper').forEach(el => el.classList.add('hidden'));
+        document.querySelectorAll('.amount-input-wrapper').forEach(el => el.classList.remove('hidden'));
+
+        document.getElementById('validationMessage').textContent = 'Barcha summalar yig\'indisi plan summaga teng bo\'lishi kerak';
+    }
+
+    validateInputs();
+}
+
+function onPercentChange(input) {
+    const quarter = input.dataset.quarter;
+    const percent = parseFloat(input.value) || 0;
+    const amount = (remainingAmount * percent) / 100;
+
+    // Update corresponding amount input
+    const amountInput = document.querySelector(`input[name="quarter_${quarter}_amount"]`);
+    if (amountInput) {
+        amountInput.value = Math.round(amount);
+    }
+
+    validateInputs();
+    updatePreview();
+}
+
+function onAmountChange(input) {
+    const quarter = input.dataset.quarter;
+    const amount = parseFloat(input.value) || 0;
+    const percent = (amount / remainingAmount) * 100;
+
+    // Update corresponding percent input
+    const percentInput = document.querySelector(`input[name="quarter_${quarter}_percent"]`);
+    if (percentInput) {
+        percentInput.value = percent.toFixed(2);
+    }
+
+    // Update percent display
+    const percentDisplay = input.closest('.amount-input-wrapper').querySelector('.quarter-percent-display');
+    if (percentDisplay) {
+        percentDisplay.textContent = `${percent.toFixed(1)}%`;
+    }
+
+    validateInputs();
+    updatePreview();
+}
+
+function validateInputs() {
+    let totalPercent = 0;
+    let totalAmount = 0;
+
+    document.querySelectorAll('.custom-percent-input').forEach(input => {
+        totalPercent += parseFloat(input.value) || 0;
+    });
+
+    document.querySelectorAll('.custom-amount-input').forEach(input => {
+        totalAmount += parseFloat(input.value) || 0;
+    });
+
+    const percentElement = document.getElementById('percentageTotal');
+    const amountElement = document.getElementById('totalAmountDisplay');
+
+    const isPercentValid = Math.abs(totalPercent - 100) < 0.1;
+    const isAmountValid = Math.abs(totalAmount - remainingAmount) < 1;
+
+    // Update displays
+    if (percentElement) {
+        percentElement.textContent = `Jami: ${totalPercent.toFixed(2)}%`;
+        percentElement.className = `mt-1 font-medium ${isPercentValid ? 'text-green-700' : 'text-red-700'}`;
+    }
+
+    if (amountElement) {
+        amountElement.textContent = formatCurrency(totalAmount);
+        amountElement.className = `font-bold ${isAmountValid ? 'text-green-900' : 'text-red-900'}`;
+    }
+
+    // Update submit button
+    const isValid = currentInputMode === 'percent' ? isPercentValid : isAmountValid;
+    updateSubmitButton(isValid, currentInputMode === 'percent' ? totalPercent : totalAmount);
+
+    return isValid;
+}
+
+function formatCurrency(amount) {
+    return new Intl.NumberFormat('uz-UZ', {
+        style: 'decimal',
+        minimumFractionDigits: 0,
+        maximumFractionDigits: 0
+    }).format(amount) + ' so\'m';
+}
+</script>
+
 <script>
 document.addEventListener('DOMContentLoaded', function() {
     if (typeof feather !== 'undefined') {

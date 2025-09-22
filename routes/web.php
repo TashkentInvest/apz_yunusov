@@ -29,7 +29,8 @@ Route::middleware(['auth'])->group(function () {
 
     // Contracts Management - Enhanced with Initial Payment Logic
     Route::prefix('contracts')->name('contracts.')->group(function () {
-
+    Route::patch('/{contract}/update-status', [ContractController::class, 'updateStatus'])
+    ->name('update-status');
         // Basic CRUD
         Route::get('/', [ContractController::class, 'index'])->name('index');
         Route::get('/create', [ContractController::class, 'create'])->name('create');
@@ -81,7 +82,7 @@ Route::middleware(['auth'])->group(function () {
             Route::get('/overdue-payments', [ContractController::class, 'getOverduePayments'])->name('overdue');
             Route::get('/upcoming-payments', [ContractController::class, 'getUpcomingPayments'])->name('upcoming');
             Route::get('/payment-statistics', [ContractController::class, 'getPaymentStatistics'])->name('statistics');
-            
+
             // Bulk operations
             Route::post('/bulk-create', [ContractController::class, 'bulkCreatePayments'])->name('bulk_create');
             Route::post('/bulk-update', [ContractController::class, 'bulkUpdatePayments'])->name('bulk_update');
@@ -218,7 +219,7 @@ Route::middleware(['auth'])->group(function () {
                 ')
                 ->leftJoinSub(
                     \App\Models\ActualPayment::selectRaw('
-                        contract_id, 
+                        contract_id,
                         SUM(amount) as paid_amount,
                         SUM(CASE WHEN is_initial_payment = 1 THEN amount ELSE 0 END) as initial_paid_amount,
                         SUM(CASE WHEN is_initial_payment = 0 THEN amount ELSE 0 END) as quarterly_paid_amount
@@ -312,7 +313,7 @@ Route::middleware(['auth'])->group(function () {
                 foreach ($contracts as $contract) {
                     $initialPaid = $contract->actualPayments()->where('is_initial_payment', true)->sum('amount');
                     $quarterlyPaid = $contract->actualPayments()->where('is_initial_payment', false)->sum('amount');
-                    
+
                     fputcsv($file, [
                         $contract->contract_number,
                         $contract->subject->display_name ?? '',
@@ -456,7 +457,7 @@ Route::middleware(['auth'])->group(function () {
                 foreach ($debtors as $contract) {
                     $initialPaid = $contract->actualPayments()->where('is_initial_payment', true)->sum('amount');
                     $quarterlyPaid = $contract->actualPayments()->where('is_initial_payment', false)->sum('amount');
-                    
+
                     fputcsv($file, [
                         $contract->contract_number,
                         $contract->subject->display_name ?? '',
