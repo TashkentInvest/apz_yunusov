@@ -48,7 +48,7 @@
             <div class="flex items-center justify-between">
                 <div>
                     <p class="text-sm font-medium text-gray-600">Тўланган</p>
-                    <p class="text-2xl font-bold text-green-600 mt-2">{{ number_format($stats['total_paid'] ) }} сўм</p>
+                    <p class="text-2xl font-bold text-green-600 mt-2">{{ number_format($stats['total_paid'] ) }} млн</p>
                     <p class="text-xs text-gray-500 mt-1">{{ number_format($stats['payment_percent'], 1) }}% бажарилди</p>
                 </div>
                 <div class="w-12 h-12 bg-blue-50 rounded-lg flex items-center justify-center">
@@ -61,7 +61,7 @@
             <div class="flex items-center justify-between">
                 <div>
                     <p class="text-sm font-medium text-gray-600">Қарз</p>
-                    <p class="text-2xl font-bold text-red-600 mt-2">{{ number_format($stats['debt'] ) }} сўм</p>
+                    <p class="text-2xl font-bold text-red-600 mt-2">{{ number_format($stats['debt'] ) }} млн</p>
                     <p class="text-xs text-gray-500 mt-1">тўланиши керак</p>
                 </div>
                 <div class="w-12 h-12 bg-red-50 rounded-lg flex items-center justify-center">
@@ -107,8 +107,8 @@
                                 </a>
                             </td>
                             <td class="px-6 py-4 text-sm">{{ $contract->subject->company_name ?? 'Кўрсатилмаган' }}</td>
-                            <td class="px-6 py-4 text-sm">{{ number_format($contract->total_amount ) }} сўм</td>
-                            <td class="px-6 py-4 text-sm">{{ number_format($contract->total_paid ) }} сўм</td>
+                            <td class="px-6 py-4 text-sm">{{ number_format($contract->total_amount ) }} млн</td>
+                            <td class="px-6 py-4 text-sm">{{ number_format($contract->total_paid ) }} млн</td>
                             <td class="px-6 py-4">
                                 <span class="inline-flex px-2 py-1 text-xs font-semibold rounded-full"
                                       style="background-color: {{ $contract->status->color ?? '#6b7280' }}20; color: {{ $contract->status->color ?? '#6b7280' }}">
