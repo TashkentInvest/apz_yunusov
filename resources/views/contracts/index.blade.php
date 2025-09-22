@@ -292,7 +292,7 @@
         </div>
 
         <!-- Pagination -->
-        @if($contracts->hasPages())
+        {{-- @if($contracts->hasPages())
             <div class="px-6 py-4 border-t border-gray-200">
                 <div class="flex items-center justify-between">
                     <div class="text-sm text-gray-700">
@@ -303,7 +303,41 @@
                     </div>
                 </div>
             </div>
-        @endif
+        @endif --}}
+
+@if($contracts->hasPages())
+    <div class="px-6 py-4 border-t border-gray-200">
+        <div class="flex items-center justify-between">
+            <div class="text-sm text-gray-700">
+                Показано {{ $contracts->firstItem() }}-{{ $contracts->lastItem() }} из {{ $contracts->total() }} результатов
+            </div>
+            <div class="flex space-x-1">
+                {{-- Custom pagination --}}
+                @foreach ($contracts->links()->elements as $element)
+                    @if (is_string($element))
+                        <span class="px-3 py-1 text-gray-400">{{ $element }}</span>
+                    @endif
+
+                    @if (is_array($element))
+                        @foreach ($element as $page => $url)
+                            @if ($page == $contracts->currentPage())
+                                <span class="px-3 py-1 bg-blue-600 text-white rounded-lg">
+                                    {{ $page }}
+                                </span>
+                            @else
+                                <a href="{{ $url }}"
+                                   class="px-3 py-1 text-gray-700 hover:bg-gray-200 rounded-lg">
+                                    {{ $page }}
+                                </a>
+                            @endif
+                        @endforeach
+                    @endif
+                @endforeach
+            </div>
+        </div>
+    </div>
+@endif
+
     </div>
 </div>
 
