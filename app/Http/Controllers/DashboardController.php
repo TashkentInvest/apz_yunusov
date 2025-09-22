@@ -51,9 +51,18 @@ class DashboardController extends Controller
         })->sum('amount');
 
         $debtorsCount = $this->getDebtorsCount();
-
+         $contractIds = Contract::whereHas('object', function($q)  {
+        })->where('is_active', true)->pluck('id');
         $stats = [
             'total_contracts' => $totalContracts,
+            'legal_entities' => Contract::whereIn('id', $contractIds)
+                            ->whereHas('subject', function($q) {
+                                $q->where('is_legal_entity', true);
+                            })->count(),
+            'individuals' => Contract::whereIn('id', $contractIds)
+                ->whereHas('subject', function($q) {
+                    $q->where('is_legal_entity', false);
+                })->count(),
             'active_contracts' => $activeContracts,
             'total_amount' => $totalAmount,
             'total_paid' => $totalPaid,
@@ -101,7 +110,6 @@ class DashboardController extends Controller
 
         switch($status) {
             case 'total':
-                // All active contracts
                 break;
             case 'active':
                 $query->whereHas('status', function($q) {
@@ -112,10 +120,12 @@ class DashboardController extends Controller
                 $query->whereHas('actualPayments');
                 break;
             case 'debtors':
-                $query->whereHas('paymentSchedules', function($q) {
-                    $q->where('is_active', true);
-                })->whereHas('status', function($q) {
+                $query->whereHas('status', function($q) {
                     $q->where('name_uz', '!=', 'Бекор қилинган');
+                })
+                ->where(function($q) {
+                    $q->whereDoesntHave('actualPayments')
+                      ->orWhereRaw('(SELECT COALESCE(SUM(amount), 0) FROM actual_payments WHERE contract_id = contracts.id) < contracts.total_amount');
                 });
                 break;
         }
@@ -224,6 +234,7 @@ class DashboardController extends Controller
                     $year = $date->year;
                     $month = $date->month;
 
+                    // Actual payments
                     $actualAmount = ActualPayment::whereYear('payment_date', $year)
                         ->whereMonth('payment_date', $month)
                         ->whereHas('contract', function($q) {
@@ -234,22 +245,19 @@ class DashboardController extends Controller
                         })
                         ->sum('amount');
 
-                    $quarter = ceil($month / 3);
-                    $plannedAmount = PaymentSchedule::where('year', $year)
-                        ->where('quarter', $quarter)
+                    // NEW: Show contract amounts instead of payment schedules
+                    $contractAmount = Contract::whereYear('contract_date', $year)
+                        ->whereMonth('contract_date', $month)
                         ->where('is_active', true)
-                        ->whereHas('contract', function($q) {
-                            $q->where('is_active', true)
-                              ->whereHas('status', function($sq) {
-                                  $sq->where('name_uz', '!=', 'Бекор қилинган');
-                              });
+                        ->whereHas('status', function($q) {
+                            $q->where('name_uz', '!=', 'Бекор қилинган');
                         })
-                        ->sum('quarter_amount') / 3;
+                        ->sum('total_amount');
 
                     $data[] = [
                         'label' => $date->format('M Y'),
                         'actual' => (float) $actualAmount,
-                        'planned' => (float) $plannedAmount,
+                        'planned' => (float) $contractAmount,
                     ];
                 }
                 break;
@@ -272,21 +280,20 @@ class DashboardController extends Controller
                     })
                     ->sum('amount');
 
-                    $plannedAmount = PaymentSchedule::where('year', $year)
-                        ->where('quarter', $quarter)
-                        ->where('is_active', true)
-                        ->whereHas('contract', function($q) {
-                            $q->where('is_active', true)
-                              ->whereHas('status', function($sq) {
-                                  $sq->where('name_uz', '!=', 'Бекор қилинган');
-                              });
-                        })
-                        ->sum('quarter_amount');
+                    $contractAmount = Contract::whereBetween('contract_date', [
+                        Carbon::create($year, ($quarter - 1) * 3 + 1, 1)->startOfDay(),
+                        Carbon::create($year, $quarter * 3, 1)->endOfMonth()
+                    ])
+                    ->where('is_active', true)
+                    ->whereHas('status', function($q) {
+                        $q->where('name_uz', '!=', 'Бекор қилинган');
+                    })
+                    ->sum('total_amount');
 
                     $data[] = [
                         'label' => "Ч{$quarter} {$year}",
                         'actual' => (float) $actualAmount,
-                        'planned' => (float) $plannedAmount,
+                        'planned' => (float) $contractAmount,
                     ];
                 }
                 break;
@@ -304,20 +311,17 @@ class DashboardController extends Controller
                         })
                         ->sum('amount');
 
-                    $plannedAmount = PaymentSchedule::where('year', $year)
+                    $contractAmount = Contract::whereYear('contract_date', $year)
                         ->where('is_active', true)
-                        ->whereHas('contract', function($q) {
-                            $q->where('is_active', true)
-                              ->whereHas('status', function($sq) {
-                                  $sq->where('name_uz', '!=', 'Бекор қилинган');
-                              });
+                        ->whereHas('status', function($q) {
+                            $q->where('name_uz', '!=', 'Бекор қилинган');
                         })
-                        ->sum('quarter_amount');
+                        ->sum('total_amount');
 
                     $data[] = [
                         'label' => (string)$year,
                         'actual' => (float) $actualAmount,
-                        'planned' => (float) $plannedAmount,
+                        'planned' => (float) $contractAmount,
                     ];
                 }
                 break;
@@ -364,22 +368,16 @@ class DashboardController extends Controller
 
     private function getDebtorsCount()
     {
-        $contractsWithDebt = Contract::with(['paymentSchedules', 'actualPayments'])
-            ->whereHas('paymentSchedules', function($q) {
-                $q->where('is_active', true);
-            })
+        // Count contracts that have payments less than total amount
+        return Contract::where('is_active', true)
             ->whereHas('status', function($q) {
                 $q->where('name_uz', '!=', 'Бекор қилинган');
             })
-            ->where('is_active', true)
-            ->get()
-            ->filter(function($contract) {
-                $totalScheduled = $contract->paymentSchedules->where('is_active', true)->sum('quarter_amount');
-                $totalPaid = $contract->actualPayments->sum('amount');
-                return $totalScheduled > $totalPaid;
-            });
-
-        return $contractsWithDebt->count();
+            ->where(function($q) {
+                $q->whereDoesntHave('actualPayments')
+                  ->orWhereRaw('(SELECT COALESCE(SUM(amount), 0) FROM actual_payments WHERE contract_id = contracts.id) < contracts.total_amount');
+            })
+            ->count();
     }
 
     public function export()

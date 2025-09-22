@@ -130,6 +130,7 @@
                     <tr>
                         <th class="px-6 py-4 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">№</th>
                         <th class="px-6 py-4 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Шартнома рақами</th>
+                        <th class="px-6 py-4 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Буюртмачи тури</th>
                         <th class="px-6 py-4 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Буюртмачи</th>
                         <th class="px-6 py-4 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Туман</th>
                         <th class="px-6 py-4 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Сумма</th>
@@ -160,7 +161,19 @@
                                     ID: {{ $contract->id }}
                                 </div>
                             </td>
-
+                            <td class="px-6 py-4">
+                                @if($contract->subject->is_legal_entity)
+                                    <span class="inline-flex px-2 py-1 text-xs font-semibold rounded-full bg-blue-100 text-blue-800">
+                                        <i data-feather="briefcase" class="w-3 h-3 mr-1"></i>
+                                        Юр. лицо
+                                    </span>
+                                @else
+                                    <span class="inline-flex px-2 py-1 text-xs font-semibold rounded-full bg-green-100 text-green-800">
+                                        <i data-feather="user" class="w-3 h-3 mr-1"></i>
+                                        Физ. лицо
+                                    </span>
+                                @endif
+                            </td>
                             <!-- Subject/Customer -->
                             <td class="px-6 py-4">
                                 <div class="text-sm font-medium text-gray-900">
