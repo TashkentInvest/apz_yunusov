@@ -739,6 +739,16 @@ document.addEventListener('DOMContentLoaded', function() {
                     </div>
                     @endforeach
                 </div>
+       <form method="POST" action="{{ route('contracts.amendments.approve', [$contract->id, $amendment['id']]) }}" class="inline">
+    @csrf
+    <button type="submit"
+            onclick="return confirm('Bu qo\'shimcha kelishuvni tasdiqlaysizmi? Tasdiqlangandan keyin o\'zgartirib bo\'lmaydi.')"
+            class="inline-flex items-center px-4 py-2 bg-green-600 text-white rounded-lg hover:bg-green-700 transition-colors">
+        <i data-feather="check" class="w-4 h-4 mr-2"></i>
+        Tasdiqlash
+    </button>
+</form>
+
             </div>
             @endif
         </div>

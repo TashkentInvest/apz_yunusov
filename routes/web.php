@@ -60,7 +60,7 @@ Route::middleware(['auth'])->group(function () {
         Route::get('/{contract}/quarter-details/{year}/{quarter}', [ContractController::class, 'quarterDetails'])->name('quarter-details');
 
         // Contract Amendments (Qo'shimcha kelishuvlar) - Enhanced
-           Route::prefix('{contract}/amendments')->whereNumber('contract')->name('amendments.')->group(function () {
+        Route::prefix('{contract}/amendments')->whereNumber('contract')->name('amendments.')->group(function () {
         Route::get('/create', [ContractController::class, 'createAmendment'])->name('create');
         Route::post('/store', [ContractController::class, 'storeAmendment'])->name('store');
         Route::get('/{amendment}', [ContractController::class, 'showAmendment'])

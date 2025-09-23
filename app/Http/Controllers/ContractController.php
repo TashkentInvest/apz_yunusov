@@ -329,7 +329,7 @@ class ContractController extends Controller
     /**
      * Display contract payment management page
      */
-    public function payment_update(Contract $contract): View
+    public function payment_update(Contract $contract, ContractAmendment $amendment): View
     {
         $contract->load(['subject', 'object.district', 'status', 'payments', 'schedules']);
 
@@ -339,7 +339,7 @@ class ContractController extends Controller
             ->orderBy('id')
             ->get();
 
-        return view('contracts.payment_update', compact('paymentData', 'statuses', 'contract'));
+        return view('contracts.payment_update', compact('paymentData', 'statuses', 'contract','amendment'));
     }
 
     /**
