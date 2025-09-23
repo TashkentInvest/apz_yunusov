@@ -43,6 +43,23 @@ class ContractController extends Controller
             $query->where('contract_number', 'like', "%{$request->contract_number}%");
         }
 
+        // Completion date filter
+        if ($request->completion_year) {
+            $query->whereYear('completion_date', $request->completion_year);
+        }
+
+        if ($request->completion_month) {
+            $query->whereMonth('completion_date', $request->completion_month);
+        }
+
+        // Date range filter for completion
+        if ($request->completion_from) {
+            $query->whereDate('completion_date', '>=', $request->completion_from);
+        }
+
+        if ($request->completion_to) {
+            $query->whereDate('completion_date', '<=', $request->completion_to);
+        }
         // General search filter (if you still want to keep it)
         if ($request->search) {
             $search = $request->search;
