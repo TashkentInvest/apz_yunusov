@@ -85,6 +85,15 @@ Route::middleware(['auth'])->group(function () {
             ->name('amendments.create-schedule')
             ->where(['contract' => '[0-9]+', 'amendment' => '[0-9]+']);
 
+        Route::get('/{contract}/amendments/{amendment}/edit', [ContractController::class, 'editAmendment'])
+            ->name('amendments.edit')
+            ->where(['contract' => '[0-9]+', 'amendment' => '[0-9]+']);
+
+        Route::put('/{contract}/amendments/{amendment}', [ContractController::class, 'updateAmendment'])
+            ->name('amendments.update')
+            ->where(['contract' => '[0-9]+', 'amendment' => '[0-9]+']);
+
+
         // Reports and Exports
         Route::get('/{contract}/export-report', [ContractController::class, 'exportReport'])->name('export-report')->whereNumber('contract');
         Route::get('/{contract}/generate-payment-report', [ContractController::class, 'generatePaymentReport'])->name('generate-payment-report')->whereNumber('contract');

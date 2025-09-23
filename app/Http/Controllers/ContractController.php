@@ -329,18 +329,14 @@ class ContractController extends Controller
     /**
      * Display contract payment management page
      */
-public function payment_update(Contract $contract): View
-{
-    $contract->load(['subject', 'object.district', 'status', 'payments', 'schedules']);
+    public function payment_update(Contract $contract): View
+    {
+        $contract->load(['subject', 'object.district', 'status', 'payments', 'schedules']);
+        $paymentData = $this->paymentService->getContractPaymentData($contract);
+        $statuses = \App\Models\ContractStatus::where('is_active', true)->orderBy('id')->get();
 
-    $paymentData = $this->paymentService->getContractPaymentData($contract);
-
-    $statuses = \App\Models\ContractStatus::where('is_active', true)
-        ->orderBy('id')
-        ->get();
-
-    return view('contracts.payment_update', compact('paymentData', 'statuses', 'contract'));
-}
+        return view('contracts.payment_update', compact('paymentData', 'statuses', 'contract'));
+    }
 
 
     /**
@@ -619,6 +615,80 @@ public function showAmendment($contract, $amendment): View
     }
 
     return back()->with('error', $result['message']);
+}
+
+public function editAmendment($contract, $amendment): View
+{
+    $contract = Contract::findOrFail($contract);
+    $amendment = ContractAmendment::where('contract_id', $contract->id)
+        ->where('id', $amendment)
+        ->firstOrFail();
+
+    // Only allow editing unapproved amendments
+    if ($amendment->is_approved) {
+        return redirect()->route('contracts.amendments.show', [$contract, $amendment])
+            ->with('error', 'Tasdiqlangan kelishuvni tahrirlash mumkin emas');
+    }
+
+    $paymentData = $this->paymentService->getContractPaymentData($contract);
+
+    return view('contracts.edit-amendment', compact('contract', 'amendment', 'paymentData'));
+}
+
+/**
+ * Update amendment
+ */
+public function updateAmendment(Request $request, $contract, $amendment): RedirectResponse
+{
+    $contract = Contract::findOrFail($contract);
+    $amendment = ContractAmendment::where('contract_id', $contract->id)
+        ->where('id', $amendment)
+        ->firstOrFail();
+
+    // Only allow editing unapproved amendments
+    if ($amendment->is_approved) {
+        return back()->with('error', 'Tasdiqlangan kelishuvni tahrirlash mumkin emas');
+    }
+
+    $validator = Validator::make($request->all(), [
+        'amendment_number' => 'required|string|max:50',
+        'amendment_date' => 'required|date|after_or_equal:' . $contract->contract_date->format('Y-m-d'),
+        'new_total_amount' => 'nullable|numeric|min:1',
+        'new_completion_date' => 'nullable|date|after:' . $contract->contract_date->format('Y-m-d'),
+        'new_initial_payment_percent' => 'nullable|numeric|min:0|max:100',
+        'new_quarters_count' => 'nullable|numeric|min:1|max:20',
+        'reason' => 'required|string|max:500',
+        'description' => 'nullable|string|max:1000'
+    ]);
+
+    if ($validator->fails()) {
+        return back()->withErrors($validator)->withInput();
+    }
+
+    try {
+        DB::beginTransaction();
+
+        $amendment->update([
+            'amendment_number' => $request->amendment_number,
+            'amendment_date' => $request->amendment_date,
+            'new_total_amount' => $request->new_total_amount,
+            'new_completion_date' => $request->new_completion_date,
+            'new_initial_payment_percent' => $request->new_initial_payment_percent,
+            'new_quarters_count' => $request->new_quarters_count,
+            'reason' => $request->reason,
+            'description' => $request->description,
+            'updated_by' => auth()->id()
+        ]);
+
+        DB::commit();
+
+        return redirect()->route('contracts.amendments.show', [$contract, $amendment])
+            ->with('success', 'Qo\'shimcha kelishuv muvaffaqiyatli yangilandi');
+
+    } catch (\Exception $e) {
+        DB::rollBack();
+        return back()->withInput()->with('error', 'Yangilashda xatolik: ' . $e->getMessage());
+    }
 }
     /**
      * Delete amendment

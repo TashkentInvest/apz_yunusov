@@ -33,6 +33,12 @@
     </a>
 
     @if(!$amendment->is_approved)
+    <a href="{{ route('contracts.amendments.edit', [$contract, $amendment]) }}"
+       class="inline-flex items-center px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors">
+        <i data-feather="edit-2" class="w-4 h-4 mr-2"></i>
+        Tahrirlash
+    </a>
+
     <form method="POST" action="{{ route('contracts.amendments.approve', [$contract, $amendment]) }}" class="inline">
         @csrf
         <button type="submit"
@@ -42,9 +48,21 @@
             Tasdiqlash
         </button>
     </form>
+
+    <form method="POST" action="{{ route('contracts.amendments.delete', [$contract, $amendment]) }}" class="inline">
+        @csrf
+        @method('DELETE')
+        <button type="submit"
+                onclick="return confirm('Bu qo\'shimcha kelishuvni o\'chirasizmi?')"
+                class="inline-flex items-center px-4 py-2 bg-red-600 text-white rounded-lg hover:bg-red-700 transition-colors">
+            <i data-feather="trash-2" class="w-4 h-4 mr-2"></i>
+            O'chirish
+        </button>
+    </form>
     @endif
 </div>
 @endsection
+
 
 @section('content')
 <div class="max-w-6xl mx-auto space-y-8">
