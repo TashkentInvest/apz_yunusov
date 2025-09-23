@@ -38,29 +38,11 @@ class ContractController extends Controller
         $query = Contract::with(['subject', 'object.district', 'status', 'updatedBy'])
             ->where('is_active', true);
 
-        // Contract number filter
+        // Existing filters...
         if ($request->contract_number) {
             $query->where('contract_number', 'like', "%{$request->contract_number}%");
         }
 
-        // Completion date filter
-        if ($request->completion_year) {
-            $query->whereYear('completion_date', $request->completion_year);
-        }
-
-        if ($request->completion_month) {
-            $query->whereMonth('completion_date', $request->completion_month);
-        }
-
-        // Date range filter for completion
-        if ($request->completion_from) {
-            $query->whereDate('completion_date', '>=', $request->completion_from);
-        }
-
-        if ($request->completion_to) {
-            $query->whereDate('completion_date', '<=', $request->completion_to);
-        }
-        // General search filter (if you still want to keep it)
         if ($request->search) {
             $search = $request->search;
             $query->where(function ($q) use ($search) {
@@ -82,7 +64,12 @@ class ContractController extends Controller
             });
         }
 
-        // Calculate statistics BEFORE pagination - EXCLUDE CANCELLED
+        // Completion year filter
+        if ($request->completion_year) {
+            $query->whereYear('completion_date', $request->completion_year);
+        }
+
+        // Calculate total amount
         $totalAmount = (clone $query)
             ->whereHas('status', function ($q) {
                 $q->where('name_uz', '!=', 'Бекор қилинган');
@@ -93,16 +80,36 @@ class ContractController extends Controller
             $q->where('code', 'ACTIVE');
         })->count();
 
-        // Paginate results
+        // Calculate quarterly amounts if year is selected
+        $quarterlyAmounts = null;
+        if ($request->completion_year) {
+            $quarterlyAmounts = [];
+            for ($quarter = 1; $quarter <= 4; $quarter++) {
+                $startMonth = ($quarter - 1) * 3 + 1;
+                $endMonth = $quarter * 3;
+
+                $amount = (clone $query)
+                    ->whereHas('status', function ($q) {
+                        $q->where('name_uz', '!=', 'Бекор қилинган');
+                    })
+                    ->whereBetween('completion_date', [
+                        "{$request->completion_year}-{$startMonth}-01",
+                        date('Y-m-t', strtotime("{$request->completion_year}-{$endMonth}-01"))
+                    ])
+                    ->sum('total_amount');
+
+                $quarterlyAmounts[$quarter] = $amount;
+            }
+        }
+
         $contracts = $query->paginate(20)->appends($request->query());
 
-        // Get filter options
         $statuses = \App\Models\ContractStatus::where('is_active', true)->get();
         $districts = \App\Models\District::where('is_active', true)
             ->where('name_uz', 'REGEXP', '^[А-Яа-яЎўҚқҒғҲҳ]')
             ->get();
 
-        return view('contracts.index', compact('contracts', 'statuses', 'districts', 'totalAmount', 'activeCount'));
+        return view('contracts.index', compact('contracts', 'statuses', 'districts', 'totalAmount', 'activeCount', 'quarterlyAmounts'));
     }
     /**
      * Show the form for creating a new contract

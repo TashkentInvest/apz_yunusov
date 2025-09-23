@@ -62,17 +62,17 @@
             </div>
 
 
-            <div>
-                <label class="block text-sm font-medium text-gray-700 mb-1">Тугаш йили</label>
-                <select name="completion_year" class="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500">
-                    <option value="">Барча йиллар</option>
-                    @for($year = date('Y') - 2; $year <= date('Y') + 5; $year++)
-                        <option value="{{ $year }}" {{ request('completion_year') == $year ? 'selected' : '' }}>
-                            {{ $year }}
-                        </option>
-                    @endfor
-                </select>
-            </div>
+          <div>
+            <label class="block text-sm font-medium text-gray-700 mb-1">Тугаш йили</label>
+            <select name="completion_year" class="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500">
+                <option value="">Барча йиллар</option>
+                @for($year = date('Y') - 2; $year <= date('Y') + 5; $year++)
+                    <option value="{{ $year }}" {{ request('completion_year') == $year ? 'selected' : '' }}>
+                        {{ $year }}
+                    </option>
+                @endfor
+            </select>
+        </div>
 
             <div>
                 <label class="block text-sm font-medium text-gray-700 mb-1">Тугаш ойи</label>
@@ -102,48 +102,71 @@
     </div>
 
     <!-- Statistics Summary -->
-    <div class="grid grid-cols-1 md:grid-cols-3 gap-6">
-        <div class="bg-white rounded-xl shadow-sm border border-gray-200 p-6">
-            <div class="flex items-center justify-between">
-                <div>
-                    <p class="text-sm font-medium text-gray-600">Шартномалар сони</p>
-                    <p class="text-2xl font-bold text-gray-900 mt-1">{{ $contracts->total() }}</p>
-                </div>
-                <div class="w-10 h-10 bg-blue-50 rounded-lg flex items-center justify-center">
-                    <i data-feather="file-text" class="w-5 h-5 text-blue-600"></i>
-                </div>
+ <!-- Replace Statistics Summary section with this -->
+<div class="grid grid-cols-1 md:grid-cols-3 gap-6">
+    <div class="bg-white rounded-xl shadow-sm border border-gray-200 p-6">
+        <div class="flex items-center justify-between">
+            <div>
+                <p class="text-sm font-medium text-gray-600">Шартномалар сони</p>
+                <p class="text-2xl font-bold text-gray-900 mt-1">{{ $contracts->total() }}</p>
             </div>
-        </div>
-
-        <div class="bg-white rounded-xl shadow-sm border border-gray-200 p-6">
-            <div class="flex items-center justify-between">
-                <div class="flex-1">
-                    <p class="text-sm font-medium text-gray-600 mb-2">Режа учун умумий сумма</p>
-                    <p class="text-2xl font-bold text-gray-900">
-                        {{ number_format($totalAmount, 0, '.', ' ') }} сўм
-                    </p>
-                    <p class="text-xm text-gray-500 mt-2 italic leading-relaxed">
-                        {{ ucfirst(app(\App\Services\NumberToTextService::class)->convert($totalAmount)) }} сўм
-                    </p>
-                </div>
-                <div class="w-10 h-10 bg-green-50 rounded-lg flex items-center justify-center flex-shrink-0 ml-4">
-                    <i data-feather="dollar-sign" class="w-5 h-5 text-green-600"></i>
-                </div>
-            </div>
-        </div>
-
-        <div class="bg-white rounded-xl shadow-sm border border-gray-200 p-6">
-            <div class="flex items-center justify-between">
-                <div>
-                    <p class="text-sm font-medium text-gray-600">Фаол шартномалар</p>
-                    <p class="text-2xl font-bold text-gray-900 mt-1">{{ $activeCount }}</p>
-                </div>
-                <div class="w-10 h-10 bg-green-50 rounded-lg flex items-center justify-center">
-                    <i data-feather="check-circle" class="w-5 h-5 text-green-600"></i>
-                </div>
+            <div class="w-10 h-10 bg-blue-50 rounded-lg flex items-center justify-center">
+                <i data-feather="file-text" class="w-5 h-5 text-blue-600"></i>
             </div>
         </div>
     </div>
+
+    <div class="bg-white rounded-xl shadow-sm border border-gray-200 p-6">
+        <div class="flex items-center justify-between">
+            <div class="flex-1">
+                <p class="text-sm font-medium text-gray-600 mb-2">Режа учун умумий сумма</p>
+                <p class="text-2xl font-bold text-gray-900">
+                    {{ number_format($totalAmount, 0, '.', ' ') }} сўм
+                </p>
+                <p class="text-xm text-gray-500 mt-2 italic leading-relaxed">
+                    {{ ucfirst(app(\App\Services\NumberToTextService::class)->convert($totalAmount)) }} сўм
+                </p>
+            </div>
+            <div class="w-10 h-10 bg-green-50 rounded-lg flex items-center justify-center flex-shrink-0 ml-4">
+                <i data-feather="dollar-sign" class="w-5 h-5 text-green-600"></i>
+            </div>
+        </div>
+    </div>
+
+    <div class="bg-white rounded-xl shadow-sm border border-gray-200 p-6">
+        <div class="flex items-center justify-between">
+            <div>
+                <p class="text-sm font-medium text-gray-600">Фаол шартномалар</p>
+                <p class="text-2xl font-bold text-gray-900 mt-1">{{ $activeCount }}</p>
+            </div>
+            <div class="w-10 h-10 bg-green-50 rounded-lg flex items-center justify-center">
+                <i data-feather="check-circle" class="w-5 h-5 text-green-600"></i>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Quarterly breakdown - only show if year is selected -->
+@if($quarterlyAmounts)
+<div class="grid grid-cols-1 md:grid-cols-4 gap-6">
+    @foreach($quarterlyAmounts as $quarter => $amount)
+    <div class="bg-gradient-to-br from-blue-50 to-blue-100 rounded-xl shadow-sm border border-blue-200 p-6">
+        <div class="flex items-center justify-between mb-3">
+            <h4 class="text-sm font-semibold text-blue-900">{{ $quarter }}-чорак</h4>
+            <div class="w-8 h-8 bg-blue-600 rounded-lg flex items-center justify-center">
+                <span class="text-white font-bold text-sm">Ч{{ $quarter }}</span>
+            </div>
+        </div>
+        <p class="text-xl font-bold text-blue-900">
+            {{ number_format($amount, 0, '.', ' ') }} сўм
+        </p>
+        <p class="text-xs text-blue-700 mt-1">
+            {{ number_format($amount / 1000000, 1) }} млн
+        </p>
+    </div>
+    @endforeach
+</div>
+@endif
 
     <!-- Contracts Table -->
     <div class="bg-white rounded-xl shadow-sm border border-gray-200 overflow-hidden">
