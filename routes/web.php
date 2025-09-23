@@ -60,13 +60,30 @@ Route::middleware(['auth'])->group(function () {
         Route::get('/{contract}/add-quarter-payment/{year}/{quarter}', [ContractController::class, 'addQuarterPayment'])->name('add-quarter-payment')->whereNumber('contract');
         Route::get('/{contract}/quarter-details/{year}/{quarter}', [ContractController::class, 'quarterDetails'])->name('quarter-details')->whereNumber('contract');
 
-        // Contract Amendments - FIXED STRUCTURE
-        Route::get('/{contract}/amendments/create', [ContractController::class, 'createAmendment'])->name('amendments.create')->whereNumber('contract');
-        Route::post('/{contract}/amendments/store', [ContractController::class, 'storeAmendment'])->name('amendments.store')->whereNumber('contract');
-        Route::get('/{contract}/amendments/{amendment}', [ContractController::class, 'showAmendment'])->name('amendments.show')->whereNumber(['contract', 'amendment']);
-        Route::post('/{contract}/amendments/{amendment}/approve', [ContractController::class, 'approveAmendment'])->name('amendments.approve')->whereNumber(['contract', 'amendment']);
-        Route::delete('/{contract}/amendments/{amendment}', [ContractController::class, 'deleteAmendment'])->name('amendments.delete')->whereNumber(['contract', 'amendment']);
-        Route::post('/{contract}/amendments/{amendment}/create-schedule', [ContractController::class, 'createAmendmentSchedule'])->name('amendments.create-schedule')->whereNumber(['contract', 'amendment']);
+        // Contract Amendments - FIXED STRUCTURE (must be before /{contract} route)
+        Route::get('/{contract}/amendments/create', [ContractController::class, 'createAmendment'])
+            ->name('amendments.create')
+            ->where('contract', '[0-9]+');
+
+        Route::post('/{contract}/amendments/store', [ContractController::class, 'storeAmendment'])
+            ->name('amendments.store')
+            ->where('contract', '[0-9]+');
+
+        Route::get('/{contract}/amendments/{amendment}', [ContractController::class, 'showAmendment'])
+            ->name('amendments.show')
+            ->where(['contract' => '[0-9]+', 'amendment' => '[0-9]+']);
+
+        Route::post('/{contract}/amendments/{amendment}/approve', [ContractController::class, 'approveAmendment'])
+            ->name('amendments.approve')
+            ->where(['contract' => '[0-9]+', 'amendment' => '[0-9]+']);
+
+        Route::delete('/{contract}/amendments/{amendment}', [ContractController::class, 'deleteAmendment'])
+            ->name('amendments.delete')
+            ->where(['contract' => '[0-9]+', 'amendment' => '[0-9]+']);
+
+        Route::post('/{contract}/amendments/{amendment}/create-schedule', [ContractController::class, 'createAmendmentSchedule'])
+            ->name('amendments.create-schedule')
+            ->where(['contract' => '[0-9]+', 'amendment' => '[0-9]+']);
 
         // Reports and Exports
         Route::get('/{contract}/export-report', [ContractController::class, 'exportReport'])->name('export-report')->whereNumber('contract');
@@ -293,3 +310,30 @@ Route::middleware(['auth'])->group(function () {
         ]);
     })->name('zona.kml');
 });
+
+Route::get('/debug-routes', function () {
+    $routes = Route::getRoutes();
+    $amendmentRoutes = [];
+
+    foreach ($routes as $route) {
+        $uri = $route->uri();
+        if (str_contains($uri, 'amendments')) {
+            $amendmentRoutes[] = [
+                'method' => implode('|', $route->methods()),
+                'uri' => $uri,
+                'name' => $route->getName(),
+                'action' => $route->getActionName(),
+                'where' => $route->wheres,
+            ];
+        }
+    }
+
+    return response()->json([
+        'app_url' => config('app.url'),
+        'current_url' => url()->current(),
+        'base_path' => base_path(),
+        'amendment_routes' => $amendmentRoutes,
+        'route_cached' => app()->routesAreCached(),
+        'cache_path' => base_path('bootstrap/cache/routes-v7.php'),
+    ], 200, [], JSON_PRETTY_PRINT);
+})->middleware('auth');
