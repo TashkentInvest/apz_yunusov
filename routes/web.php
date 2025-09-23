@@ -60,14 +60,22 @@ Route::middleware(['auth'])->group(function () {
         Route::get('/{contract}/quarter-details/{year}/{quarter}', [ContractController::class, 'quarterDetails'])->name('quarter-details');
 
         // Contract Amendments (Qo'shimcha kelishuvlar) - Enhanced
-        Route::prefix('{contract}/amendments')->name('amendments.')->group(function () {
-            Route::get('/create', [ContractController::class, 'createAmendment'])->name('create');
-            Route::post('/store', [ContractController::class, 'storeAmendment'])->name('store');
-            Route::get('/{amendment}', [ContractController::class, 'showAmendment'])->name('show');
-            Route::post('/{amendment}/approve', [ContractController::class, 'approveAmendment'])->name('approve');
-            Route::delete('/{amendment}', [ContractController::class, 'deleteAmendment'])->name('delete');
-            Route::post('/{amendment}/create-schedule', [ContractController::class, 'createAmendmentSchedule'])->name('create-schedule');
-        });
+           Route::prefix('{contract}/amendments')->whereNumber('contract')->name('amendments.')->group(function () {
+        Route::get('/create', [ContractController::class, 'createAmendment'])->name('create');
+        Route::post('/store', [ContractController::class, 'storeAmendment'])->name('store');
+        Route::get('/{amendment}', [ContractController::class, 'showAmendment'])
+            ->whereNumber('amendment')
+            ->name('show');
+        Route::post('/{amendment}/approve', [ContractController::class, 'approveAmendment'])
+            ->whereNumber('amendment')
+            ->name('approve');
+        Route::delete('/{amendment}', [ContractController::class, 'deleteAmendment'])
+            ->whereNumber('amendment')
+            ->name('delete');
+        Route::post('/{amendment}/create-schedule', [ContractController::class, 'createAmendmentSchedule'])
+            ->whereNumber('amendment')
+            ->name('create-schedule');
+    });
 
         // Payment operations with proper naming - Enhanced
         Route::prefix('payments')->name('payments.')->group(function () {

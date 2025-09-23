@@ -731,7 +731,7 @@ document.addEventListener('DOMContentLoaded', function() {
                                     {{ $amendment['status_text'] }}
                                 </span>
                                 <a href="{{ route('contracts.amendments.show', [$paymentData['contract']['id'], $amendment['id']]) }}"
-                                   class="p-1 bg-purple-100 text-purple-600 rounded hover:bg-purple-200">
+                                      class="p-1 bg-purple-100 text-purple-600 rounded hover:bg-purple-200">
                                     <i data-feather="eye" class="w-4 h-4"></i>
                                 </a>
                             </div>
