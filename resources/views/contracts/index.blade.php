@@ -62,29 +62,29 @@
             </div>
 
 
-<div>
-    <label class="block text-sm font-medium text-gray-700 mb-1">Тугаш йили</label>
-    <select name="completion_year" class="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500">
-        <option value="">Барча йиллар</option>
-        @for($year = date('Y') - 2; $year <= date('Y') + 5; $year++)
-            <option value="{{ $year }}" {{ request('completion_year') == $year ? 'selected' : '' }}>
-                {{ $year }}
-            </option>
-        @endfor
-    </select>
-</div>
+            <div>
+                <label class="block text-sm font-medium text-gray-700 mb-1">Тугаш йили</label>
+                <select name="completion_year" class="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500">
+                    <option value="">Барча йиллар</option>
+                    @for($year = date('Y') - 2; $year <= date('Y') + 5; $year++)
+                        <option value="{{ $year }}" {{ request('completion_year') == $year ? 'selected' : '' }}>
+                            {{ $year }}
+                        </option>
+                    @endfor
+                </select>
+            </div>
 
-<div>
-    <label class="block text-sm font-medium text-gray-700 mb-1">Тугаш ойи</label>
-    <select name="completion_month" class="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500">
-        <option value="">Барча ойлар</option>
-        @foreach(['Январь', 'Февраль', 'Март', 'Апрель', 'Май', 'Июнь', 'Июль', 'Август', 'Сентябрь', 'Октябрь', 'Ноябрь', 'Декабрь'] as $i => $month)
-            <option value="{{ $i + 1 }}" {{ request('completion_month') == ($i + 1) ? 'selected' : '' }}>
-                {{ $month }}
-            </option>
-        @endforeach
-    </select>
-</div>
+            <div>
+                <label class="block text-sm font-medium text-gray-700 mb-1">Тугаш ойи</label>
+                <select name="completion_month" class="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500">
+                    <option value="">Барча ойлар</option>
+                    @foreach(['Январь', 'Февраль', 'Март', 'Апрель', 'Май', 'Июнь', 'Июль', 'Август', 'Сентябрь', 'Октябрь', 'Ноябрь', 'Декабрь'] as $i => $month)
+                        <option value="{{ $i + 1 }}" {{ request('completion_month') == ($i + 1) ? 'selected' : '' }}>
+                            {{ $month }}
+                        </option>
+                    @endforeach
+                </select>
+            </div>
 
             <div class="flex items-end space-x-2">
                 <button type="submit"
