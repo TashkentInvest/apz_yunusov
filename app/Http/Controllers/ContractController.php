@@ -690,10 +690,8 @@ public function updateAmendment(Request $request, $contract, $amendment): Redire
         return back()->withInput()->with('error', 'Yangilashda xatolik: ' . $e->getMessage());
     }
 }
-    /**
-     * Delete amendment
-     */
-   public function deleteAmendment($contract, $amendment): RedirectResponse
+
+public function deleteAmendment($contract, $amendment): RedirectResponse
 {
     $contract = Contract::findOrFail($contract);
 
@@ -701,13 +699,40 @@ public function updateAmendment(Request $request, $contract, $amendment): Redire
         ->where('id', $amendment)
         ->firstOrFail();
 
+    // Check if amendment is approved
+    if ($amendment->is_approved) {
+        return response()->json([
+            'success' => false,
+            'message' => 'Tasdiqlangan kelishuvni o\'chirish mumkin emas'
+        ], 403);
+    }
+
     try {
+        DB::beginTransaction();
+
+        // Delete associated schedules
+        PaymentSchedule::where('amendment_id', $amendment->id)->delete();
+
+        // Delete the amendment
         $amendment->delete();
-        return back()->with('success', 'Qo\'shimcha kelishuv o\'chirildi');
+
+        DB::commit();
+
+        return response()->json([
+            'success' => true,
+            'message' => "Qo'shimcha kelishuv #{$amendment->amendment_number} muvaffaqiyatli o'chirildi"
+        ]);
     } catch (\Exception $e) {
-        return back()->with('error', 'O\'chirishda xatolik: ' . $e->getMessage());
+        DB::rollBack();
+        Log::error('Amendment deletion failed: ' . $e->getMessage());
+
+        return response()->json([
+            'success' => false,
+            'message' => 'O\'chirishda xatolik: ' . $e->getMessage()
+        ], 500);
     }
 }
+
     // ========== PAYMENT CRUD OPERATIONS ==========
 
     /**
@@ -1274,4 +1299,9 @@ public function updateAmendment(Request $request, $contract, $amendment): Redire
         $result = $this->paymentService->deletePayment($payment);
         return response()->json($result);
     }
+
+/**
+ * Delete amendment
+ */
+
 };

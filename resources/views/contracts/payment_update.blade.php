@@ -413,7 +413,25 @@ document.addEventListener('DOMContentLoaded', function() {
 
         <div class="p-8">
 <!-- Summary Cards -->
-<div class="grid grid-cols-1 md:grid-cols-4 gap-6 mb-8">
+@php
+    $showOverdue = false;
+    $hasCompletionDate = isset($paymentData['contract']['completion_date']) && !empty($paymentData['contract']['completion_date']);
+
+    // Only show overdue if there's actually unpaid debt
+    $totalPaid = floatval(str_replace([' so\'m', ' '], '', $paymentData['summary_cards']['total_paid_formatted']));
+    $totalPlan = floatval(str_replace([' so\'m', ' '], '', $paymentData['summary_cards']['total_plan_formatted']));
+    $hasUnpaidBalance = $totalPaid < $totalPlan;
+
+    if ($paymentData['contract']['payment_type'] === 'full' && $hasCompletionDate && $hasUnpaidBalance) {
+        $completionDate = \Carbon\Carbon::parse($paymentData['contract']['completion_date']);
+        $showOverdue = $completionDate->isPast();
+    } elseif ($paymentData['contract']['payment_type'] === 'installment' && $hasUnpaidBalance) {
+        $showOverdue = true;
+    }
+
+    $gridCols = $paymentData['contract']['payment_type'] === 'installment' ? 5 : ($showOverdue ? 4 : 3);
+@endphp
+<div class="grid grid-cols-1 md:grid-cols-{{ $gridCols }} gap-6 mb-8">
     <div class="info-gradient rounded-xl p-6 text-center">
         <div class="w-12 h-12 bg-blue-100 rounded-full flex items-center justify-center mx-auto mb-3">
             <i data-feather="target" class="w-6 h-6 text-blue-600"></i>
@@ -437,7 +455,6 @@ document.addEventListener('DOMContentLoaded', function() {
     </div>
 
     @if($paymentData['contract']['payment_type'] === 'installment')
-    <!-- Show these cards only for installment -->
     <div class="initial-gradient rounded-xl p-6 text-center">
         <div class="w-12 h-12 bg-purple-100 rounded-full flex items-center justify-center mx-auto mb-3">
             <i data-feather="star" class="w-6 h-6 text-purple-600"></i>
@@ -465,13 +482,7 @@ document.addEventListener('DOMContentLoaded', function() {
         <div class="w-12 h-12 bg-yellow-100 rounded-full flex items-center justify-center mx-auto mb-3">
             <i data-feather="clock" class="w-6 h-6 text-yellow-600"></i>
         </div>
-        <p class="text-sm font-medium text-yellow-800">
-            @if($paymentData['contract']['payment_type'] === 'full')
-                QOLGAN
-            @else
-                JORIY QARZ
-            @endif
-        </p>
+        <p class="text-sm font-medium text-yellow-800">QOLGAN</p>
         <p class="text-2xl font-bold text-yellow-900">{{ $paymentData['summary_cards']['current_debt_formatted'] }}</p>
         <div class="mt-2 text-xs text-yellow-600">
             @if($paymentData['contract']['payment_type'] === 'full')
@@ -482,18 +493,25 @@ document.addEventListener('DOMContentLoaded', function() {
         </div>
     </div>
 
-    @if($paymentData['contract']['payment_type'] === 'installment')
     <div class="danger-gradient rounded-xl p-6 text-center">
         <div class="w-12 h-12 bg-red-100 rounded-full flex items-center justify-center mx-auto mb-3">
             <i data-feather="alert-triangle" class="w-6 h-6 text-red-600"></i>
         </div>
         <p class="text-sm font-medium text-red-800">MUDDATI O'TGAN</p>
         <p class="text-2xl font-bold text-red-900">{{ $paymentData['summary_cards']['overdue_debt_formatted'] }}</p>
-        <div class="mt-2 text-xs text-red-600">Tezda to'lash kerak</div>
+        <div class="mt-2 text-xs text-red-600">
+            @if($paymentData['contract']['payment_type'] === 'full')
+                @if($hasCompletionDate)
+                    Muddat: {{ \Carbon\Carbon::parse($paymentData['contract']['completion_date'])->format('d.m.Y') }}
+                @else
+                    Muddat o'tgan
+                @endif
+            @else
+                Tezda to'lash kerak
+            @endif
+        </div>
     </div>
-    @endif
 </div>
-
 <!-- Edit Payment Modal -->
 <div id="editPaymentModal" class="hidden fixed inset-0 bg-gray-600 bg-opacity-50 overflow-y-auto h-full w-full z-50">
     <div class="relative top-20 mx-auto p-5 border w-full max-w-2xl shadow-lg rounded-md bg-white">
@@ -802,6 +820,7 @@ document.addEventListener('DOMContentLoaded', function() {
             @endif
 
             <!-- Amendments Section -->
+  <!-- Amendments Section -->
             @if(count($paymentData['amendments']) > 0)
             <div class="mt-8 pt-8 border-t border-gray-200">
                 <h3 class="text-lg font-bold text-gray-900 mb-4">Qo'shimcha kelishuvlar</h3>
@@ -827,16 +846,29 @@ document.addEventListener('DOMContentLoaded', function() {
                                     {{ $amendment['status_text'] }}
                                 </span>
                                 <a href="{{ route('contracts.amendments.show', [$paymentData['contract']['id'], $amendment['id']]) }}"
-                                      class="p-1 bg-purple-100 text-purple-600 rounded hover:bg-purple-200">
+                                class="p-1 bg-purple-100 text-purple-600 rounded hover:bg-purple-200"
+                                title="Ko'rish">
                                     <i data-feather="eye" class="w-4 h-4"></i>
                                 </a>
+                                @if(!$amendment['is_approved'])
+                                <a href="{{ route('contracts.amendments.edit', [$paymentData['contract']['id'], $amendment['id']]) }}"
+                                class="p-1 bg-blue-100 text-blue-600 rounded hover:bg-blue-200"
+                                title="Tahrirlash">
+                                    <i data-feather="edit-2" class="w-4 h-4"></i>
+                                </a>
+                                <button onclick="deleteAmendment({{ $amendment['id'] }}, '{{ $amendment['amendment_number'] }}')"
+                                    class="p-1 bg-red-100 text-red-600 rounded hover:bg-red-200"
+                                    title="O'chirish">
+                                    <i data-feather="trash-2" class="w-4 h-4"></i>
+                                </button>
+                                @else
+                                <span class="text-xs text-gray-500 italic px-2">Tasdiqlangan</span>
+                                @endif
                             </div>
                         </div>
                     </div>
                     @endforeach
                 </div>
-
-
             </div>
             @endif
         </div>
@@ -1251,6 +1283,34 @@ function deletePayment(paymentId) {
         .catch(error => {
             console.error('Error:', error);
             showErrorMessage('To\'lovni o\'chirishda xatolik yuz berdi');
+        });
+    }
+}
+
+// Delete amendment function
+function deleteAmendment(amendmentId, amendmentNumber) {
+    const contractId = {{ $paymentData['contract']['id'] ?? 0 }};
+
+    if (confirm(`"${amendmentNumber}" raqamli qo'shimcha kelishuvni o'chirishni tasdiqlaysizmi?\n\nDiqqat: Bu amal qaytarilmaydi!`)) {
+        fetch(`/contracts/${contractId}/amendments/${amendmentId}`, {
+            method: 'DELETE',
+            headers: {
+                'X-CSRF-TOKEN': document.querySelector('meta[name="csrf-token"]').getAttribute('content'),
+                'Content-Type': 'application/json'
+            }
+        })
+        .then(response => response.json())
+        .then(data => {
+            if (data.success) {
+                showSuccessMessage(data.message || 'Qo\'shimcha kelishuv o\'chirildi');
+                setTimeout(() => location.reload(), 1500);
+            } else {
+                showErrorMessage(data.message || 'O\'chirishda xatolik yuz berdi');
+            }
+        })
+        .catch(error => {
+            console.error('Error:', error);
+            showErrorMessage('Qo\'shimcha kelishuvni o\'chirishda xatolik yuz berdi');
         });
     }
 }

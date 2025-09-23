@@ -222,12 +222,18 @@ class ContractPaymentService
     private function calculateOverdueDebt(Contract $contract): float
     {
         if ($contract->payment_type === 'full') {
-            return 0; // No overdue concept for full payment
+            // For full payment, check if completion date passed and there's unpaid balance
+            if ($contract->completion_date && Carbon::parse($contract->completion_date)->isPast()) {
+                $remainingDebt = $contract->total_amount - $contract->payments()->sum('amount');
+                return max(0, $remainingDebt);
+            }
+            return 0;
         }
 
         $now = now();
         $overdueSchedules = PaymentSchedule::where('contract_id', $contract->id)
             ->where('is_active', true)
+            ->where('is_initial_payment', false) // EXCLUDE initial payment from overdue calculation
             ->where(function ($query) use ($now) {
                 $query->where('year', '<', $now->year)
                     ->orWhere(function ($q) use ($now) {
@@ -239,9 +245,11 @@ class ContractPaymentService
 
         $totalOverdue = 0;
         foreach ($overdueSchedules as $schedule) {
+            // Get actual payments for this schedule
             $paid = ActualPayment::where('contract_id', $contract->id)
                 ->where('year', $schedule->year)
                 ->where('quarter', $schedule->quarter)
+                ->where('is_initial_payment', false)
                 ->sum('amount');
 
             $debt = max(0, $schedule->quarter_amount - $paid);
@@ -260,18 +268,24 @@ class ContractPaymentService
 
         // For full payment type
         if ($contract->payment_type === 'full') {
-            $planAmount = $totalAmount; // Full amount is the plan
+            $planAmount = $totalAmount;
             $remainingDebt = $totalAmount - $totalPaid;
+
+            // Calculate overdue for full payment if completion date has passed
+            $overdueDebt = 0;
+            if ($contract->completion_date && Carbon::parse($contract->completion_date)->isPast() && $remainingDebt > 0) {
+                $overdueDebt = $remainingDebt; // All unpaid amount is overdue after completion date
+            }
 
             return [
                 'total_plan_formatted' => number_format($planAmount, 0, '.', ' ') . ' so\'m',
                 'total_paid_formatted' => number_format($totalPaid, 0, '.', ' ') . ' so\'m',
-                'initial_payment_plan_formatted' => '0 so\'m', // No initial payment concept
+                'initial_payment_plan_formatted' => '0 so\'m',
                 'initial_payment_paid_formatted' => '0 so\'m',
-                'quarterly_plan_formatted' => '0 so\'m', // No quarterly concept
+                'quarterly_plan_formatted' => '0 so\'m',
                 'quarterly_paid_formatted' => '0 so\'m',
                 'current_debt_formatted' => number_format($remainingDebt, 0, '.', ' ') . ' so\'m',
-                'overdue_debt_formatted' => '0 so\'m', // No overdue for full payment
+                'overdue_debt_formatted' => number_format($overdueDebt, 0, '.', ' ') . ' so\'m',
                 'completion_percent' => $totalAmount > 0 ? round(($totalPaid / $totalAmount) * 100, 1) : 0,
             ];
         }
