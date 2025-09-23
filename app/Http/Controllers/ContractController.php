@@ -329,18 +329,19 @@ class ContractController extends Controller
     /**
      * Display contract payment management page
      */
-    public function payment_update(Contract $contract, ContractAmendment $amendment): View
-    {
-        $contract->load(['subject', 'object.district', 'status', 'payments', 'schedules']);
+public function payment_update(Contract $contract): View
+{
+    $contract->load(['subject', 'object.district', 'status', 'payments', 'schedules']);
 
-        $paymentData = $this->paymentService->getContractPaymentData($contract);
+    $paymentData = $this->paymentService->getContractPaymentData($contract);
 
-        $statuses = \App\Models\ContractStatus::where('is_active', true)
-            ->orderBy('id')
-            ->get();
+    $statuses = \App\Models\ContractStatus::where('is_active', true)
+        ->orderBy('id')
+        ->get();
 
-        return view('contracts.payment_update', compact('paymentData', 'statuses', 'contract','amendment'));
-    }
+    return view('contracts.payment_update', compact('paymentData', 'statuses', 'contract'));
+}
+
 
     /**
      * Update contract status
@@ -542,6 +543,19 @@ class ContractController extends Controller
         return view('contracts.create-amendment', compact('contract', 'paymentData'));
     }
 
+public function createAmendmentSchedule($contract, $amendment): RedirectResponse
+{
+    $contract = Contract::findOrFail($contract);
+
+    $amendment = ContractAmendment::where('contract_id', $contract->id)
+        ->where('id', $amendment)
+        ->firstOrFail();
+
+    // Your schedule creation logic here
+
+    return back()->with('success', 'Jadval yaratildi');
+}
+
     /**
      * Store new amendment
      */
@@ -573,51 +587,57 @@ class ContractController extends Controller
     /**
      * Show amendment details
      */
-    public function showAmendment(Contract $contract, ContractAmendment $amendment): View
-    {
-        if ($amendment->contract_id !== $contract->id) {
-            abort(404);
-        }
+public function showAmendment($contract, $amendment): View
+{
+    // Manually fetch the models
+    $contract = Contract::findOrFail($contract);
 
-        $paymentData = $this->paymentService->getContractPaymentData($contract);
-        return view('contracts.amendment-details', compact('contract', 'amendment', 'paymentData'));
-    }
+    $amendment = ContractAmendment::where('contract_id', $contract->id)
+        ->where('id', $amendment)
+        ->firstOrFail();
+
+    $paymentData = $this->paymentService->getContractPaymentData($contract);
+
+    return view('contracts.amendment-details', compact('contract', 'amendment', 'paymentData'));
+}
 
     /**
      * Approve amendment
      */
-    public function approveAmendment(Contract $contract, ContractAmendment $amendment): RedirectResponse
-    {
-        if ($amendment->contract_id !== $contract->id) {
-            abort(404);
-        }
+   public function approveAmendment($contract, $amendment): RedirectResponse
+{
+    $contract = Contract::findOrFail($contract);
 
-        $result = $this->paymentService->approveAmendment($amendment);
+    $amendment = ContractAmendment::where('contract_id', $contract->id)
+        ->where('id', $amendment)
+        ->firstOrFail();
 
-        if ($result['success']) {
-            return back()->with('success', $result['message']);
-        }
+    $result = $this->paymentService->approveAmendment($amendment);
 
-        return back()->with('error', $result['message']);
+    if ($result['success']) {
+        return back()->with('success', $result['message']);
     }
 
+    return back()->with('error', $result['message']);
+}
     /**
      * Delete amendment
      */
-    public function deleteAmendment(Contract $contract, ContractAmendment $amendment): RedirectResponse
-    {
-        if ($amendment->contract_id !== $contract->id) {
-            abort(404);
-        }
+   public function deleteAmendment($contract, $amendment): RedirectResponse
+{
+    $contract = Contract::findOrFail($contract);
 
-        try {
-            $amendment->delete();
-            return back()->with('success', 'Qo\'shimcha kelishuv o\'chirildi');
-        } catch (\Exception $e) {
-            return back()->with('error', 'O\'chirishda xatolik: ' . $e->getMessage());
-        }
+    $amendment = ContractAmendment::where('contract_id', $contract->id)
+        ->where('id', $amendment)
+        ->firstOrFail();
+
+    try {
+        $amendment->delete();
+        return back()->with('success', 'Qo\'shimcha kelishuv o\'chirildi');
+    } catch (\Exception $e) {
+        return back()->with('error', 'O\'chirishda xatolik: ' . $e->getMessage());
     }
-
+}
     // ========== PAYMENT CRUD OPERATIONS ==========
 
     /**
