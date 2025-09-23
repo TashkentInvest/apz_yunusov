@@ -4,13 +4,27 @@
 @section('page-title', 'To\'lov jadvali tuzish')
 
 @php
-    // Calculate values directly in Blade
+    // Check payment type first
+    $paymentType = $contract->payment_type;
+
+    // Calculate values based on payment type
     $totalAmount = (float) $contract->total_amount;
-    $initialPaymentPercent = (float) ($contract->initial_payment_percent ?? 20);
-    $initialPaymentAmount = $totalAmount * ($initialPaymentPercent / 100);
-    $remainingAmount = $totalAmount - $initialPaymentAmount;
-    $quartersCount = (int) ($contract->quarters_count ?? 8);
-    $quarterlyAmount = $quartersCount > 0 ? $remainingAmount / $quartersCount : 0;
+
+    if ($paymentType === 'full') {
+        // For full payment, no initial payment - entire amount is scheduled
+        $initialPaymentPercent = 0;
+        $initialPaymentAmount = 0;
+        $remainingAmount = $totalAmount;
+        $quartersCount = 1; // Single payment
+        $quarterlyAmount = $totalAmount;
+    } else {
+        // For installment payment
+        $initialPaymentPercent = (float) ($contract->initial_payment_percent ?? 20);
+        $initialPaymentAmount = $totalAmount * ($initialPaymentPercent / 100);
+        $remainingAmount = $totalAmount - $initialPaymentAmount;
+        $quartersCount = (int) ($contract->quarters_count ?? 8);
+        $quarterlyAmount = $quartersCount > 0 ? $remainingAmount / $quartersCount : 0;
+    }
 
     // Contract date info
     $contractDate = \Carbon\Carbon::parse($contract->contract_date);
@@ -68,12 +82,25 @@
                 <div class="font-bold text-blue-900">{{ formatMoney($totalAmount) }}</div>
             </div>
             <div>
-                <div class="text-sm text-blue-700">Taqsimlanadigan summa</div>
-                <div class="font-bold text-green-900">{{ formatMoney($remainingAmount) }}</div>
+                <div class="text-sm text-blue-700">
+                    @if($paymentType === 'full')
+                        To'lov turi
+                    @else
+                        Taqsimlanadigan summa
+                    @endif
+                </div>
+                <div class="font-bold {{ $paymentType === 'full' ? 'text-purple-900' : 'text-green-900' }}">
+                    @if($paymentType === 'full')
+                        To'liq to'lash
+                    @else
+                        {{ formatMoney($remainingAmount) }}
+                    @endif
+                </div>
             </div>
         </div>
 
         <!-- Additional Info -->
+        @if($paymentType === 'installment')
         <div class="mt-4 pt-4 border-t border-blue-200">
             <div class="grid grid-cols-1 md:grid-cols-2 gap-4 text-sm">
                 <div>
@@ -86,6 +113,14 @@
                 </div>
             </div>
         </div>
+        @else
+        <div class="mt-4 pt-4 border-t border-blue-200">
+            <p class="text-sm text-blue-700">
+                <i data-feather="info" class="w-4 h-4 inline mr-1"></i>
+                Bu shartnoma to'liq to'lov rejimida. Bir martalik to'lov jadvali yaratiladi.
+            </p>
+        </div>
+        @endif
     </div>
 
     @if ($errors->any())
@@ -128,7 +163,8 @@
         <form method="POST" action="{{ route('contracts.store-schedule', $contract) }}" class="p-8 space-y-8" novalidate>
             @csrf
 
-            <!-- Schedule Type Selection -->
+            @if($paymentType === 'installment')
+            <!-- Schedule Type Selection - Only for installment -->
             <div>
                 <label class="block text-sm font-medium text-gray-700 mb-4">Jadval turi</label>
                 <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
@@ -173,9 +209,34 @@
                     </p>
                 </div>
             </div>
+            @else
+            <!-- Full Payment - Simple Schedule -->
+            <input type="hidden" name="schedule_type" value="auto">
+            <input type="hidden" name="quarters_count" value="1">
+            <input type="hidden" name="total_schedule_amount" value="{{ $remainingAmount }}">
 
+            <div class="bg-purple-50 border border-purple-200 rounded-lg p-6">
+                <h4 class="text-lg font-medium text-purple-900 mb-4">To'liq to'lash rejimi</h4>
+                <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+                    <div>
+                        <div class="text-sm text-purple-700">To'lov summasi</div>
+                        <div class="text-2xl font-bold text-purple-900">{{ formatMoney($totalAmount) }}</div>
+                    </div>
+                    <div>
+                        <div class="text-sm text-purple-700">To'lov muddati</div>
+                        <div class="text-lg font-semibold text-purple-900">Bir martalik</div>
+                    </div>
+                </div>
+                <p class="mt-4 text-sm text-purple-600">
+                    <i data-feather="check-circle" class="w-4 h-4 inline mr-1"></i>
+                    To'liq to'lash uchun jadval yaratiladi. Boshlang'ich to'lov mavjud emas.
+                </p>
+            </div>
+            @endif
+
+            @if($paymentType === 'installment')
             <!-- Custom Schedule Grid -->
-           <div id="customScheduleGrid" class="hidden">
+            <div id="customScheduleGrid" class="hidden">
                 <div class="flex items-center justify-between mb-4">
                     <h4 class="text-lg font-medium text-gray-900">Choraklar bo'yicha taqsimlash</h4>
 
@@ -252,6 +313,7 @@
                     </div>
                 </div>
             </div>
+            @endif
 
             <!-- Schedule Preview -->
             <div class="bg-gray-50 rounded-xl p-6">
@@ -278,7 +340,8 @@
             </div>
 
             <!-- Validation Messages -->
-            <div id="validationMessage" class="hidden bg-red-50 border border-red-200 rounded-lg p-4">
+            @if($paymentType === 'installment')
+            <div id="validationMessageBox" class="hidden bg-red-50 border border-red-200 rounded-lg p-4">
                 <div class="flex">
                     <i data-feather="alert-triangle" class="w-5 h-5 text-red-500 mr-2"></i>
                     <div class="text-sm text-red-800">
@@ -286,16 +349,19 @@
                     </div>
                 </div>
             </div>
+            @endif
 
             <!-- Submit Buttons -->
             <div class="flex justify-end space-x-4 pt-6 border-t border-gray-200">
+                @if($paymentType === 'installment')
                 <button type="button" onclick="resetForm()"
                         class="px-6 py-3 bg-gray-100 text-gray-700 rounded-lg hover:bg-gray-200 transition-colors">
                     Tozalash
                 </button>
+                @endif
                 <button type="submit" id="submitBtn"
                         class="px-6 py-3 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors">
-                    <i data-feather="calendar" class="w-4 h-4 mr-2"></i>
+                    <i data-feather="calendar" class="w-4 h-4 inline mr-2"></i>
                     Jadvalni saqlash
                 </button>
             </div>
@@ -323,20 +389,85 @@
 {
     "remainingAmount": {{ $remainingAmount }},
     "quartersCount": {{ $quartersCount }},
-    "quartersData": @json($quartersData)
+    "quartersData": @json($quartersData),
+    "paymentType": "{{ $paymentType }}"
 }
 </script>
 @endsection
 
 @push('scripts')
 <script src="https://unpkg.com/feather-icons"></script>
-
-
 <script>
+// Parse contract data
+const contractData = JSON.parse(document.getElementById('contractData').textContent);
 let currentInputMode = 'percent';
-const remainingAmount = {{ $remainingAmount }};
-const quartersCount = {{ $quartersCount }};
+const remainingAmount = contractData.remainingAmount;
+const quartersCount = contractData.quartersCount;
+const paymentType = contractData.paymentType;
 
+// Initialize on page load
+document.addEventListener('DOMContentLoaded', function() {
+    if (typeof feather !== 'undefined') {
+        feather.replace();
+    }
+
+    // Initialize only for installment
+    if (paymentType === 'installment') {
+        toggleScheduleType();
+    }
+});
+
+// Toggle between auto and custom schedule
+function toggleScheduleType() {
+    if (paymentType !== 'installment') return;
+
+    const isCustom = document.querySelector('input[name="schedule_type"]:checked')?.value === 'custom';
+    const customGrid = document.getElementById('customScheduleGrid');
+    const labels = document.querySelectorAll('.schedule-type-label');
+
+    // Update visual styles
+    labels.forEach(label => {
+        const radio = label.querySelector('input[type="radio"]');
+        if (radio?.checked) {
+            label.classList.add('border-blue-500', 'bg-blue-50');
+        } else {
+            label.classList.remove('border-blue-500', 'bg-blue-50');
+        }
+    });
+
+    // Show/hide custom inputs
+    if (customGrid) {
+        if (isCustom) {
+            customGrid.classList.remove('hidden');
+            enableCustomInputs();
+        } else {
+            customGrid.classList.add('hidden');
+            disableCustomInputs();
+        }
+    }
+
+    updatePreview();
+}
+
+// Enable custom inputs
+function enableCustomInputs() {
+    const inputs = document.querySelectorAll('.custom-percent-input');
+    inputs.forEach(input => {
+        input.removeAttribute('disabled');
+        input.removeAttribute('tabindex');
+    });
+}
+
+// Disable custom inputs
+function disableCustomInputs() {
+    const inputs = document.querySelectorAll('.custom-percent-input');
+    inputs.forEach(input => {
+        input.setAttribute('disabled', 'disabled');
+        input.setAttribute('tabindex', '-1');
+    });
+}
+
+// Switch between percent and amount input mode
 function switchInputMode(mode) {
     currentInputMode = mode;
 
@@ -365,6 +496,7 @@ function switchInputMode(mode) {
     validateInputs();
 }
 
+// Handle percent input change
 function onPercentChange(input) {
     const quarter = input.dataset.quarter;
     const percent = parseFloat(input.value) || 0;
@@ -380,6 +512,7 @@ function onPercentChange(input) {
     updatePreview();
 }
 
+// Handle amount input change
 function onAmountChange(input) {
     const quarter = input.dataset.quarter;
     const amount = parseFloat(input.value) || 0;
@@ -401,6 +534,7 @@ function onAmountChange(input) {
     updatePreview();
 }
 
+// Validate inputs
 function validateInputs() {
     let totalPercent = 0;
     let totalAmount = 0;
@@ -437,128 +571,51 @@ function validateInputs() {
     return isValid;
 }
 
-function formatCurrency(amount) {
-    return new Intl.NumberFormat('uz-UZ', {
-        style: 'decimal',
-        minimumFractionDigits: 0,
-        maximumFractionDigits: 0
-    }).format(amount) + ' so\'m';
-}
-</script>
-
-<script>
-document.addEventListener('DOMContentLoaded', function() {
-    if (typeof feather !== 'undefined') {
-        feather.replace();
-    }
-
-    // Initialize
-    toggleScheduleType();
-});
-
-const contractData = JSON.parse(document.getElementById('contractData').textContent);
-
-function toggleScheduleType() {
-    const isCustom = document.querySelector('input[name="schedule_type"]:checked').value === 'custom';
-    const customGrid = document.getElementById('customScheduleGrid');
-    const labels = document.querySelectorAll('.schedule-type-label');
-
-    // Update visual styles
-    labels.forEach(label => {
-        const radio = label.querySelector('input[type="radio"]');
-        if (radio.checked) {
-            label.classList.add('border-blue-500', 'bg-blue-50');
-        } else {
-            label.classList.remove('border-blue-500', 'bg-blue-50');
-        }
-    });
-
-    // Show/hide custom inputs
-    if (isCustom) {
-        customGrid.classList.remove('hidden');
-        enableCustomInputs();
-    } else {
-        customGrid.classList.add('hidden');
-        disableCustomInputs();
-    }
-
-    updatePreview();
-}
-
-function enableCustomInputs() {
-    const inputs = document.querySelectorAll('.custom-percent-input');
-    inputs.forEach(input => {
-        input.removeAttribute('disabled');
-        input.removeAttribute('tabindex');
-    });
-}
-
-function disableCustomInputs() {
-    const inputs = document.querySelectorAll('.custom-percent-input');
-    inputs.forEach(input => {
-        input.setAttribute('disabled', 'disabled');
-        input.setAttribute('tabindex', '-1');
-    });
-}
-
-function validateCustomPercentages() {
-    const inputs = document.querySelectorAll('.custom-percent-input');
-    let totalPercent = 0;
-
-    inputs.forEach(input => {
-        totalPercent += parseFloat(input.value) || 0;
-    });
-
-    const totalElement = document.getElementById('percentageTotal');
-    const isValid = Math.abs(totalPercent - 100) < 0.1;
-
-    if (totalElement) {
-        totalElement.textContent = `Jami: ${totalPercent.toFixed(2)}%`;
-        totalElement.className = `mt-2 font-medium ${isValid ? 'text-green-700' : 'text-red-700'}`;
-    }
-
-    // Update submit button and validation message
-    updateSubmitButton(isValid, totalPercent);
-    updatePreview();
-
-    return isValid;
-}
-
-function updateSubmitButton(isValid, totalPercent) {
+// Update submit button state
+function updateSubmitButton(isValid, total) {
     const submitBtn = document.getElementById('submitBtn');
-    const validationDiv = document.getElementById('validationMessage');
+    const validationDiv = document.getElementById('validationMessageBox');
     const validationText = document.getElementById('validationText');
 
-    if (document.querySelector('input[name="schedule_type"]:checked').value === 'custom' && !isValid) {
+    if (document.querySelector('input[name="schedule_type"]:checked')?.value === 'custom' && !isValid) {
         submitBtn.disabled = true;
         submitBtn.className = 'px-6 py-3 bg-gray-400 text-gray-200 rounded-lg cursor-not-allowed';
 
-        validationDiv.classList.remove('hidden');
-        validationText.textContent = `Foizlar yig'indisi ${totalPercent.toFixed(2)}%. 100% bo'lishi kerak.`;
+        if (validationDiv && validationText) {
+            validationDiv.classList.remove('hidden');
+            if (currentInputMode === 'percent') {
+                validationText.textContent = `Foizlar yig'indisi ${total.toFixed(2)}%. 100% bo'lishi kerak.`;
+            } else {
+                validationText.textContent = `Jami summa ${formatCurrency(total)}. ${formatCurrency(remainingAmount)} bo'lishi kerak.`;
+            }
+        }
     } else {
         submitBtn.disabled = false;
         submitBtn.className = 'px-6 py-3 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors';
 
-        validationDiv.classList.add('hidden');
+        if (validationDiv) {
+            validationDiv.classList.add('hidden');
+        }
     }
 }
 
+// Update preview
 function updatePreview() {
-    const scheduleType = document.querySelector('input[name="schedule_type"]:checked').value;
-    const quartersCount = parseInt(document.querySelector('input[name="quarters_count"]').value) || contractData.quartersCount;
-    const remainingAmount = contractData.remainingAmount;
+    const scheduleType = document.querySelector('input[name="schedule_type"]:checked')?.value || 'auto';
+    const quartersCountInput = document.querySelector('input[name="quarters_count"]');
+    const currentQuarters = quartersCountInput ? parseInt(quartersCountInput.value) || quartersCount : quartersCount;
 
     let html = '';
 
     contractData.quartersData.forEach((quarterData, index) => {
-        if (index >= quartersCount) return;
+        if (index >= currentQuarters) return;
 
         let amount = 0;
         let percent = 0;
 
         if (scheduleType === 'auto') {
-            percent = 100 / quartersCount;
-            amount = remainingAmount / quartersCount;
+            percent = 100 / currentQuarters;
+            amount = remainingAmount / currentQuarters;
         } else {
             const input = document.querySelector(`input[name="quarter_${quarterData.index}_percent"]`);
             percent = input ? parseFloat(input.value) || 0 : 0;
@@ -575,9 +632,13 @@ function updatePreview() {
         `;
     });
 
-    document.getElementById('previewGrid').innerHTML = html;
+    const previewGrid = document.getElementById('previewGrid');
+    if (previewGrid) {
+        previewGrid.innerHTML = html;
+    }
 }
 
+// Format currency (continuation)
 function formatCurrency(amount) {
     return new Intl.NumberFormat('uz-UZ', {
         style: 'decimal',
@@ -586,24 +647,32 @@ function formatCurrency(amount) {
     }).format(amount) + ' so\'m';
 }
 
+// Reset form
 function resetForm() {
     const form = document.querySelector('form');
     if (form) {
         form.reset();
-        document.querySelector('input[name="schedule_type"][value="auto"]').checked = true;
+        const autoRadio = document.querySelector('input[name="schedule_type"][value="auto"]');
+        if (autoRadio) {
+            autoRadio.checked = true;
+        }
         toggleScheduleType();
+        updatePreview();
     }
 }
 
 // Form submission validation
 document.addEventListener('submit', function(e) {
     const form = e.target;
-    if (form.querySelector('input[name="schedule_type"]')) {
-        const scheduleType = form.querySelector('input[name="schedule_type"]:checked').value;
+    const scheduleTypeInput = form.querySelector('input[name="schedule_type"]');
+
+    if (scheduleTypeInput && paymentType === 'installment') {
+        const scheduleType = form.querySelector('input[name="schedule_type"]:checked')?.value;
 
         if (scheduleType === 'custom') {
-            if (!validateCustomPercentages()) {
+            if (!validateInputs()) {
                 e.preventDefault();
+                alert('Iltimos, barcha foizlar yig\'indisi 100% bo\'lishini ta\'minlang.');
                 return false;
             }
         }

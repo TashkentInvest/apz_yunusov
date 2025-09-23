@@ -17,9 +17,9 @@ class ContractPaymentService
      */
     public function getContractPaymentData(Contract $contract): array
     {
-  if (!$contract->relationLoaded('status')) {
-        $contract->load('status');
-    }
+        if (!$contract->relationLoaded('status')) {
+            $contract->load('status');
+        }
         return [
             'contract' => $this->formatContractData($contract),
             'quarterly_breakdown' => $this->getQuarterlyBreakdown($contract),
@@ -160,8 +160,16 @@ class ContractPaymentService
     /**
      * Get initial payments data
      */
-    public function getInitialPayments(Contract $contract): array
+    /**
+     * Get initial payments data
+     */
+    public function getInitialPayments(Contract $contract): ?array
     {
+        // Return null for full payment contracts - no initial payment concept
+        if ($contract->payment_type === 'full') {
+            return null;
+        }
+
         $initialPaymentAmount = $contract->total_amount * (($contract->initial_payment_percent ?? 20) / 100);
 
         // Get all initial payments
@@ -191,82 +199,114 @@ class ContractPaymentService
     }
 
     /**
+     * Calculate current debt (unpaid scheduled amounts)
+     */
+    private function calculateCurrentDebt(Contract $contract): float
+    {
+        if ($contract->payment_type === 'full') {
+            return $contract->total_amount - $contract->payments()->sum('amount');
+        }
+
+        $scheduledAmount = PaymentSchedule::where('contract_id', $contract->id)
+            ->where('is_active', true)
+            ->sum('quarter_amount');
+
+        $paidAmount = $contract->payments()->sum('amount');
+
+        return max(0, $scheduledAmount - $paidAmount);
+    }
+
+    /**
+     * Calculate overdue debt
+     */
+    private function calculateOverdueDebt(Contract $contract): float
+    {
+        if ($contract->payment_type === 'full') {
+            return 0; // No overdue concept for full payment
+        }
+
+        $now = now();
+        $overdueSchedules = PaymentSchedule::where('contract_id', $contract->id)
+            ->where('is_active', true)
+            ->where(function ($query) use ($now) {
+                $query->where('year', '<', $now->year)
+                    ->orWhere(function ($q) use ($now) {
+                        $q->where('year', '=', $now->year)
+                            ->where('quarter', '<', ceil($now->month / 3));
+                    });
+            })
+            ->get();
+
+        $totalOverdue = 0;
+        foreach ($overdueSchedules as $schedule) {
+            $paid = ActualPayment::where('contract_id', $contract->id)
+                ->where('year', $schedule->year)
+                ->where('quarter', $schedule->quarter)
+                ->sum('amount');
+
+            $debt = max(0, $schedule->quarter_amount - $paid);
+            $totalOverdue += $debt;
+        }
+
+        return $totalOverdue;
+    }
+    /**
      * Get summary cards data with separate initial payment tracking
      */
     public function getSummaryCards(Contract $contract): array
     {
-        // Initial payment calculations
-        $initialPaymentPlan = $contract->total_amount * (($contract->initial_payment_percent ?? 20) / 100);
-        $initialPaymentPaid = ActualPayment::where('contract_id', $contract->id)
+        $totalAmount = $contract->total_amount;
+        $totalPaid = $contract->payments()->sum('amount');
+
+        // For full payment type
+        if ($contract->payment_type === 'full') {
+            $planAmount = $totalAmount; // Full amount is the plan
+            $remainingDebt = $totalAmount - $totalPaid;
+
+            return [
+                'total_plan_formatted' => number_format($planAmount, 0, '.', ' ') . ' so\'m',
+                'total_paid_formatted' => number_format($totalPaid, 0, '.', ' ') . ' so\'m',
+                'initial_payment_plan_formatted' => '0 so\'m', // No initial payment concept
+                'initial_payment_paid_formatted' => '0 so\'m',
+                'quarterly_plan_formatted' => '0 so\'m', // No quarterly concept
+                'quarterly_paid_formatted' => '0 so\'m',
+                'current_debt_formatted' => number_format($remainingDebt, 0, '.', ' ') . ' so\'m',
+                'overdue_debt_formatted' => '0 so\'m', // No overdue for full payment
+                'completion_percent' => $totalAmount > 0 ? round(($totalPaid / $totalAmount) * 100, 1) : 0,
+            ];
+        }
+
+        // For installment payment type (existing logic)
+        $initialPaymentPlan = $contract->initial_payment_amount;
+        $initialPaymentPaid = $contract->payments()
             ->where('is_initial_payment', true)
             ->sum('amount');
 
-        // Quarterly payment calculations
-        $quarterlyPlan = PaymentSchedule::where('contract_id', $contract->id)
-            ->where('is_active', true)
+        $quarterlyPlan = $contract->schedules()
             ->where('is_initial_payment', false)
+            ->where('is_active', true)
             ->sum('quarter_amount');
 
-        $quarterlyPaid = ActualPayment::where('contract_id', $contract->id)
+        $quarterlyPaid = $contract->payments()
             ->where('is_initial_payment', false)
             ->sum('amount');
 
-        // Total calculations
-        $totalPlan = $initialPaymentPlan + $quarterlyPlan;
-        $totalPaid = $initialPaymentPaid + $quarterlyPaid;
+        $totalPlanAmount = $initialPaymentPlan + $quarterlyPlan;
 
-        // Debt calculations
-        $currentDebt = 0;
-        $overdueDebt = 0;
-
-        // Initial payment debt
-        $initialDebt = $initialPaymentPlan - $initialPaymentPaid;
-        if ($initialDebt > 0) {
-            $currentDebt += $initialDebt;
-        }
-
-        // Quarterly debts
-        $schedules = PaymentSchedule::where('contract_id', $contract->id)
-            ->where('is_active', true)
-            ->where('is_initial_payment', false)
-            ->get();
-
-        foreach ($schedules as $schedule) {
-            $actualPayments = ActualPayment::where('contract_id', $contract->id)
-                ->where('year', $schedule->year)
-                ->where('quarter', $schedule->quarter)
-                ->where('is_initial_payment', false)
-                ->sum('amount');
-
-            $debt = $schedule->quarter_amount - $actualPayments;
-
-            if ($debt > 0) {
-                if ($this->isQuarterOverdue($schedule->year, $schedule->quarter)) {
-                    $overdueDebt += $debt;
-                } else {
-                    $currentDebt += $debt;
-                }
-            }
-        }
+        // Calculate debts
+        $currentDebt = $this->calculateCurrentDebt($contract);
+        $overdueDebt = $this->calculateOverdueDebt($contract);
 
         return [
-            'total_plan' => $totalPlan,
-            'total_plan_formatted' => $this->formatCurrency($totalPlan),
-            'total_paid' => $totalPaid,
-            'total_paid_formatted' => $this->formatCurrency($totalPaid),
-            'initial_payment_plan' => $initialPaymentPlan,
-            'initial_payment_plan_formatted' => $this->formatCurrency($initialPaymentPlan),
-            'initial_payment_paid' => $initialPaymentPaid,
-            'initial_payment_paid_formatted' => $this->formatCurrency($initialPaymentPaid),
-            'quarterly_plan' => $quarterlyPlan,
-            'quarterly_plan_formatted' => $this->formatCurrency($quarterlyPlan),
-            'quarterly_paid' => $quarterlyPaid,
-            'quarterly_paid_formatted' => $this->formatCurrency($quarterlyPaid),
-            'current_debt' => $currentDebt,
-            'current_debt_formatted' => $this->formatCurrency($currentDebt),
-            'overdue_debt' => $overdueDebt,
-            'overdue_debt_formatted' => $this->formatCurrency($overdueDebt),
-            'completion_percent' => $totalPlan > 0 ? round(($totalPaid / $totalPlan) * 100, 1) : 0
+            'total_plan_formatted' => number_format($totalPlanAmount, 0, '.', ' ') . ' so\'m',
+            'total_paid_formatted' => number_format($totalPaid, 0, '.', ' ') . ' so\'m',
+            'initial_payment_plan_formatted' => number_format($initialPaymentPlan, 0, '.', ' ') . ' so\'m',
+            'initial_payment_paid_formatted' => number_format($initialPaymentPaid, 0, '.', ' ') . ' so\'m',
+            'quarterly_plan_formatted' => number_format($quarterlyPlan, 0, '.', ' ') . ' so\'m',
+            'quarterly_paid_formatted' => number_format($quarterlyPaid, 0, '.', ' ') . ' so\'m',
+            'current_debt_formatted' => number_format($currentDebt, 0, '.', ' ') . ' so\'m',
+            'overdue_debt_formatted' => number_format($overdueDebt, 0, '.', ' ') . ' so\'m',
+            'completion_percent' => $totalPlanAmount > 0 ? round(($totalPaid / $totalPlanAmount) * 100, 1) : 0,
         ];
     }
 
@@ -380,7 +420,6 @@ class ContractPaymentService
                     'To\'lov jadvali muvaffaqiyatli yaratildi',
                 'schedule_count' => count($quarterlySchedule) + ($amendmentId ? 0 : 1)
             ];
-
         } catch (\Exception $e) {
             DB::rollBack();
             Log::error('Payment schedule creation failed: ' . $e->getMessage());
@@ -476,7 +515,6 @@ class ContractPaymentService
                     'is_initial_payment' => $isInitialPayment
                 ]
             ];
-
         } catch (\Exception $e) {
             DB::rollBack();
             Log::error('Payment addition failed: ' . $e->getMessage());
@@ -558,7 +596,6 @@ class ContractPaymentService
                     'year' => $targetQuarter['year']
                 ]
             ];
-
         } catch (\Exception $e) {
             DB::rollBack();
             Log::error('Payment update failed: ' . $e->getMessage());
@@ -592,7 +629,6 @@ class ContractPaymentService
                 'success' => true,
                 'message' => "To'lov o'chirildi: {$paymentInfo['amount']} ({$paymentInfo['date']}) - {$paymentInfo['type']}"
             ];
-
         } catch (\Exception $e) {
             DB::rollBack();
             Log::error('Payment deletion failed: ' . $e->getMessage());
@@ -642,7 +678,6 @@ class ContractPaymentService
                 'message' => 'Qo\'shimcha kelishuv muvaffaqiyatli yaratildi',
                 'amendment' => $amendment
             ];
-
         } catch (\Exception $e) {
             DB::rollBack();
             Log::error('Amendment creation failed: ' . $e->getMessage());
@@ -724,7 +759,6 @@ class ContractPaymentService
                 'success' => true,
                 'message' => 'Qo\'shimcha kelishuv tasdiqlandi va o\'zgarishlar qo\'llanildi'
             ];
-
         } catch (\Exception $e) {
             DB::rollBack();
             Log::error('Amendment approval failed: ' . $e->getMessage());
@@ -982,8 +1016,7 @@ class ContractPaymentService
             'total_plan' => $totalPlan,
             'total_paid' => $totalPaid,
             'remaining' => $totalPlan - $totalPaid,
-            'status_text' => $percent >= 100 ? 'Yakunlangan' :
-                           ($percent > 50 ? 'Faol' : 'Boshlang\'ich')
+            'status_text' => $percent >= 100 ? 'Yakunlangan' : ($percent > 50 ? 'Faol' : 'Boshlang\'ich')
         ];
     }
 
