@@ -64,8 +64,16 @@
             </h2>
         </div>
 
-        <form method="POST" action="{{ route('contracts.store-payment', $contract) }}" class="p-8 space-y-6">
+<form method="POST" action="{{ route('contracts.store-notboshlangich-payment', $contract) }}" class="p-8 space-y-6">
             @csrf
+
+            @if(isset($year) && isset($quarter))
+        <input type="hidden" name="target_year" value="{{ $year }}">
+        <input type="hidden" name="target_quarter" value="{{ $quarter }}">
+        <input type="hidden" name="payment_category" value="quarterly">
+    @else
+        <input type="hidden" name="payment_category" value="initial">
+    @endif
 
             @if(isset($year) && isset($quarter))
                 <input type="hidden" name="target_year" value="{{ $year }}">

@@ -62,7 +62,7 @@ class ContractPaymentService
             'initial_payment_percent' => $initialPaymentPercent,
             'construction_period_years' => $contract->construction_period_years ?? 2,
             'quarters_count' => $contract->quarters_count ?? 8,
-            'initial_payment_amount' => $initialPaymentAmount,
+            'initial_payment_amount' => $initialPaymentAmount, // ENSURE THIS IS ALWAYS SET
             'initial_payment_formatted' => $this->formatCurrency($initialPaymentAmount),
             'remaining_amount' => $remainingAmount,
             'remaining_amount_formatted' => $this->formatCurrency($remainingAmount),
@@ -165,27 +165,25 @@ class ContractPaymentService
      */
     public function getInitialPayments(Contract $contract): ?array
     {
-        // Return null for full payment contracts - no initial payment concept
         if ($contract->payment_type === 'full') {
             return null;
         }
 
         $initialPaymentAmount = $contract->total_amount * (($contract->initial_payment_percent ?? 20) / 100);
 
-        // Get all initial payments
         $initialPayments = ActualPayment::where('contract_id', $contract->id)
             ->where('is_initial_payment', true)
             ->orderBy('payment_date', 'desc')
             ->get();
 
         $totalPaid = $initialPayments->sum('amount');
-        $remaining = $initialPaymentAmount - $totalPaid;
+        $remaining = max(0, $initialPaymentAmount - $totalPaid); // ENSURE NON-NEGATIVE
         $paymentPercent = $initialPaymentAmount > 0 ? ($totalPaid / $initialPaymentAmount) * 100 : 0;
 
         return [
             'plan_amount' => $initialPaymentAmount,
             'plan_amount_formatted' => $this->formatCurrency($initialPaymentAmount),
-            'total_paid' => $totalPaid,
+            'total_paid' => $totalPaid, // ENSURE THIS IS ALWAYS A NUMBER
             'total_paid_formatted' => $this->formatCurrency($totalPaid),
             'remaining' => $remaining,
             'remaining_formatted' => $this->formatCurrency($remaining),
@@ -197,7 +195,6 @@ class ContractPaymentService
             'payments_count' => $initialPayments->count()
         ];
     }
-
     /**
      * Calculate current debt (unpaid scheduled amounts)
      */
@@ -468,6 +465,28 @@ class ContractPaymentService
             }
 
             $isInitialPayment = $paymentCategory === 'initial';
+
+            // Additional validation for initial payment
+            if ($isInitialPayment) {
+                $initialPaymentLimit = $contract->total_amount * (($contract->initial_payment_percent ?? 20) / 100);
+                $alreadyPaidInitial = ActualPayment::where('contract_id', $contract->id)
+                    ->where('is_initial_payment', true)
+                    ->sum('amount');
+
+                $remainingInitialPayment = $initialPaymentLimit - $alreadyPaidInitial;
+
+                if ($paymentAmount > $remainingInitialPayment) {
+                    throw new \Exception(
+                        'Boshlang\'ich to\'lov summasi qolgan miqdordan (' .
+                            $this->formatCurrency($remainingInitialPayment) . ') oshmasligi kerak'
+                    );
+                }
+
+                if ($remainingInitialPayment <= 0) {
+                    throw new \Exception('Boshlang\'ich to\'lov allaqachon to\'liq to\'langan');
+                }
+            }
+
             $targetQuarter = null;
 
             if ($isInitialPayment) {
@@ -535,7 +554,7 @@ class ContractPaymentService
 
             return [
                 'success' => false,
-                'message' => 'To\'lov qo\'shishda xatolik: ' . $e->getMessage()
+                'message' => $e->getMessage() // Remove the prefix to show clean error message
             ];
         }
     }

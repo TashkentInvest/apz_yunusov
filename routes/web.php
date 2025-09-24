@@ -68,6 +68,8 @@ Route::middleware(['auth'])->group(function () {
         Route::post('/{contract}/store-schedule', [ContractController::class, 'storeSchedule'])->name('store-schedule')->whereNumber('contract');
         Route::get('/{contract}/add-payment', [ContractController::class, 'addPayment'])->name('add-payment')->whereNumber('contract');
         Route::post('/{contract}/store-payment', [ContractController::class, 'storePayment'])->name('store-payment')->whereNumber('contract');
+        Route::post('/{contract}/store-notboshlangich-payment', [ContractController::class, 'storeNotBoshlangichPayment'])->name('store-notboshlangich-payment')->whereNumber('contract');
+
         Route::get('/{contract}/add-quarter-payment/{year}/{quarter}', [ContractController::class, 'addQuarterPayment'])->name('add-quarter-payment')->whereNumber('contract');
         Route::get('/{contract}/quarter-details/{year}/{quarter}', [ContractController::class, 'quarterDetails'])->name('quarter-details')->whereNumber('contract');
 

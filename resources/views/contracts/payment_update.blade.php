@@ -1006,10 +1006,12 @@ function togglePaymentType(select) {
     }
 }
 
+
 function showAddPaymentModal(type = 'quarterly', targetYear = null, targetQuarter = null) {
     const modal = document.getElementById('addPaymentModal');
     const modalTitle = document.getElementById('modalTitle');
     const paymentCategory = document.getElementById('paymentCategory');
+    const amountInput = document.getElementById('modalPaymentAmount');
 
     modal.classList.remove('hidden');
 
@@ -1017,13 +1019,50 @@ function showAddPaymentModal(type = 'quarterly', targetYear = null, targetQuarte
         modalTitle.textContent = 'Boshlang\'ich to\'lov qo\'shish';
         paymentCategory.value = 'initial';
         document.getElementById('modalQuarterInfo').value = 'Boshlang\'ich to\'lov';
+
+        // FIXED: Check if data exists before accessing
+        @if(isset($paymentData['contract']['initial_payment_amount']) && isset($paymentData['initial_payments']['total_paid']))
+            const initialPaymentLimit = {{ $paymentData['contract']['initial_payment_amount'] }};
+            const alreadyPaid = {{ $paymentData['initial_payments']['total_paid'] }};
+        @else
+            const initialPaymentLimit = 0;
+            const alreadyPaid = 0;
+        @endif
+
+        const remainingAmount = Math.max(0, initialPaymentLimit - alreadyPaid);
+
+        if (remainingAmount > 0) {
+            amountInput.setAttribute('max', remainingAmount);
+            amountInput.setAttribute('data-remaining', remainingAmount);
+
+            // Add helper text
+            const helperText = document.createElement('p');
+            helperText.id = 'initial-payment-helper';
+            helperText.className = 'text-sm text-gray-600 mt-1';
+            helperText.textContent = `Qolgan boshlang'ich to'lov: ${new Intl.NumberFormat('uz-UZ').format(remainingAmount)} so'm`;
+
+            // Remove existing helper if any
+            const existingHelper = document.getElementById('initial-payment-helper');
+            if (existingHelper) {
+                existingHelper.remove();
+            }
+
+            amountInput.parentNode.appendChild(helperText);
+        } else {
+            showErrorMessage('Boshlang\'ich to\'lov allaqachon to\'liq to\'langan');
+            hideAddPaymentModal();
+            return;
+        }
+
     } else if (type === 'full') {
         modalTitle.textContent = 'To\'lov qo\'shish';
         paymentCategory.value = 'full';
         document.getElementById('modalQuarterInfo').value = 'To\'liq to\'lov';
+        amountInput.removeAttribute('max');
     } else {
         modalTitle.textContent = 'Chorak to\'lovi qo\'shish';
         paymentCategory.value = 'quarterly';
+        amountInput.removeAttribute('max');
 
         if (targetYear && targetQuarter) {
             const middleMonth = (targetQuarter - 1) * 3 + 2;
@@ -1035,10 +1074,59 @@ function showAddPaymentModal(type = 'quarterly', targetYear = null, targetQuarte
 
     feather.replace();
 }
+
+document.addEventListener('DOMContentLoaded', function() {
+    const amountInput = document.getElementById('modalPaymentAmount');
+
+    if (amountInput) {
+        amountInput.addEventListener('input', function() {
+            const maxAmount = parseFloat(this.getAttribute('max'));
+            const currentAmount = parseFloat(this.value);
+            const errorDiv = document.getElementById('amount-error');
+
+            // Remove existing error
+            if (errorDiv) {
+                errorDiv.remove();
+            }
+
+            if (maxAmount && currentAmount > maxAmount) {
+                // Add error message
+                const error = document.createElement('p');
+                error.id = 'amount-error';
+                error.className = 'text-red-500 text-sm mt-1';
+                error.textContent = `Summa ${new Intl.NumberFormat('uz-UZ').format(maxAmount)} so'mdan oshmasligi kerak`;
+
+                this.parentNode.appendChild(error);
+                this.classList.add('border-red-300');
+            } else {
+                this.classList.remove('border-red-300');
+            }
+        });
+    }
+});
+
+
 function hideAddPaymentModal() {
     document.getElementById('addPaymentModal').classList.add('hidden');
     document.getElementById('addPaymentForm').reset();
     document.getElementById('paymentCategory').value = 'quarterly';
+
+    // Remove helper text and errors
+    const helperText = document.getElementById('initial-payment-helper');
+    if (helperText) {
+        helperText.remove();
+    }
+
+    const errorDiv = document.getElementById('amount-error');
+    if (errorDiv) {
+        errorDiv.remove();
+    }
+
+    // Reset input attributes
+    const amountInput = document.getElementById('modalPaymentAmount');
+    amountInput.removeAttribute('max');
+    amountInput.removeAttribute('data-remaining');
+    amountInput.classList.remove('border-red-300');
 }
 
 function addQuarterPayment(year, quarter) {
@@ -1065,6 +1153,15 @@ function updateQuarterInfo(dateStr) {
 function submitAddPayment() {
     const form = document.getElementById('addPaymentForm');
     const formData = new FormData(form);
+    const amountInput = document.getElementById('modalPaymentAmount');
+    const maxAmount = parseFloat(amountInput.getAttribute('max'));
+    const currentAmount = parseFloat(formData.get('payment_amount'));
+
+    // Client-side validation
+    if (maxAmount && currentAmount > maxAmount) {
+        showErrorMessage(`To'lov summasi ${new Intl.NumberFormat('uz-UZ').format(maxAmount)} so'mdan oshmasligi kerak`);
+        return;
+    }
 
     // Add contract ID
     const contractId = {{ $paymentData['contract']['id'] ?? 0 }};
@@ -1075,6 +1172,10 @@ function submitAddPayment() {
     submitBtn.disabled = true;
     submitBtn.innerHTML = 'Saqlanmoqda...';
 
+    // Debug: Log form data
+    console.log('Form data being sent:', Object.fromEntries(formData));
+    console.log('Contract ID:', contractId);
+
     fetch(`/contracts/${contractId}/store-payment`, {
         method: 'POST',
         body: formData,
@@ -1082,8 +1183,31 @@ function submitAddPayment() {
             'X-CSRF-TOKEN': document.querySelector('meta[name="csrf-token"]').getAttribute('content')
         }
     })
-    .then(response => response.json())
-    .then(data => {
+    .then(response => {
+        console.log('Response status:', response.status);
+        console.log('Response headers:', response.headers);
+
+        // Check if response is ok
+        if (!response.ok) {
+            throw new Error(`HTTP error! status: ${response.status}`);
+        }
+
+        // Get response as text first to debug
+        return response.text();
+    })
+    .then(text => {
+        console.log('Raw response:', text);
+
+        // Try to parse as JSON
+        let data;
+        try {
+            data = JSON.parse(text);
+        } catch (e) {
+            console.error('JSON parse error:', e);
+            console.error('Response text:', text);
+            throw new Error('Server qaytgan javob JSON formatida emas');
+        }
+
         if (data.success) {
             hideAddPaymentModal();
             showSuccessMessage(data.message);
@@ -1093,8 +1217,16 @@ function submitAddPayment() {
         }
     })
     .catch(error => {
-        console.error('Error:', error);
-        showErrorMessage('To\'lov qo\'shishda xatolik yuz berdi');
+        console.error('Fetch error:', error);
+
+        // Show specific error message
+        if (error.message.includes('JSON')) {
+            showErrorMessage('Server javobida xatolik. Sahifani yangilang va qayta urinib ko\'ring.');
+        } else if (error.message.includes('HTTP error')) {
+            showErrorMessage('Server bilan bog\'lanishda xatolik.');
+        } else {
+            showErrorMessage('To\'lov qo\'shishda xatolik yuz berdi: ' + error.message);
+        }
     })
     .finally(() => {
         submitBtn.disabled = false;

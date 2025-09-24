@@ -439,68 +439,227 @@ class ContractController extends Controller
     /**
      * Store payment
      */
-    public function storePayment(Request $request, Contract $contract): RedirectResponse
-    {
+    // public function storePayment(Request $request, Contract $contract): RedirectResponse
+    // {
+    //     $validator = Validator::make($request->all(), [
+    //         'payment_date' => 'required|date|after_or_equal:' . $contract->contract_date->format('Y-m-d'),
+    //         'payment_amount' => 'required|numeric|min:0.01',
+    //         'payment_number' => 'nullable|string|max:50',
+    //         'payment_notes' => 'nullable|string|max:500',
+    //         'target_year' => 'nullable|integer',
+    //         'target_quarter' => 'nullable|integer|min:1|max:4'
+    //     ]);
+
+    //     if ($validator->fails()) {
+    //         return redirect()->back()
+    //             ->withErrors($validator)
+    //             ->withInput();
+    //     }
+
+    //     try {
+    //         // Debug: Log request data
+    //         \Log::info('Payment request data: ', $request->all());
+
+    //         // Prepare data for the payment service with correct field names
+    //         $paymentData = [
+    //             'payment_date' => $request->input('payment_date'),
+    //             'payment_amount' => $request->input('payment_amount'), // Keep original name
+    //             'amount' => $request->input('payment_amount'), // Also add as 'amount' for service
+    //             'payment_number' => $request->input('payment_number'),
+    //             'payment_notes' => $request->input('payment_notes'),
+    //             'notes' => $request->input('payment_notes'), // Also add as 'notes' for service
+    //             'year' => $request->input('target_year'),
+    //             'quarter' => $request->input('target_quarter'),
+    //             'target_year' => $request->input('target_year'), // Keep original name
+    //             'target_quarter' => $request->input('target_quarter'), // Keep original name
+    //             'payment_category' => $request->input('target_quarter') ? 'quarterly' : 'initial',
+    //             'created_by' => auth()->id()
+    //         ];
+
+    //         // Check if required fields exist
+    //         if (!$request->has('payment_amount') || !$request->has('payment_date')) {
+    //             return redirect()->back()
+    //                 ->withErrors(['error' => 'Majburiy maydonlar to\'ldirilmagan'])
+    //                 ->withInput();
+    //         }
+
+    //         $result = $this->paymentService->addPayment($contract, $paymentData);
+
+    //         if ($result['success']) {
+    //             return redirect()->route('contracts.payment_update', $contract)
+    //                 ->with('success', 'To\'lov muvaffaqiyatli qo\'shildi');
+    //         } else {
+    //             return redirect()->back()
+    //                 ->withErrors(['error' => $result['message']])
+    //                 ->withInput();
+    //         }
+    //     } catch (\Exception $e) {
+    //         \Log::error('Payment creation error: ' . $e->getMessage());
+
+    //         return redirect()->back()
+    //             ->withErrors(['error' => 'To\'lov qo\'shishda xatolik yuz berdi'])
+    //             ->withInput();
+    //     }
+    // }
+
+
+public function storePayment(Request $request, Contract $contract)
+{
+    // Log the incoming request for debugging
+    \Log::info('Store payment request', [
+        'contract_id' => $contract->id,
+        'request_data' => $request->all()
+    ]);
+
+    try {
         $validator = Validator::make($request->all(), [
+            'payment_date' => 'required|date|after_or_equal:' . $contract->contract_date->format('Y-m-d'),
+            'payment_amount' => 'required|numeric|min:0.01',
+            'payment_number' => 'nullable|string|max:50',
+            'payment_notes' => 'nullable|string|max:500',
+            'payment_category' => 'required|in:initial,quarterly,full',
+            'target_year' => 'nullable|integer',
+            'target_quarter' => 'nullable|integer|min:1|max:4'
+        ]);
+
+        if ($validator->fails()) {
+            return response()->json([
+                'success' => false,
+                'message' => 'Ma\'lumotlarda xatolik: ' . $validator->errors()->first(),
+                'errors' => $validator->errors()
+            ], 422);
+        }
+
+        // Prepare payment data
+        $paymentData = [
+            'payment_date' => $request->input('payment_date'),
+            'payment_amount' => $request->input('payment_amount'),
+            'payment_number' => $request->input('payment_number'),
+            'payment_notes' => $request->input('payment_notes'),
+            'payment_category' => $request->input('payment_category', 'quarterly'),
+            'target_year' => $request->input('target_year'),
+            'target_quarter' => $request->input('target_quarter'),
+            'created_by' => auth()->id()
+        ];
+
+        \Log::info('Calling payment service', ['payment_data' => $paymentData]);
+
+        $result = $this->paymentService->addPayment($contract, $paymentData);
+
+        \Log::info('Payment service result', ['result' => $result]);
+
+        return response()->json($result);
+
+    } catch (\Exception $e) {
+        \Log::error('Payment creation error', [
+            'contract_id' => $contract->id,
+            'error' => $e->getMessage(),
+            'trace' => $e->getTraceAsString()
+        ]);
+
+        return response()->json([
+            'success' => false,
+            'message' => 'To\'lov qo\'shishda xatolik yuz berdi: ' . $e->getMessage()
+        ], 500);
+    }
+}
+
+public function storeNotBoshlangichPayment(Request $request, Contract $contract)
+{
+    \Log::info('Store payment request', [
+        'contract_id' => $contract->id,
+        'request_data' => $request->all()
+    ]);
+
+    try {
+        // Determine if this is a form submission or AJAX
+        $isFormSubmission = !$request->wantsJson();
+
+        // Adjust validation rules based on request type
+        $validationRules = [
             'payment_date' => 'required|date|after_or_equal:' . $contract->contract_date->format('Y-m-d'),
             'payment_amount' => 'required|numeric|min:0.01',
             'payment_number' => 'nullable|string|max:50',
             'payment_notes' => 'nullable|string|max:500',
             'target_year' => 'nullable|integer',
             'target_quarter' => 'nullable|integer|min:1|max:4'
-        ]);
+        ];
+
+        // Only require payment_category for AJAX requests
+        if (!$isFormSubmission) {
+            $validationRules['payment_category'] = 'required|in:initial,quarterly,full';
+        }
+
+        $validator = Validator::make($request->all(), $validationRules);
 
         if ($validator->fails()) {
-            return redirect()->back()
-                ->withErrors($validator)
-                ->withInput();
-        }
-
-        try {
-            // Debug: Log request data
-            \Log::info('Payment request data: ', $request->all());
-
-            // Prepare data for the payment service with correct field names
-            $paymentData = [
-                'payment_date' => $request->input('payment_date'),
-                'payment_amount' => $request->input('payment_amount'), // Keep original name
-                'amount' => $request->input('payment_amount'), // Also add as 'amount' for service
-                'payment_number' => $request->input('payment_number'),
-                'payment_notes' => $request->input('payment_notes'),
-                'notes' => $request->input('payment_notes'), // Also add as 'notes' for service
-                'year' => $request->input('target_year'),
-                'quarter' => $request->input('target_quarter'),
-                'target_year' => $request->input('target_year'), // Keep original name
-                'target_quarter' => $request->input('target_quarter'), // Keep original name
-                'payment_category' => $request->input('target_quarter') ? 'quarterly' : 'initial',
-                'created_by' => auth()->id()
-            ];
-
-            // Check if required fields exist
-            if (!$request->has('payment_amount') || !$request->has('payment_date')) {
-                return redirect()->back()
-                    ->withErrors(['error' => 'Majburiy maydonlar to\'ldirilmagan'])
-                    ->withInput();
+            if ($isFormSubmission) {
+                return back()->withErrors($validator)->withInput();
             }
 
-            $result = $this->paymentService->addPayment($contract, $paymentData);
+            return response()->json([
+                'success' => false,
+                'message' => 'Ma\'lumotlarda xatolik: ' . $validator->errors()->first(),
+                'errors' => $validator->errors()
+            ], 422);
+        }
 
+        // Determine payment category if not provided (for form submissions)
+        $paymentCategory = $request->input('payment_category');
+        if (!$paymentCategory) {
+            $paymentCategory = $request->input('target_quarter') ? 'quarterly' : 'initial';
+        }
+
+        // Prepare payment data
+        $paymentData = [
+            'payment_date' => $request->input('payment_date'),
+            'payment_amount' => $request->input('payment_amount'),
+            'payment_number' => $request->input('payment_number'),
+            'payment_notes' => $request->input('payment_notes'),
+            'payment_category' => $paymentCategory,
+            'target_year' => $request->input('target_year'),
+            'target_quarter' => $request->input('target_quarter'),
+            'created_by' => auth()->id()
+        ];
+
+        \Log::info('Calling payment service', ['payment_data' => $paymentData]);
+
+        $result = $this->paymentService->addPayment($contract, $paymentData);
+
+        \Log::info('Payment service result', ['result' => $result]);
+
+        // Handle response based on request type
+        if ($isFormSubmission) {
             if ($result['success']) {
                 return redirect()->route('contracts.payment_update', $contract)
-                    ->with('success', 'To\'lov muvaffaqiyatli qo\'shildi');
+                    ->with('success', $result['message']);
             } else {
-                return redirect()->back()
-                    ->withErrors(['error' => $result['message']])
-                    ->withInput();
+                return back()->withInput()
+                    ->with('error', $result['message']);
             }
-        } catch (\Exception $e) {
-            \Log::error('Payment creation error: ' . $e->getMessage());
-
-            return redirect()->back()
-                ->withErrors(['error' => 'To\'lov qo\'shishda xatolik yuz berdi'])
-                ->withInput();
         }
+
+        return response()->json($result);
+
+    } catch (\Exception $e) {
+        \Log::error('Payment creation error', [
+            'contract_id' => $contract->id,
+            'error' => $e->getMessage(),
+            'trace' => $e->getTraceAsString()
+        ]);
+
+        if ($isFormSubmission) {
+            return back()->withInput()
+                ->with('error', 'To\'lov qo\'shishda xatolik yuz berdi');
+        }
+
+        return response()->json([
+            'success' => false,
+            'message' => 'To\'lov qo\'shishda xatolik yuz berdi: ' . $e->getMessage()
+        ], 500);
     }
+}
+
     /**
      * Show quarter payment form
      */
