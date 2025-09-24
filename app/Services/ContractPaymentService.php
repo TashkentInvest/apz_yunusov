@@ -692,14 +692,57 @@ class ContractPaymentService
         try {
             DB::beginTransaction();
 
+            // Enhanced validation for amendment number format
+            $baseContractNumber = $contract->contract_number;
+            if (strpos($baseContractNumber, '(') !== false) {
+                $baseContractNumber = preg_replace('/\(\d+\)$/', '', $baseContractNumber);
+            }
+
+            // Validate amendment number format
+            if (!preg_match('/^.+\(\d+\)$/', $data['amendment_number'])) {
+                throw new \Exception('Kelishuv raqami formati noto\'g\'ri. Misol: ' . $baseContractNumber . '(1)');
+            }
+
             // Check for duplicate amendment numbers
             $existingAmendment = ContractAmendment::where('contract_id', $contract->id)
                 ->where('amendment_number', $data['amendment_number'])
                 ->first();
 
             if ($existingAmendment) {
-                throw new \Exception('Bu raqamli qo\'shimcha kelishuv allaqachon mavjud');
+                throw new \Exception('Bu raqamli qo\'shimcha kelishuv allaqachon mavjud: ' . $data['amendment_number']);
             }
+
+            // Advanced financial validation
+            if (isset($data['new_total_amount'])) {
+                $totalPaid = ActualPayment::where('contract_id', $contract->id)->sum('amount');
+                if ($data['new_total_amount'] < $totalPaid) {
+                    throw new \Exception(
+                        "Yangi shartnoma summasi ({$this->formatCurrency($data['new_total_amount'])}) " .
+                            "allaqachon to'langan summadan ({$this->formatCurrency($totalPaid)}) kam bo'lishi mumkin emas"
+                    );
+                }
+
+                // Check if the change is significant (less than 1% change might be a mistake)
+                $percentChange = abs(($data['new_total_amount'] - $contract->total_amount) / $contract->total_amount) * 100;
+                if ($percentChange < 0.1) {
+                    Log::warning('Amendment with minimal amount change created', [
+                        'contract_id' => $contract->id,
+                        'old_amount' => $contract->total_amount,
+                        'new_amount' => $data['new_total_amount'],
+                        'percent_change' => $percentChange
+                    ]);
+                }
+            }
+
+            // Validate quarters count
+            if (isset($data['new_quarters_count'])) {
+                if ($data['new_quarters_count'] > 40) {
+                    throw new \Exception('Choraklar soni 40 tadan ko\'p bo\'lishi mumkin emas');
+                }
+            }
+
+            // Calculate impact summary
+            $impactSummary = $this->calculateAmendmentImpact($contract, $data);
 
             $amendment = ContractAmendment::create([
                 'contract_id' => $contract->id,
@@ -711,6 +754,7 @@ class ContractPaymentService
                 'new_quarters_count' => $data['new_quarters_count'] ?? null,
                 'reason' => $data['reason'],
                 'description' => $data['description'] ?? null,
+                'impact_summary' => json_encode($impactSummary),
                 'is_approved' => false,
                 'created_by' => auth()->id() ?? 1
             ]);
@@ -719,8 +763,9 @@ class ContractPaymentService
 
             return [
                 'success' => true,
-                'message' => 'Qo\'shimcha kelishuv muvaffaqiyatli yaratildi',
-                'amendment' => $amendment
+                'message' => "Qo'shimcha kelishuv '{$amendment->amendment_number}' muvaffaqiyatli yaratildi",
+                'amendment' => $amendment,
+                'impact_summary' => $impactSummary
             ];
         } catch (\Exception $e) {
             DB::rollBack();
@@ -728,11 +773,88 @@ class ContractPaymentService
 
             return [
                 'success' => false,
-                'message' => 'Qo\'shimcha kelishuv yaratishda xatolik: ' . $e->getMessage()
+                'message' => $e->getMessage()
             ];
         }
     }
 
+private function calculateAmendmentImpact(Contract $contract, array $data): array
+{
+    $impact = [];
+
+    // Financial impact
+    if (isset($data['new_total_amount'])) {
+        $oldAmount = $contract->total_amount;
+        $newAmount = (float) $data['new_total_amount'];
+        $difference = $newAmount - $oldAmount;
+        $percentChange = ($difference / $oldAmount) * 100;
+
+        $impact['financial'] = [
+            'old_amount' => $oldAmount,
+            'new_amount' => $newAmount,
+            'difference' => $difference,
+            'percent_change' => round($percentChange, 2),
+            'impact_level' => $this->getImpactLevel($percentChange)
+        ];
+
+        // Calculate new payment breakdown
+        $newInitialPercent = $data['new_initial_payment_percent'] ?? $contract->initial_payment_percent ?? 20;
+        $newQuarters = $data['new_quarters_count'] ?? $contract->quarters_count ?? 8;
+
+        $newInitialAmount = $newAmount * ($newInitialPercent / 100);
+        $newRemainingAmount = $newAmount - $newInitialAmount;
+        $newQuarterlyAmount = $newQuarters > 0 ? $newRemainingAmount / $newQuarters : 0;
+
+        $impact['payment_structure'] = [
+            'old_initial_amount' => $contract->total_amount * (($contract->initial_payment_percent ?? 20) / 100),
+            'new_initial_amount' => $newInitialAmount,
+            'old_quarterly_amount' => $contract->quarters_count > 0 ?
+                ($contract->total_amount * (100 - ($contract->initial_payment_percent ?? 20)) / 100) / $contract->quarters_count : 0,
+            'new_quarterly_amount' => $newQuarterlyAmount
+        ];
+    }
+
+    // Schedule impact
+    if (isset($data['new_quarters_count'])) {
+        $oldQuarters = $contract->quarters_count ?? 8;
+        $newQuarters = (int) $data['new_quarters_count'];
+
+        $impact['schedule'] = [
+            'old_quarters' => $oldQuarters,
+            'new_quarters' => $newQuarters,
+            'quarters_difference' => $newQuarters - $oldQuarters,
+            'duration_change_months' => ($newQuarters - $oldQuarters) * 3
+        ];
+    }
+
+    // Timeline impact
+    if (isset($data['new_completion_date'])) {
+        $oldDate = $contract->completion_date;
+        $newDate = Carbon::parse($data['new_completion_date']);
+
+        if ($oldDate) {
+            $daysDifference = $newDate->diffInDays($oldDate, false);
+            $impact['timeline'] = [
+                'old_date' => $oldDate,
+                'new_date' => $newDate,
+                'days_difference' => $daysDifference,
+                'extended' => $daysDifference > 0
+            ];
+        }
+    }
+
+    return $impact;
+}
+
+private function getImpactLevel(float $percentChange): string
+{
+    $absChange = abs($percentChange);
+
+    if ($absChange < 5) return 'minimal';
+    if ($absChange < 15) return 'moderate';
+    if ($absChange < 30) return 'significant';
+    return 'major';
+}
     /**
      * Approve amendment and apply changes
      */
@@ -743,65 +865,85 @@ class ContractPaymentService
 
             $contract = $amendment->contract;
 
-            // Calculate current paid amount
+            // Re-validate against current payments
             $totalPaid = ActualPayment::where('contract_id', $contract->id)->sum('amount');
 
-            // Prepare update data
+            if ($amendment->new_total_amount && $amendment->new_total_amount < $totalPaid) {
+                throw new \Exception(
+                    "Yangi shartnoma summasi ({$this->formatCurrency($amendment->new_total_amount)}) " .
+                        "allaqachon to'langan summadan ({$this->formatCurrency($totalPaid)}) kam bo'lishi mumkin emas"
+                );
+            }
+
+            // Apply changes to contract
+            $appliedChanges = [];
             $updateData = [];
 
             if ($amendment->new_total_amount !== null) {
-                // Validate that new amount is not less than already paid
-                if ($amendment->new_total_amount < $totalPaid) {
-                    throw new \Exception("Yangi shartnoma summasi ({$this->formatCurrency($amendment->new_total_amount)}) allaqachon to'langan summadan ({$this->formatCurrency($totalPaid)}) kam bo'lishi mumkin emas");
-                }
+                $oldAmount = $contract->total_amount;
                 $updateData['total_amount'] = $amendment->new_total_amount;
+                $appliedChanges['total_amount'] = [
+                    'old' => $oldAmount,
+                    'new' => $amendment->new_total_amount,
+                    'difference' => $amendment->new_total_amount - $oldAmount
+                ];
             }
 
             if ($amendment->new_completion_date !== null) {
+                $oldDate = $contract->completion_date;
                 $updateData['completion_date'] = $amendment->new_completion_date;
+                $appliedChanges['completion_date'] = [
+                    'old' => $oldDate,
+                    'new' => $amendment->new_completion_date
+                ];
             }
 
             if ($amendment->new_initial_payment_percent !== null) {
+                $oldPercent = $contract->initial_payment_percent;
                 $updateData['initial_payment_percent'] = $amendment->new_initial_payment_percent;
+                $appliedChanges['initial_payment_percent'] = [
+                    'old' => $oldPercent,
+                    'new' => $amendment->new_initial_payment_percent,
+                    'difference' => $amendment->new_initial_payment_percent - $oldPercent
+                ];
             }
 
             if ($amendment->new_quarters_count !== null) {
+                $oldQuarters = $contract->quarters_count;
                 $updateData['quarters_count'] = $amendment->new_quarters_count;
+                $appliedChanges['quarters_count'] = [
+                    'old' => $oldQuarters,
+                    'new' => $amendment->new_quarters_count,
+                    'difference' => $amendment->new_quarters_count - $oldQuarters
+                ];
             }
 
-            // Update contract with new values
-            $contract->update($updateData);
+            // Update contract
+            if (!empty($updateData)) {
+                $updateData['updated_by'] = auth()->id() ?? 1;
+                $contract->update($updateData);
+            }
+
+            // Update payment schedules
+            $this->updateSchedulesAfterAmendmentApproval($contract, $amendment, $appliedChanges);
 
             // Approve amendment
             $amendment->update([
                 'is_approved' => true,
                 'approved_at' => now(),
-                'approved_by' => auth()->id() ?? 1
+                'approved_by' => auth()->id() ?? 1,
+                'applied_changes' => json_encode($appliedChanges)
             ]);
 
-            // Update initial payment schedule if initial payment percent changed
-            if (isset($updateData['initial_payment_percent']) || isset($updateData['total_amount'])) {
-                $newInitialAmount = $contract->fresh()->total_amount * (($contract->fresh()->initial_payment_percent ?? 20) / 100);
-
-                PaymentSchedule::where('contract_id', $contract->id)
-                    ->where('is_initial_payment', true)
-                    ->where('is_active', true)
-                    ->update(['quarter_amount' => $newInitialAmount]);
-            }
-
-            // Deactivate old quarterly payment schedules if major changes were made
-            if (isset($updateData['total_amount']) || isset($updateData['quarters_count'])) {
-                PaymentSchedule::where('contract_id', $contract->id)
-                    ->where('is_initial_payment', false)
-                    ->whereNull('amendment_id')
-                    ->update(['is_active' => false]);
-            }
+            // Create audit log
+            $this->createAmendmentAuditLog($contract, $amendment, $appliedChanges);
 
             DB::commit();
 
             return [
                 'success' => true,
-                'message' => 'Qo\'shimcha kelishuv tasdiqlandi va o\'zgarishlar qo\'llanildi'
+                'message' => "Qo'shimcha kelishuv '{$amendment->amendment_number}' muvaffaqiyatli tasdiqlandi",
+                'applied_changes' => $appliedChanges
             ];
         } catch (\Exception $e) {
             DB::rollBack();
@@ -813,6 +955,320 @@ class ContractPaymentService
             ];
         }
     }
+
+private function updateSchedulesAfterAmendmentApproval(Contract $contract, ContractAmendment $amendment, array $appliedChanges): void
+{
+    try {
+        // Update initial payment schedule if needed
+        if (isset($appliedChanges['total_amount']) || isset($appliedChanges['initial_payment_percent'])) {
+            $newTotalAmount = $appliedChanges['total_amount']['new'] ?? $contract->total_amount;
+            $newInitialPercent = $appliedChanges['initial_payment_percent']['new'] ?? $contract->initial_payment_percent ?? 20;
+            $newInitialAmount = $newTotalAmount * ($newInitialPercent / 100);
+
+            PaymentSchedule::where('contract_id', $contract->id)
+                ->where('is_initial_payment', true)
+                ->where('is_active', true)
+                ->update([
+                    'quarter_amount' => $newInitialAmount,
+                    'updated_by' => auth()->id() ?? 1,
+                    'amendment_impact' => "Updated by amendment {$amendment->amendment_number}"
+                ]);
+        }
+
+        // Mark old quarterly schedules as inactive if major structural changes
+        if (isset($appliedChanges['total_amount']) || isset($appliedChanges['quarters_count'])) {
+            PaymentSchedule::where('contract_id', $contract->id)
+                ->where('is_initial_payment', false)
+                ->whereNull('amendment_id')
+                ->update([
+                    'is_active' => false,
+                    'deactivated_reason' => "Superseded by amendment {$amendment->amendment_number}",
+                    'deactivated_at' => now(),
+                    'updated_by' => auth()->id() ?? 1
+                ]);
+        }
+
+    } catch (\Exception $e) {
+        Log::error('Failed to update schedules after amendment approval', [
+            'amendment_id' => $amendment->id,
+            'error' => $e->getMessage()
+        ]);
+        // Don't throw - main approval should still succeed
+    }
+}
+
+private function createAmendmentAuditLog(Contract $contract, ContractAmendment $amendment, array $appliedChanges): void
+{
+    try {
+        $auditData = [
+            'contract_id' => $contract->id,
+            'contract_number' => $contract->contract_number,
+            'amendment_id' => $amendment->id,
+            'amendment_number' => $amendment->amendment_number,
+            'action' => 'amendment_approved',
+            'applied_changes' => $appliedChanges,
+            'reason' => $amendment->reason,
+            'approved_by' => auth()->id() ?? 1,
+            'approved_at' => now(),
+            'previous_state' => [
+                'total_amount' => $appliedChanges['total_amount']['old'] ?? $contract->total_amount,
+                'initial_payment_percent' => $appliedChanges['initial_payment_percent']['old'] ?? $contract->initial_payment_percent,
+                'quarters_count' => $appliedChanges['quarters_count']['old'] ?? $contract->quarters_count,
+                'completion_date' => $appliedChanges['completion_date']['old'] ?? $contract->completion_date
+            ]
+        ];
+
+        Log::info('Contract amendment approved - audit log', $auditData);
+
+        // You can also store this in a dedicated audit table if you have one
+        // ContractAuditLog::create($auditData);
+
+    } catch (\Exception $e) {
+        Log::error('Failed to create amendment audit log', [
+            'amendment_id' => $amendment->id,
+            'error' => $e->getMessage()
+        ]);
+    }
+}
+public function getAmendmentHistory(Contract $contract): array
+{
+    $amendments = $contract->amendments()
+        ->with(['createdBy', 'approvedBy'])
+        ->orderBy('amendment_date', 'desc')
+        ->get();
+
+    $history = [];
+
+    foreach ($amendments as $amendment) {
+        $changes = [];
+
+        if ($amendment->new_total_amount) {
+            $changes[] = "Summa: " . $this->formatCurrency($amendment->new_total_amount);
+        }
+
+        if ($amendment->new_initial_payment_percent) {
+            $changes[] = "Boshlang'ich: {$amendment->new_initial_payment_percent}%";
+        }
+
+        if ($amendment->new_quarters_count) {
+            $changes[] = "Choraklar: {$amendment->new_quarters_count}";
+        }
+
+        if ($amendment->new_completion_date) {
+            $changes[] = "Muddat: " . $amendment->new_completion_date->format('d.m.Y');
+        }
+
+        $history[] = [
+            'id' => $amendment->id,
+            'amendment_number' => $amendment->amendment_number,
+            'date' => $amendment->amendment_date->format('d.m.Y'),
+            'reason' => $amendment->reason,
+            'changes' => $changes,
+            'changes_text' => implode(', ', $changes),
+            'is_approved' => $amendment->is_approved,
+            'status' => $amendment->is_approved ? 'Tasdiqlangan' : 'Kutilmoqda',
+            'created_by' => $amendment->createdBy?->name ?? 'Noma\'lum',
+            'approved_by' => $amendment->approvedBy?->name,
+            'created_at' => $amendment->created_at->format('d.m.Y H:i'),
+            'approved_at' => $amendment->approved_at?->format('d.m.Y H:i')
+        ];
+    }
+
+    return [
+        'amendments' => $history,
+        'total_count' => count($history),
+        'approved_count' => $amendments->where('is_approved', true)->count(),
+        'pending_count' => $amendments->where('is_approved', false)->count()
+    ];
+}
+
+
+public function generateAmendmentSuggestions(Contract $contract): array
+{
+    $suggestions = [];
+
+    // Analyze payment patterns
+    $totalPaid = ActualPayment::where('contract_id', $contract->id)->sum('amount');
+    $paymentPercent = $contract->total_amount > 0 ? ($totalPaid / $contract->total_amount) * 100 : 0;
+
+    // Check if contract is significantly behind schedule
+    if ($contract->completion_date && $contract->completion_date->isPast()) {
+        if ($paymentPercent < 90) {
+            $suggestions[] = [
+                'type' => 'extend_deadline',
+                'priority' => 'high',
+                'title' => 'Muddatni uzaytirish',
+                'description' => 'Shartnoma muddati o\'tgan, lekin to\'lovlar yakunlanmagan',
+                'suggested_date' => now()->addMonths(6)->format('Y-m-d')
+            ];
+        }
+    }
+
+    // Check for payment difficulties
+    $recentPayments = ActualPayment::where('contract_id', $contract->id)
+        ->where('payment_date', '>=', now()->subMonths(3))
+        ->count();
+
+    if ($recentPayments == 0 && $paymentPercent < 100) {
+        $suggestions[] = [
+            'type' => 'restructure_payments',
+            'priority' => 'medium',
+            'title' => 'To\'lov tuzilmasini o\'zgartirish',
+            'description' => 'So\'nggi 3 oyda to\'lovlar amalga oshirilmagan',
+            'suggested_quarters' => $contract->quarters_count + 4
+        ];
+    }
+
+    // Check for overpayment
+    if ($paymentPercent > 100) {
+        $overpayment = $totalPaid - $contract->total_amount;
+        $suggestions[] = [
+            'type' => 'increase_amount',
+            'priority' => 'low',
+            'title' => 'Shartnoma summasini oshirish',
+            'description' => 'Ortiqcha to\'lov amalga oshirilgan',
+            'suggested_amount' => $totalPaid,
+            'overpayment' => $overpayment
+        ];
+    }
+
+    return $suggestions;
+}
+
+public function validateAmendmentData(Contract $contract, array $data): array
+{
+    $errors = [];
+    $warnings = [];
+
+    // Validate total amount
+    if (isset($data['new_total_amount'])) {
+        $newAmount = (float) $data['new_total_amount'];
+        $totalPaid = ActualPayment::where('contract_id', $contract->id)->sum('amount');
+
+        if ($newAmount < $totalPaid) {
+            $errors[] = "Yangi summa allaqachon to'langan summadan kam: " .
+                       $this->formatCurrency($totalPaid);
+        }
+
+        $percentChange = abs(($newAmount - $contract->total_amount) / $contract->total_amount) * 100;
+        if ($percentChange > 50) {
+            $warnings[] = "Katta o'zgarish ({$percentChange}% dan ortiq)";
+        }
+
+        if ($percentChange < 1) {
+            $warnings[] = "Juda kichik o'zgarish ({$percentChange}%)";
+        }
+    }
+
+    // Validate quarters count
+    if (isset($data['new_quarters_count'])) {
+        $newQuarters = (int) $data['new_quarters_count'];
+
+        if ($newQuarters < 1) {
+            $errors[] = "Choraklar soni kamida 1 bo'lishi kerak";
+        }
+
+        if ($newQuarters > 40) {
+            $errors[] = "Choraklar soni 40 dan ortiq bo'lmasligi kerak";
+        }
+
+        $existingPayments = ActualPayment::where('contract_id', $contract->id)
+            ->where('is_initial_payment', false)
+            ->distinct('year', 'quarter')
+            ->count();
+
+        if ($newQuarters < $existingPayments) {
+            $warnings[] = "Yangi choraklar soni mavjud to'lovlarga mos emas";
+        }
+    }
+
+    // Validate completion date
+    if (isset($data['new_completion_date'])) {
+        $newDate = Carbon::parse($data['new_completion_date']);
+
+        if ($newDate->lt($contract->contract_date)) {
+            $errors[] = "Yakunlash sanasi shartnoma sanasidan oldin bo'lishi mumkin emas";
+        }
+
+        if ($newDate->lt(now())) {
+            $warnings[] = "Yakunlash sanasi o'tmishda";
+        }
+    }
+
+    return [
+        'valid' => empty($errors),
+        'errors' => $errors,
+        'warnings' => $warnings
+    ];
+}
+
+
+public function getAmendmentImpactPreview(Contract $contract, array $data): array
+{
+    $preview = [];
+
+    // Current state
+    $currentState = [
+        'total_amount' => $contract->total_amount,
+        'initial_payment_percent' => $contract->initial_payment_percent ?? 20,
+        'quarters_count' => $contract->quarters_count ?? 8,
+        'completion_date' => $contract->completion_date
+    ];
+
+    // New state
+    $newState = [
+        'total_amount' => $data['new_total_amount'] ?? $currentState['total_amount'],
+        'initial_payment_percent' => $data['new_initial_payment_percent'] ?? $currentState['initial_payment_percent'],
+        'quarters_count' => $data['new_quarters_count'] ?? $currentState['quarters_count'],
+        'completion_date' => isset($data['new_completion_date']) ?
+            Carbon::parse($data['new_completion_date']) : $currentState['completion_date']
+    ];
+
+    // Calculate payment structure changes
+    $currentInitialAmount = $currentState['total_amount'] * ($currentState['initial_payment_percent'] / 100);
+    $currentRemainingAmount = $currentState['total_amount'] - $currentInitialAmount;
+    $currentQuarterlyAmount = $currentState['quarters_count'] > 0 ?
+        $currentRemainingAmount / $currentState['quarters_count'] : 0;
+
+    $newInitialAmount = $newState['total_amount'] * ($newState['initial_payment_percent'] / 100);
+    $newRemainingAmount = $newState['total_amount'] - $newInitialAmount;
+    $newQuarterlyAmount = $newState['quarters_count'] > 0 ?
+        $newRemainingAmount / $newState['quarters_count'] : 0;
+
+    $preview['payment_structure'] = [
+        'initial_payment' => [
+            'current' => $currentInitialAmount,
+            'new' => $newInitialAmount,
+            'difference' => $newInitialAmount - $currentInitialAmount,
+            'current_formatted' => $this->formatCurrency($currentInitialAmount),
+            'new_formatted' => $this->formatCurrency($newInitialAmount)
+        ],
+        'quarterly_payment' => [
+            'current' => $currentQuarterlyAmount,
+            'new' => $newQuarterlyAmount,
+            'difference' => $newQuarterlyAmount - $currentQuarterlyAmount,
+            'current_formatted' => $this->formatCurrency($currentQuarterlyAmount),
+            'new_formatted' => $this->formatCurrency($newQuarterlyAmount)
+        ]
+    ];
+
+    // Payment impact on existing payments
+    $totalPaid = ActualPayment::where('contract_id', $contract->id)->sum('amount');
+    $currentDebt = $currentState['total_amount'] - $totalPaid;
+    $newDebt = $newState['total_amount'] - $totalPaid;
+
+    $preview['payment_impact'] = [
+        'total_paid' => $totalPaid,
+        'current_debt' => $currentDebt,
+        'new_debt' => $newDebt,
+        'debt_change' => $newDebt - $currentDebt,
+        'total_paid_formatted' => $this->formatCurrency($totalPaid),
+        'current_debt_formatted' => $this->formatCurrency($currentDebt),
+        'new_debt_formatted' => $this->formatCurrency($newDebt)
+    ];
+
+    return $preview;
+}
 
     /**
      * Create payment schedule for amendment
@@ -836,29 +1292,109 @@ class ContractPaymentService
     public function getAmendments(Contract $contract): array
     {
         $amendments = ContractAmendment::where('contract_id', $contract->id)
+            ->with(['createdBy', 'approvedBy'])
             ->orderBy('amendment_date', 'desc')
             ->get();
 
-        return $amendments->map(function ($amendment) {
-            return [
+        $amendmentData = [];
+        $originalValues = [
+            'total_amount' => $contract->total_amount,
+            'initial_payment_percent' => $contract->initial_payment_percent ?? 20,
+            'quarters_count' => $contract->quarters_count ?? 8,
+            'completion_date' => $contract->completion_date
+        ];
+
+        foreach ($amendments as $index => $amendment) {
+            // Calculate cumulative changes up to this amendment
+            $cumulativeValues = $originalValues;
+            $previousAmendments = $amendments->slice($index + 1)->reverse();
+
+            foreach ($previousAmendments as $prevAmendment) {
+                if ($prevAmendment->is_approved) {
+                    if ($prevAmendment->new_total_amount !== null) {
+                        $cumulativeValues['total_amount'] = $prevAmendment->new_total_amount;
+                    }
+                    if ($prevAmendment->new_initial_payment_percent !== null) {
+                        $cumulativeValues['initial_payment_percent'] = $prevAmendment->new_initial_payment_percent;
+                    }
+                    if ($prevAmendment->new_quarters_count !== null) {
+                        $cumulativeValues['quarters_count'] = $prevAmendment->new_quarters_count;
+                    }
+                    if ($prevAmendment->new_completion_date !== null) {
+                        $cumulativeValues['completion_date'] = $prevAmendment->new_completion_date;
+                    }
+                }
+            }
+
+            // Calculate changes made by this amendment
+            $changes = [];
+            if ($amendment->new_total_amount !== null) {
+                $diff = $amendment->new_total_amount - $cumulativeValues['total_amount'];
+                $changes['total_amount'] = [
+                    'old' => $cumulativeValues['total_amount'],
+                    'new' => $amendment->new_total_amount,
+                    'diff' => $diff,
+                    'diff_formatted' => ($diff > 0 ? '+' : '') . $this->formatCurrency(abs($diff)),
+                    'diff_percent' => $cumulativeValues['total_amount'] > 0 ? round(($diff / $cumulativeValues['total_amount']) * 100, 2) : 0
+                ];
+            }
+
+            if ($amendment->new_initial_payment_percent !== null) {
+                $diff = $amendment->new_initial_payment_percent - $cumulativeValues['initial_payment_percent'];
+                $changes['initial_payment_percent'] = [
+                    'old' => $cumulativeValues['initial_payment_percent'],
+                    'new' => $amendment->new_initial_payment_percent,
+                    'diff' => $diff,
+                    'diff_formatted' => ($diff > 0 ? '+' : '') . number_format(abs($diff), 1) . '%'
+                ];
+            }
+
+            if ($amendment->new_quarters_count !== null) {
+                $diff = $amendment->new_quarters_count - $cumulativeValues['quarters_count'];
+                $changes['quarters_count'] = [
+                    'old' => $cumulativeValues['quarters_count'],
+                    'new' => $amendment->new_quarters_count,
+                    'diff' => $diff,
+                    'diff_formatted' => ($diff > 0 ? '+' : '') . $diff
+                ];
+            }
+
+            if ($amendment->new_completion_date !== null) {
+                $changes['completion_date'] = [
+                    'old' => $cumulativeValues['completion_date'],
+                    'new' => $amendment->new_completion_date,
+                    'old_formatted' => $cumulativeValues['completion_date']?->format('d.m.Y') ?? 'Yo\'q',
+                    'new_formatted' => $amendment->new_completion_date->format('d.m.Y')
+                ];
+            }
+
+            $amendmentData[] = [
                 'id' => $amendment->id,
                 'amendment_number' => $amendment->amendment_number,
                 'amendment_date' => $amendment->amendment_date->format('d.m.Y'),
                 'amendment_date_iso' => $amendment->amendment_date->format('Y-m-d'),
-                'new_total_amount' => $amendment->new_total_amount,
-                'new_total_amount_formatted' => $amendment->new_total_amount ? $this->formatCurrency($amendment->new_total_amount) : null,
-                'new_completion_date' => $amendment->new_completion_date?->format('d.m.Y'),
-                'new_initial_payment_percent' => $amendment->new_initial_payment_percent,
-                'new_quarters_count' => $amendment->new_quarters_count,
                 'reason' => $amendment->reason,
                 'description' => $amendment->description,
                 'is_approved' => $amendment->is_approved,
                 'approved_at' => $amendment->approved_at?->format('d.m.Y H:i'),
                 'created_at' => $amendment->created_at->format('d.m.Y H:i'),
+                'created_by' => $amendment->createdBy?->name ?? 'Noma\'lum',
+                'approved_by' => $amendment->approvedBy?->name,
                 'status_text' => $amendment->is_approved ? 'Tasdiqlangan' : 'Kutilmoqda',
-                'status_class' => $amendment->is_approved ? 'completed' : 'warning'
+                'status_class' => $amendment->is_approved ? 'completed' : 'warning',
+                'changes' => $changes,
+                'has_changes' => !empty($changes),
+                'sequential_number' => $amendments->count() - $index,
+                'new_total_amount' => $amendment->new_total_amount,
+                'new_total_amount_formatted' => $amendment->new_total_amount ? $this->formatCurrency($amendment->new_total_amount) : null,
+                'new_initial_payment_percent' => $amendment->new_initial_payment_percent,
+                'new_quarters_count' => $amendment->new_quarters_count,
+                'new_completion_date' => $amendment->new_completion_date?->format('d.m.Y'),
+                'cumulative_state' => $cumulativeValues
             ];
-        })->toArray();
+        }
+
+        return $amendmentData;
     }
 
     /**

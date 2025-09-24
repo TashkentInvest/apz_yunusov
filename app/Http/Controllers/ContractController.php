@@ -725,12 +725,56 @@ class ContractController extends Controller
 
         $amendment = ContractAmendment::where('contract_id', $contract->id)
             ->where('id', $amendment)
+            ->where('is_approved', true)
             ->firstOrFail();
 
-        // Your schedule creation logic here
+        if (!$amendment->is_approved) {
+            return back()->with('error', 'Faqat tasdiqlangan kelishuvlar uchun jadval yaratish mumkin');
+        }
 
-        return back()->with('success', 'Jadval yaratildi');
+        // Redirect to schedule creation with amendment context
+        return redirect()->route('contracts.create-schedule', $contract)
+            ->with([
+                'amendment_id' => $amendment->id,
+                'info' => "'{$amendment->amendment_number}' kelishuvi asosida jadval yaratilmoqda"
+            ]);
     }
+
+public function getAmendmentStatistics(Contract $contract): JsonResponse
+{
+    try {
+        $statistics = [
+            'total_amendments' => $contract->amendments()->count(),
+            'approved_amendments' => $contract->amendments()->where('is_approved', true)->count(),
+            'pending_amendments' => $contract->amendments()->where('is_approved', false)->count(),
+            'latest_amendment' => $contract->amendments()->latest('amendment_date')->first()?->only([
+                'id', 'amendment_number', 'amendment_date', 'reason', 'is_approved'
+            ]),
+            'total_amount_changes' => $contract->amendments()
+                ->where('is_approved', true)
+                ->whereNotNull('new_total_amount')
+                ->count(),
+            'schedule_changes' => $contract->amendments()
+                ->where('is_approved', true)
+                ->where(function($q) {
+                    $q->whereNotNull('new_quarters_count')
+                      ->orWhereNotNull('new_initial_payment_percent');
+                })
+                ->count()
+        ];
+
+        return response()->json([
+            'success' => true,
+            'statistics' => $statistics
+        ]);
+
+    } catch (\Exception $e) {
+        return response()->json([
+            'success' => false,
+            'message' => 'Statistika olishda xatolik: ' . $e->getMessage()
+        ], 500);
+    }
+}
 
     /**
      * Store new amendment
@@ -767,8 +811,8 @@ class ContractController extends Controller
                 $totalPaid = ActualPayment::where('contract_id', $contract->id)->sum('amount');
                 if ($request->new_total_amount < $totalPaid) {
                     throw new \Exception(
-                        "Yangi shartnoma summasi ({$request->new_total_amount}) " .
-                            "allaqachon to'langan summadan ({$totalPaid}) kam bo'lishi mumkin emas"
+                        "Yangi shartnoma summasi ({$this->formatCurrency($request->new_total_amount)}) " .
+                            "allaqachon to'langan summadan ({$this->formatCurrency($totalPaid)}) kam bo'lishi mumkin emas"
                     );
                 }
             }
@@ -776,7 +820,7 @@ class ContractController extends Controller
             // Calculate impact summary for logging
             $changes = [];
             if ($request->new_total_amount && $request->new_total_amount != $contract->total_amount) {
-                $changes[] = "summa: " . $contract->total_amount . " → " . $request->new_total_amount;
+                $changes[] = "summa: " . $this->formatCurrency($contract->total_amount) . " → " . $this->formatCurrency($request->new_total_amount);
             }
             if ($request->new_initial_payment_percent && $request->new_initial_payment_percent != $contract->initial_payment_percent) {
                 $changes[] = "boshlang'ich: {$contract->initial_payment_percent}% → {$request->new_initial_payment_percent}%";
@@ -846,7 +890,6 @@ class ContractController extends Controller
 
         return view('contracts.amendment-details', compact('contract', 'amendment', 'paymentData', 'allAmendments'));
     }
-
     /**
      * Get historical contract data before amendments
      */
@@ -911,14 +954,171 @@ class ContractController extends Controller
             ->where('id', $amendment)
             ->firstOrFail();
 
-        $result = $this->paymentService->approveAmendment($amendment);
-
-        if ($result['success']) {
-            return back()->with('success', $result['message']);
+        if ($amendment->is_approved) {
+            return back()->with('error', 'Bu kelishuv allaqachon tasdiqlangan');
         }
 
-        return back()->with('error', $result['message']);
+        try {
+            DB::beginTransaction();
+
+            // Calculate current paid amount
+            $totalPaid = ActualPayment::where('contract_id', $contract->id)->sum('amount');
+
+            // Prepare update data for contract
+            $updateData = [];
+            $changes = [];
+
+            // Validate and prepare total amount change
+            if ($amendment->new_total_amount !== null) {
+                if ($amendment->new_total_amount < $totalPaid) {
+                    throw new \Exception(
+                        "Yangi shartnoma summasi ({$this->formatCurrency($amendment->new_total_amount)}) " .
+                            "allaqachon to'langan summadan ({$this->formatCurrency($totalPaid)}) kam bo'lishi mumkin emas"
+                    );
+                }
+                $updateData['total_amount'] = $amendment->new_total_amount;
+                $changes[] = "Jami summa: " . $this->formatCurrency($contract->total_amount) . " → " . $this->formatCurrency($amendment->new_total_amount);
+            }
+
+            // Prepare other changes
+            if ($amendment->new_completion_date !== null) {
+                $updateData['completion_date'] = $amendment->new_completion_date;
+                $changes[] = "Yakunlash sanasi: " .
+                    ($contract->completion_date?->format('d.m.Y') ?? 'Yo\'q') . " → " .
+                    $amendment->new_completion_date->format('d.m.Y');
+            }
+
+            if ($amendment->new_initial_payment_percent !== null) {
+                $updateData['initial_payment_percent'] = $amendment->new_initial_payment_percent;
+                $changes[] = "Boshlang'ich to'lov: {$contract->initial_payment_percent}% → {$amendment->new_initial_payment_percent}%";
+            }
+
+            if ($amendment->new_quarters_count !== null) {
+                $updateData['quarters_count'] = $amendment->new_quarters_count;
+                $changes[] = "Choraklar soni: {$contract->quarters_count} → {$amendment->new_quarters_count}";
+            }
+
+            // Update contract with new values
+            if (!empty($updateData)) {
+                $updateData['updated_by'] = auth()->id();
+                $contract->update($updateData);
+            }
+
+            // Approve amendment
+            $amendment->update([
+                'is_approved' => true,
+                'approved_at' => now(),
+                'approved_by' => auth()->id(),
+                'applied_changes' => !empty($changes) ? implode('; ', $changes) : null
+            ]);
+
+            // Update related payment schedules if needed
+            $this->updateSchedulesAfterAmendment($contract, $amendment);
+
+            // Log the approval
+            Log::info('Contract amendment approved', [
+                'contract_id' => $contract->id,
+                'contract_number' => $contract->contract_number,
+                'amendment_id' => $amendment->id,
+                'amendment_number' => $amendment->amendment_number,
+                'changes' => $changes,
+                'approved_by' => auth()->id()
+            ]);
+
+            DB::commit();
+
+            $message = "Qo'shimcha kelishuv '{$amendment->amendment_number}' muvaffaqiyatli tasdiqlandi";
+            if (!empty($changes)) {
+                $message .= ". Qo'llanilgan o'zgarishlar: " . implode(', ', $changes);
+            }
+
+            return back()->with('success', $message);
+        } catch (\Exception $e) {
+            DB::rollBack();
+            Log::error('Amendment approval failed: ' . $e->getMessage());
+
+            return back()->with('error', 'Qo\'shimcha kelishuvni tasdiqlashda xatolik: ' . $e->getMessage());
+        }
     }
+
+private function updateSchedulesAfterAmendment(Contract $contract, ContractAmendment $amendment): void
+{
+    try {
+        // Update initial payment schedule if initial payment percent changed
+        if ($amendment->new_initial_payment_percent !== null || $amendment->new_total_amount !== null) {
+            $newTotalAmount = $amendment->new_total_amount ?? $contract->total_amount;
+            $newInitialPercent = $amendment->new_initial_payment_percent ?? $contract->initial_payment_percent;
+            $newInitialAmount = $newTotalAmount * ($newInitialPercent / 100);
+
+            PaymentSchedule::where('contract_id', $contract->id)
+                ->where('is_initial_payment', true)
+                ->where('is_active', true)
+                ->update([
+                    'quarter_amount' => $newInitialAmount,
+                    'updated_by' => auth()->id()
+                ]);
+        }
+
+        // Mark old quarterly schedules as inactive if major changes were made
+        if ($amendment->new_total_amount !== null || $amendment->new_quarters_count !== null) {
+            PaymentSchedule::where('contract_id', $contract->id)
+                ->where('is_initial_payment', false)
+                ->whereNull('amendment_id')
+                ->update([
+                    'is_active' => false,
+                    'deactivated_reason' => "Amendment {$amendment->amendment_number} applied",
+                    'updated_by' => auth()->id()
+                ]);
+        }
+
+    } catch (\Exception $e) {
+        Log::error('Failed to update schedules after amendment: ' . $e->getMessage());
+        // Don't throw here as the main amendment approval should succeed
+    }
+}
+
+private function formatCurrency(float $amount): string
+{
+    return number_format($amount, 0, '.', ' ') . ' so\'m';
+}
+public function getAmendmentChain(Contract $contract): JsonResponse
+{
+    try {
+        $amendments = $contract->amendments()
+            ->with(['createdBy', 'approvedBy'])
+            ->orderBy('amendment_date', 'asc')
+            ->get()
+            ->map(function ($amendment) {
+                return [
+                    'id' => $amendment->id,
+                    'amendment_number' => $amendment->amendment_number,
+                    'amendment_date' => $amendment->amendment_date->format('d.m.Y'),
+                    'reason' => $amendment->reason,
+                    'is_approved' => $amendment->is_approved,
+                    'created_by' => $amendment->createdBy?->name,
+                    'approved_by' => $amendment->approvedBy?->name,
+                    'changes' => [
+                        'total_amount' => $amendment->new_total_amount ? $this->formatCurrency($amendment->new_total_amount) : null,
+                        'initial_payment_percent' => $amendment->new_initial_payment_percent ? $amendment->new_initial_payment_percent . '%' : null,
+                        'quarters_count' => $amendment->new_quarters_count,
+                        'completion_date' => $amendment->new_completion_date?->format('d.m.Y')
+                    ]
+                ];
+            });
+
+        return response()->json([
+            'success' => true,
+            'amendments' => $amendments,
+            'total_count' => $amendments->count()
+        ]);
+
+    } catch (\Exception $e) {
+        return response()->json([
+            'success' => false,
+            'message' => 'Amendment chain olishda xatolik: ' . $e->getMessage()
+        ], 500);
+    }
+}
 
     public function editAmendment($contract, $amendment): View
     {
@@ -929,8 +1129,10 @@ class ContractController extends Controller
             ->firstOrFail();
 
         if ($amendment->is_approved) {
-            return redirect()->route('contracts.amendments.show', [$contract, $amendment])
-                ->with('error', 'Tasdiqlangan kelishuvni tahrirlash mumkin emas');
+            // Option 1: Show a 404 page
+            abort(404, 'Tasdiqlangan kelishuvni tahrirlash mumkin emas');
+            // Option 2: Or show an error view (uncomment if you have such a view)
+            // return view('errors.custom', ['message' => 'Tasdiqlangan kelishuvni tahrirlash mumkin emas']);
         }
 
         $paymentData = $this->paymentService->getContractPaymentData($contract);
@@ -942,7 +1144,6 @@ class ContractController extends Controller
             ->orderBy('amendment_date', 'desc')
             ->get();
 
-
         return view('contracts.edit-amendment', compact('contract', 'amendment', 'paymentData', 'previousAmendments'));
     }
 
@@ -952,24 +1153,33 @@ class ContractController extends Controller
     public function updateAmendment(Request $request, $contract, $amendment): RedirectResponse
     {
         $contract = Contract::findOrFail($contract);
+
         $amendment = ContractAmendment::where('contract_id', $contract->id)
             ->where('id', $amendment)
             ->firstOrFail();
 
-        // Only allow editing unapproved amendments
         if ($amendment->is_approved) {
             return back()->with('error', 'Tasdiqlangan kelishuvni tahrirlash mumkin emas');
         }
 
         $validator = Validator::make($request->all(), [
-            'amendment_number' => 'required|string|max:50',
+            'amendment_number' => [
+                'required',
+                'string',
+                'max:50',
+                Rule::unique('contract_amendments')
+                    ->where(function ($query) use ($contract) {
+                        return $query->where('contract_id', $contract->id);
+                    })
+                    ->ignore($amendment->id)
+            ],
             'amendment_date' => 'required|date|after_or_equal:' . $contract->contract_date->format('Y-m-d'),
             'new_total_amount' => 'nullable|numeric|min:1',
             'new_completion_date' => 'nullable|date|after:' . $contract->contract_date->format('Y-m-d'),
             'new_initial_payment_percent' => 'nullable|numeric|min:0|max:100',
-            'new_quarters_count' => 'nullable|numeric|min:1|max:20',
-            'reason' => 'required|string|max:500',
-            'description' => 'nullable|string|max:1000'
+            'new_quarters_count' => 'nullable|integer|min:1|max:40',
+            'reason' => 'required|string|max:1000',
+            'description' => 'nullable|string|max:2000'
         ]);
 
         if ($validator->fails()) {
@@ -978,6 +1188,17 @@ class ContractController extends Controller
 
         try {
             DB::beginTransaction();
+
+            // Validate new amount against already paid
+            if ($request->new_total_amount) {
+                $totalPaid = ActualPayment::where('contract_id', $contract->id)->sum('amount');
+                if ($request->new_total_amount < $totalPaid) {
+                    throw new \Exception(
+                        "Yangi shartnoma summasi ({$this->formatCurrency($request->new_total_amount)}) " .
+                            "allaqachon to'langan summadan ({$this->formatCurrency($totalPaid)}) kam bo'lishi mumkin emas"
+                    );
+                }
+            }
 
             $amendment->update([
                 'amendment_number' => $request->amendment_number,
@@ -994,14 +1215,13 @@ class ContractController extends Controller
             DB::commit();
 
             return redirect()->route('contracts.amendments.show', [$contract, $amendment])
-                ->with('success', 'Qo\'shimcha kelishuv muvaffaqiyatli yangilandi');
+                ->with('success', "Qo'shimcha kelishuv '{$amendment->amendment_number}' muvaffaqiyatli yangilandi");
         } catch (\Exception $e) {
             DB::rollBack();
             return back()->withInput()->with('error', 'Yangilashda xatolik: ' . $e->getMessage());
         }
     }
-
-    public function deleteAmendment($contract, $amendment): RedirectResponse
+    public function deleteAmendment($contract, $amendment): JsonResponse
     {
         $contract = Contract::findOrFail($contract);
 
@@ -1009,7 +1229,6 @@ class ContractController extends Controller
             ->where('id', $amendment)
             ->firstOrFail();
 
-        // Check if amendment is approved
         if ($amendment->is_approved) {
             return response()->json([
                 'success' => false,
@@ -1020,17 +1239,27 @@ class ContractController extends Controller
         try {
             DB::beginTransaction();
 
-            // Delete associated schedules
+            $amendmentNumber = $amendment->amendment_number;
+
+            // Delete associated payment schedules
             PaymentSchedule::where('amendment_id', $amendment->id)->delete();
 
             // Delete the amendment
             $amendment->delete();
 
+            // Log the deletion
+            Log::info('Contract amendment deleted', [
+                'contract_id' => $contract->id,
+                'contract_number' => $contract->contract_number,
+                'amendment_number' => $amendmentNumber,
+                'deleted_by' => auth()->id()
+            ]);
+
             DB::commit();
 
             return response()->json([
                 'success' => true,
-                'message' => "Qo'shimcha kelishuv #{$amendment->amendment_number} muvaffaqiyatli o'chirildi"
+                'message' => "Qo'shimcha kelishuv '{$amendmentNumber}' muvaffaqiyatli o'chirildi"
             ]);
         } catch (\Exception $e) {
             DB::rollBack();
@@ -1042,7 +1271,6 @@ class ContractController extends Controller
             ], 500);
         }
     }
-
     // ========== PAYMENT CRUD OPERATIONS ==========
 
     /**
