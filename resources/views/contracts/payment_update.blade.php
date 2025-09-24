@@ -1227,16 +1227,13 @@ document.addEventListener('DOMContentLoaded', function() {
             const paymentId = document.getElementById('editPaymentId').value;
             const formData = new FormData(this);
 
-            // Add the PUT method override
-            formData.append('_method', 'PUT');
-
             const submitBtn = this.querySelector('button[type="submit"]');
             const originalText = submitBtn.innerHTML;
             submitBtn.disabled = true;
             submitBtn.innerHTML = 'Saqlanmoqda...';
 
-            fetch(`/payments/${paymentId}`, {  // Changed URL - removed /update
-                method: 'POST',  // Keep as POST due to _method override
+            fetch(`/payments/${paymentId}/update`, {  // FIXED: Added /update
+                method: 'POST',
                 body: formData,
                 headers: {
                     'X-CSRF-TOKEN': document.querySelector('meta[name="csrf-token"]').getAttribute('content')
