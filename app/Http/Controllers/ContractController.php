@@ -539,18 +539,18 @@ class ContractController extends Controller
         return view('contracts.create-amendment', compact('contract', 'paymentData'));
     }
 
-public function createAmendmentSchedule($contract, $amendment): RedirectResponse
-{
-    $contract = Contract::findOrFail($contract);
+    public function createAmendmentSchedule($contract, $amendment): RedirectResponse
+    {
+        $contract = Contract::findOrFail($contract);
 
-    $amendment = ContractAmendment::where('contract_id', $contract->id)
-        ->where('id', $amendment)
-        ->firstOrFail();
+        $amendment = ContractAmendment::where('contract_id', $contract->id)
+            ->where('id', $amendment)
+            ->firstOrFail();
 
-    // Your schedule creation logic here
+        // Your schedule creation logic here
 
-    return back()->with('success', 'Jadval yaratildi');
-}
+        return back()->with('success', 'Jadval yaratildi');
+    }
 
     /**
      * Store new amendment
@@ -583,155 +583,154 @@ public function createAmendmentSchedule($contract, $amendment): RedirectResponse
     /**
      * Show amendment details
      */
-public function showAmendment($contract, $amendment): View
-{
-    // Manually fetch the models
-    $contract = Contract::findOrFail($contract);
+    public function showAmendment($contract, $amendment): View
+    {
+        // Manually fetch the models
+        $contract = Contract::findOrFail($contract);
 
-    $amendment = ContractAmendment::where('contract_id', $contract->id)
-        ->where('id', $amendment)
-        ->firstOrFail();
+        $amendment = ContractAmendment::where('contract_id', $contract->id)
+            ->where('id', $amendment)
+            ->firstOrFail();
 
-    $paymentData = $this->paymentService->getContractPaymentData($contract);
+        $paymentData = $this->paymentService->getContractPaymentData($contract);
 
-    return view('contracts.amendment-details', compact('contract', 'amendment', 'paymentData'));
-}
+        return view('contracts.amendment-details', compact('contract', 'amendment', 'paymentData'));
+    }
 
     /**
      * Approve amendment
      */
-   public function approveAmendment($contract, $amendment): RedirectResponse
-{
-    $contract = Contract::findOrFail($contract);
+    public function approveAmendment($contract, $amendment): RedirectResponse
+    {
+        $contract = Contract::findOrFail($contract);
 
-    $amendment = ContractAmendment::where('contract_id', $contract->id)
-        ->where('id', $amendment)
-        ->firstOrFail();
+        $amendment = ContractAmendment::where('contract_id', $contract->id)
+            ->where('id', $amendment)
+            ->firstOrFail();
 
-    $result = $this->paymentService->approveAmendment($amendment);
+        $result = $this->paymentService->approveAmendment($amendment);
 
-    if ($result['success']) {
-        return back()->with('success', $result['message']);
+        if ($result['success']) {
+            return back()->with('success', $result['message']);
+        }
+
+        return back()->with('error', $result['message']);
     }
 
-    return back()->with('error', $result['message']);
-}
+    public function editAmendment($contract, $amendment): View
+    {
+        $contract = Contract::findOrFail($contract);
+        $amendment = ContractAmendment::where('contract_id', $contract->id)
+            ->where('id', $amendment)
+            ->firstOrFail();
 
-public function editAmendment($contract, $amendment): View
-{
-    $contract = Contract::findOrFail($contract);
-    $amendment = ContractAmendment::where('contract_id', $contract->id)
-        ->where('id', $amendment)
-        ->firstOrFail();
+        // Only allow editing unapproved amendments
+        if ($amendment->is_approved) {
+            return redirect()->route('contracts.amendments.show', [$contract, $amendment])
+                ->with('error', 'Tasdiqlangan kelishuvni tahrirlash mumkin emas');
+        }
 
-    // Only allow editing unapproved amendments
-    if ($amendment->is_approved) {
-        return redirect()->route('contracts.amendments.show', [$contract, $amendment])
-            ->with('error', 'Tasdiqlangan kelishuvni tahrirlash mumkin emas');
+        $paymentData = $this->paymentService->getContractPaymentData($contract);
+
+        return view('contracts.edit-amendment', compact('contract', 'amendment', 'paymentData'));
     }
 
-    $paymentData = $this->paymentService->getContractPaymentData($contract);
+    /**
+     * Update amendment
+     */
+    public function updateAmendment(Request $request, $contract, $amendment): RedirectResponse
+    {
+        $contract = Contract::findOrFail($contract);
+        $amendment = ContractAmendment::where('contract_id', $contract->id)
+            ->where('id', $amendment)
+            ->firstOrFail();
 
-    return view('contracts.edit-amendment', compact('contract', 'amendment', 'paymentData'));
-}
+        // Only allow editing unapproved amendments
+        if ($amendment->is_approved) {
+            return back()->with('error', 'Tasdiqlangan kelishuvni tahrirlash mumkin emas');
+        }
 
-/**
- * Update amendment
- */
-public function updateAmendment(Request $request, $contract, $amendment): RedirectResponse
-{
-    $contract = Contract::findOrFail($contract);
-    $amendment = ContractAmendment::where('contract_id', $contract->id)
-        ->where('id', $amendment)
-        ->firstOrFail();
-
-    // Only allow editing unapproved amendments
-    if ($amendment->is_approved) {
-        return back()->with('error', 'Tasdiqlangan kelishuvni tahrirlash mumkin emas');
-    }
-
-    $validator = Validator::make($request->all(), [
-        'amendment_number' => 'required|string|max:50',
-        'amendment_date' => 'required|date|after_or_equal:' . $contract->contract_date->format('Y-m-d'),
-        'new_total_amount' => 'nullable|numeric|min:1',
-        'new_completion_date' => 'nullable|date|after:' . $contract->contract_date->format('Y-m-d'),
-        'new_initial_payment_percent' => 'nullable|numeric|min:0|max:100',
-        'new_quarters_count' => 'nullable|numeric|min:1|max:20',
-        'reason' => 'required|string|max:500',
-        'description' => 'nullable|string|max:1000'
-    ]);
-
-    if ($validator->fails()) {
-        return back()->withErrors($validator)->withInput();
-    }
-
-    try {
-        DB::beginTransaction();
-
-        $amendment->update([
-            'amendment_number' => $request->amendment_number,
-            'amendment_date' => $request->amendment_date,
-            'new_total_amount' => $request->new_total_amount,
-            'new_completion_date' => $request->new_completion_date,
-            'new_initial_payment_percent' => $request->new_initial_payment_percent,
-            'new_quarters_count' => $request->new_quarters_count,
-            'reason' => $request->reason,
-            'description' => $request->description,
-            'updated_by' => auth()->id()
+        $validator = Validator::make($request->all(), [
+            'amendment_number' => 'required|string|max:50',
+            'amendment_date' => 'required|date|after_or_equal:' . $contract->contract_date->format('Y-m-d'),
+            'new_total_amount' => 'nullable|numeric|min:1',
+            'new_completion_date' => 'nullable|date|after:' . $contract->contract_date->format('Y-m-d'),
+            'new_initial_payment_percent' => 'nullable|numeric|min:0|max:100',
+            'new_quarters_count' => 'nullable|numeric|min:1|max:20',
+            'reason' => 'required|string|max:500',
+            'description' => 'nullable|string|max:1000'
         ]);
 
-        DB::commit();
+        if ($validator->fails()) {
+            return back()->withErrors($validator)->withInput();
+        }
 
-        return redirect()->route('contracts.amendments.show', [$contract, $amendment])
-            ->with('success', 'Qo\'shimcha kelishuv muvaffaqiyatli yangilandi');
+        try {
+            DB::beginTransaction();
 
-    } catch (\Exception $e) {
-        DB::rollBack();
-        return back()->withInput()->with('error', 'Yangilashda xatolik: ' . $e->getMessage());
+            $amendment->update([
+                'amendment_number' => $request->amendment_number,
+                'amendment_date' => $request->amendment_date,
+                'new_total_amount' => $request->new_total_amount,
+                'new_completion_date' => $request->new_completion_date,
+                'new_initial_payment_percent' => $request->new_initial_payment_percent,
+                'new_quarters_count' => $request->new_quarters_count,
+                'reason' => $request->reason,
+                'description' => $request->description,
+                'updated_by' => auth()->id()
+            ]);
+
+            DB::commit();
+
+            return redirect()->route('contracts.amendments.show', [$contract, $amendment])
+                ->with('success', 'Qo\'shimcha kelishuv muvaffaqiyatli yangilandi');
+        } catch (\Exception $e) {
+            DB::rollBack();
+            return back()->withInput()->with('error', 'Yangilashda xatolik: ' . $e->getMessage());
+        }
     }
-}
 
-public function deleteAmendment($contract, $amendment): RedirectResponse
-{
-    $contract = Contract::findOrFail($contract);
+    public function deleteAmendment($contract, $amendment): RedirectResponse
+    {
+        $contract = Contract::findOrFail($contract);
 
-    $amendment = ContractAmendment::where('contract_id', $contract->id)
-        ->where('id', $amendment)
-        ->firstOrFail();
+        $amendment = ContractAmendment::where('contract_id', $contract->id)
+            ->where('id', $amendment)
+            ->firstOrFail();
 
-    // Check if amendment is approved
-    if ($amendment->is_approved) {
-        return response()->json([
-            'success' => false,
-            'message' => 'Tasdiqlangan kelishuvni o\'chirish mumkin emas'
-        ], 403);
+        // Check if amendment is approved
+        if ($amendment->is_approved) {
+            return response()->json([
+                'success' => false,
+                'message' => 'Tasdiqlangan kelishuvni o\'chirish mumkin emas'
+            ], 403);
+        }
+
+        try {
+            DB::beginTransaction();
+
+            // Delete associated schedules
+            PaymentSchedule::where('amendment_id', $amendment->id)->delete();
+
+            // Delete the amendment
+            $amendment->delete();
+
+            DB::commit();
+
+            return response()->json([
+                'success' => true,
+                'message' => "Qo'shimcha kelishuv #{$amendment->amendment_number} muvaffaqiyatli o'chirildi"
+            ]);
+        } catch (\Exception $e) {
+            DB::rollBack();
+            Log::error('Amendment deletion failed: ' . $e->getMessage());
+
+            return response()->json([
+                'success' => false,
+                'message' => 'O\'chirishda xatolik: ' . $e->getMessage()
+            ], 500);
+        }
     }
-
-    try {
-        DB::beginTransaction();
-
-        // Delete associated schedules
-        PaymentSchedule::where('amendment_id', $amendment->id)->delete();
-
-        // Delete the amendment
-        $amendment->delete();
-
-        DB::commit();
-
-        return response()->json([
-            'success' => true,
-            'message' => "Qo'shimcha kelishuv #{$amendment->amendment_number} muvaffaqiyatli o'chirildi"
-        ]);
-    } catch (\Exception $e) {
-        DB::rollBack();
-        Log::error('Amendment deletion failed: ' . $e->getMessage());
-
-        return response()->json([
-            'success' => false,
-            'message' => 'O\'chirishda xatolik: ' . $e->getMessage()
-        ], 500);
-    }
-}
 
     // ========== PAYMENT CRUD OPERATIONS ==========
 
@@ -743,7 +742,7 @@ public function deleteAmendment($contract, $amendment): RedirectResponse
         try {
             $payment = ActualPayment::findOrFail($paymentId);
 
-            // Check permission - only allow editing payments from last 30 days
+            // Check permission
             if ($payment->created_at->diffInDays(now()) > 30) {
                 return response()->json([
                     'success' => false,
@@ -1300,8 +1299,7 @@ public function deleteAmendment($contract, $amendment): RedirectResponse
         return response()->json($result);
     }
 
-/**
- * Delete amendment
- */
-
+    /**
+     * Delete amendment
+     */
 };

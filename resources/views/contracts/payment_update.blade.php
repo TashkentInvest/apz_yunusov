@@ -1227,19 +1227,27 @@ document.addEventListener('DOMContentLoaded', function() {
             const paymentId = document.getElementById('editPaymentId').value;
             const formData = new FormData(this);
 
+            // Add the PUT method override
+            formData.append('_method', 'PUT');
+
             const submitBtn = this.querySelector('button[type="submit"]');
             const originalText = submitBtn.innerHTML;
             submitBtn.disabled = true;
             submitBtn.innerHTML = 'Saqlanmoqda...';
 
-            fetch(`/payments/${paymentId}/update`, {
-                method: 'POST',
+            fetch(`/payments/${paymentId}`, {  // Changed URL - removed /update
+                method: 'POST',  // Keep as POST due to _method override
                 body: formData,
                 headers: {
                     'X-CSRF-TOKEN': document.querySelector('meta[name="csrf-token"]').getAttribute('content')
                 }
             })
-            .then(response => response.json())
+            .then(response => {
+                if (!response.ok) {
+                    throw new Error(`HTTP error! status: ${response.status}`);
+                }
+                return response.json();
+            })
             .then(data => {
                 if (data.success) {
                     hideEditPaymentModal();
@@ -1260,7 +1268,6 @@ document.addEventListener('DOMContentLoaded', function() {
         });
     }
 });
-
 // Delete payment function (already exists but ensure it works)
 function deletePayment(paymentId) {
     if (confirm('Bu to\'lovni o\'chirishni tasdiqlaysizmi?')) {
