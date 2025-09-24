@@ -740,52 +740,80 @@ class ContractController extends Controller
     /**
      * Update existing payment
      */
-    public function updatePayment(Request $request, $paymentId): JsonResponse
-    {
-        try {
-            $payment = ActualPayment::findOrFail($paymentId);
+    /**
+     * Update existing payment
+     */
+public function updatePayment(Request $request, $paymentId): JsonResponse
+{
+    // Add debug logging
+    Log::info('UpdatePayment method called', [
+        'payment_id' => $paymentId,
+        'request_method' => $request->method(),
+        'request_uri' => $request->getRequestUri(),
+        'all_data' => $request->all(),
+        'headers' => $request->headers->all()
+    ]);
 
-            // Check permission - only allow editing payments from last 30 days
-            if ($payment->created_at->diffInDays(now()) > 30) {
-                return response()->json([
-                    'success' => false,
-                    'message' => 'Bu to\'lov 30 kundan ortiq vaqt oldin yaratilgan, tahrirlash mumkin emas'
-                ], 403);
-            }
+    try {
+        $payment = ActualPayment::findOrFail($paymentId);
+        Log::info('Payment found', ['payment_id' => $payment->id]);
 
-            $validator = Validator::make($request->all(), [
-                'payment_date' => 'required|date',
-                'payment_amount' => 'required|numeric|min:0.01',
-                'payment_number' => 'nullable|string|max:50',
-                'payment_notes' => 'nullable|string|max:500'
-            ]);
-
-            if ($validator->fails()) {
-                return response()->json([
-                    'success' => false,
-                    'message' => 'Ma\'lumotlar noto\'g\'ri',
-                    'errors' => $validator->errors()
-                ], 422);
-            }
-
-            // Map request fields to service expected format
-            $updateData = [
-                'payment_date' => $request->payment_date,
-                'payment_amount' => $request->payment_amount,
-                'payment_number' => $request->payment_number,
-                'payment_notes' => $request->payment_notes,
-            ];
-
-            $result = $this->paymentService->updatePayment($payment, $updateData);
-            return response()->json($result);
-        } catch (\Exception $e) {
-            Log::error('Payment update failed: ' . $e->getMessage());
+        // Check permission - only allow editing payments from last 30 days
+        if ($payment->created_at->diffInDays(now()) > 30) {
+            Log::warning('Payment too old to edit', ['payment_id' => $payment->id, 'created_at' => $payment->created_at]);
             return response()->json([
                 'success' => false,
-                'message' => 'To\'lov yangilashda xatolik: ' . $e->getMessage()
-            ], 500);
+                'message' => 'Bu to\'lov 30 kundan ortiq vaqt oldin yaratilgan, tahrirlash mumkin emas'
+            ], 403);
         }
+
+        $validator = Validator::make($request->all(), [
+            'payment_date' => 'required|date',
+            'payment_amount' => 'required|numeric|min:0.01',
+            'payment_number' => 'nullable|string|max:50',
+            'payment_notes' => 'nullable|string|max:500'
+        ]);
+
+        if ($validator->fails()) {
+            Log::error('Validation failed', ['errors' => $validator->errors()->toArray()]);
+            return response()->json([
+                'success' => false,
+                'message' => 'Ma\'lumotlar noto\'g\'ri',
+                'errors' => $validator->errors()
+            ], 422);
+        }
+
+        $updateData = [
+            'payment_date' => $request->payment_date,
+            'payment_amount' => $request->payment_amount,
+            'payment_number' => $request->payment_number,
+            'payment_notes' => $request->payment_notes,
+        ];
+
+        Log::info('Calling payment service', ['update_data' => $updateData]);
+
+        $result = $this->paymentService->updatePayment($payment, $updateData);
+
+        Log::info('Payment service result', ['result' => $result]);
+
+        return response()->json($result);
+
+    } catch (\Exception $e) {
+        Log::error('Payment update exception', [
+            'payment_id' => $paymentId,
+            'message' => $e->getMessage(),
+            'file' => $e->getFile(),
+            'line' => $e->getLine(),
+            'trace' => $e->getTraceAsString()
+        ]);
+
+        return response()->json([
+            'success' => false,
+            'message' => 'To\'lov yangilashda xatolik: ' . $e->getMessage()
+        ], 500);
     }
+}
+
     /**
      * Delete payment
      */

@@ -543,13 +543,16 @@ class ContractPaymentService
     /**
      * Update existing payment - Enhanced version
      */
+    /**
+     * Update existing payment - Enhanced version
+     */
     public function updatePayment(ActualPayment $payment, array $data): array
     {
         try {
             DB::beginTransaction();
 
             $paymentDate = Carbon::parse($data['payment_date']);
-            $paymentAmount = (float) $data['payment_amount']; // Changed from 'amount' to 'payment_amount'
+            $paymentAmount = (float) $data['payment_amount'];
 
             // Validate payment amount
             if ($paymentAmount <= 0) {
@@ -592,7 +595,7 @@ class ContractPaymentService
                 'year' => $targetQuarter['year'],
                 'quarter' => $targetQuarter['quarter'],
                 'payment_number' => $data['payment_number'] ?? null,
-                'notes' => $data['payment_notes'] ?? null, // Changed from 'notes' to 'payment_notes'
+                'notes' => $data['payment_notes'] ?? null,
                 'updated_by' => auth()->id() ?? 1
             ]);
 

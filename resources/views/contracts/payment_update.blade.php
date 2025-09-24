@@ -183,7 +183,7 @@
         <form method="POST" action="{{ isset($paymentData['contract']) ? route('contracts.update', $paymentData['contract']['id']) : route('contracts.store') }}" class="p-8 space-y-8">
             @csrf
             @if(isset($paymentData['contract']))
-                @method('PUT')
+                @method('POST')
                 <input type="hidden" name="from_payment_update" value="1">
             @endif
 
@@ -525,7 +525,7 @@ document.addEventListener('DOMContentLoaded', function() {
 
             <form id="editPaymentForm" class="space-y-4">
                 @csrf
-                @method('PUT')
+                @method('POST')
                 <input type="hidden" id="editPaymentId" name="payment_id">
 
                 <div>
@@ -1185,10 +1185,20 @@ function showErrorMessage(message) {
 
 // Edit payment function
 function editPayment(paymentId) {
+    console.log('Fetching payment details for ID:', paymentId);
+
     // Fetch payment details
     fetch(`/payments/${paymentId}/details`)
-        .then(response => response.json())
+        .then(response => {
+            console.log('Response status:', response.status);
+            if (!response.ok) {
+                throw new Error(`HTTP error! status: ${response.status}`);
+            }
+            return response.json();
+        })
         .then(data => {
+            console.log('Payment details response:', data);
+
             if (data.success) {
                 const payment = data.payment;
 
@@ -1207,8 +1217,8 @@ function editPayment(paymentId) {
             }
         })
         .catch(error => {
-            console.error('Error:', error);
-            showErrorMessage('To\'lov ma\'lumotlarini yuklashda xatolik');
+            console.error('Error fetching payment details:', error);
+            showErrorMessage('To\'lov ma\'lumotlarini yuklashda xatolik: ' + error.message);
         });
 }
 
@@ -1223,16 +1233,21 @@ document.addEventListener('DOMContentLoaded', function() {
     if (editForm) {
         editForm.addEventListener('submit', function(e) {
             e.preventDefault();
+            console.log('Edit form submitted');
 
             const paymentId = document.getElementById('editPaymentId').value;
             const formData = new FormData(this);
+
+            console.log('Payment ID:', paymentId);
+            console.log('Form data:', Object.fromEntries(formData));
 
             const submitBtn = this.querySelector('button[type="submit"]');
             const originalText = submitBtn.innerHTML;
             submitBtn.disabled = true;
             submitBtn.innerHTML = 'Saqlanmoqda...';
 
-            fetch(`/payments/${paymentId}/update`, {  // FIXED: Added /update
+            // Use the correct route that matches your web.php
+            fetch(`/payments/${paymentId}/update`, {
                 method: 'POST',
                 body: formData,
                 headers: {
@@ -1240,12 +1255,20 @@ document.addEventListener('DOMContentLoaded', function() {
                 }
             })
             .then(response => {
+                console.log('Update response status:', response.status);
+                console.log('Update response headers:', response.headers);
+
                 if (!response.ok) {
-                    throw new Error(`HTTP error! status: ${response.status}`);
+                    return response.text().then(text => {
+                        console.log('Error response body:', text);
+                        throw new Error(`HTTP error! status: ${response.status}. Body: ${text}`);
+                    });
                 }
                 return response.json();
             })
             .then(data => {
+                console.log('Update success response:', data);
+
                 if (data.success) {
                     hideEditPaymentModal();
                     showSuccessMessage(data.message);
@@ -1255,8 +1278,8 @@ document.addEventListener('DOMContentLoaded', function() {
                 }
             })
             .catch(error => {
-                console.error('Error:', error);
-                showErrorMessage('To\'lovni yangilashda xatolik yuz berdi');
+                console.error('Error updating payment:', error);
+                showErrorMessage('To\'lovni yangilashda xatolik: ' + error.message);
             })
             .finally(() => {
                 submitBtn.disabled = false;
@@ -1265,6 +1288,7 @@ document.addEventListener('DOMContentLoaded', function() {
         });
     }
 });
+
 // Delete payment function (already exists but ensure it works)
 function deletePayment(paymentId) {
     if (confirm('Bu to\'lovni o\'chirishni tasdiqlaysizmi?')) {
