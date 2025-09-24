@@ -258,10 +258,12 @@
                             </td>
 
                             <!-- Payment Progress -->
+
                             <td class="px-6 py-4">
                                 <div class="text-sm font-medium text-gray-900">
-                                    {{ number_format($contract->total_paid, 0, '.', ' ') }} сўм
+                                    {{ number_format($contract->actualPayments()->pluck('amount')->sum(), 0, '.', ' ') }} сўм
                                 </div>
+
                                 <div class="w-full bg-gray-200 rounded-full h-2 mt-1">
                                     <div class="bg-blue-600 h-2 rounded-full"
                                          style="width: {{ min(100, $contract->payment_percent) }}%"></div>
