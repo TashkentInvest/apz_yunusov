@@ -58,7 +58,6 @@
                 <input type="number"
                        name="new_initial_payment_percent"
                        value="{{ old('new_initial_payment_percent', $amendment->new_initial_payment_percent) }}"
-                       step="0.1"
                        min="0"
                        max="100"
                        class="w-full rounded-lg border-gray-300 focus:border-blue-500 focus:ring-blue-500">

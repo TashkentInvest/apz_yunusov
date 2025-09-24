@@ -248,13 +248,45 @@
                 <h3 class="text-xl font-bold text-blue-900 mb-6">Moliyaviy ma'lumotlar</h3>
 
                 <div class="grid grid-cols-1 lg:grid-cols-2 gap-6">
-                    <div>
-                        <label class="block text-sm font-semibold text-gray-700 mb-3">Jami shartnoma summasi (so'm) *</label>
-                        <input type="number" name="total_amount" required step="0.01" min="1"
-                               value="{{ old('total_amount', $paymentData['contract']['total_amount'] ?? '') }}"
-                               class="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 font-bold @error('total_amount') border-red-300 @enderror">
-                        @error('total_amount')<p class="text-red-500 text-sm mt-1">{{ $message }}</p>@enderror
-                    </div>
+                 <div>
+    <label class="block text-sm font-semibold text-gray-700 mb-3">
+        Boshlang'ich to'lov (%)
+    </label>
+    <input type="number"
+           id="initial_payment_percent"
+           name="initial_payment_percent"
+           min="0" max="100" step="0.0000000000001"
+           value="{{ old('initial_payment_percent', $paymentData['contract']['initial_payment_percent'] ?? 20) }}"
+           class="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500">
+    <div id="percentDisplay" class="mt-2 text-gray-600 font-medium"></div>
+</div>
+
+<script>
+document.addEventListener("DOMContentLoaded", function () {
+    const input = document.getElementById("initial_payment_percent");
+    const display = document.getElementById("percentDisplay");
+
+    function formatNumber(value) {
+        if (value === "" || isNaN(value)) return "";
+        // Use Intl.NumberFormat for locale formatting
+        return new Intl.NumberFormat("ru-RU", {
+            minimumFractionDigits: 0,
+            maximumFractionDigits: 14
+        }).format(value);
+    }
+
+    function updateDisplay() {
+        const val = input.value;
+        display.textContent = val ? formatNumber(val) + "%" : "";
+    }
+
+    // Initial render
+    updateDisplay();
+
+    // Update on input
+    input.addEventListener("input", updateDisplay);
+});
+</script>
 
                     <div>
                         <label class="block text-sm font-semibold text-gray-700 mb-3">To'lov turi *</label>
