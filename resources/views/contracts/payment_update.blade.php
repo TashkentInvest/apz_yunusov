@@ -187,6 +187,36 @@
                 <input type="hidden" name="from_payment_update" value="1">
             @endif
 
+<td class="px-6 py-4">
+                                @if($contract->subject->is_legal_entity)
+                                    <span class="inline-flex px-2 py-1 text-xs font-semibold rounded-full bg-blue-100 text-blue-800">
+                                        <i data-feather="briefcase" class="w-3 h-3 mr-1"></i>
+                                        Юр. лицо
+                                    </span>
+                                @else
+                                    <span class="inline-flex px-2 py-1 text-xs font-semibold rounded-full bg-green-100 text-green-800">
+                                        <i data-feather="user" class="w-3 h-3 mr-1"></i>
+                                        Физ. лицо
+                                    </span>
+                                @endif
+                            </td>
+                            <!-- Subject/Customer -->
+                            <td class="px-6 py-4">
+                                <div class="text-sm font-medium text-gray-900">
+                                    {{ $contract->subject->company_name ?? 'Кўрсатилмаган' }}
+                                </div>
+                                <div class="text-sm text-gray-500">
+                                    @if($contract->subject->is_legal_entity)
+                                        СТИР: {{ $contract->subject->inn ?? 'Топилмади' }}
+                                    @else
+                                        @if($contract->subject->document_series)
+                                            Паспорт: {{ $contract->subject->document_series ?? 'Топилмади' }} <br>  ЖШШИР: {{ $contract->subject->pinfl ?? 'Топилмади' }}
+                                        @else
+                                            Топилмади
+                                        @endif
+                                    @endif
+                                </div>
+                            </td>
             <div class="grid grid-cols-1 lg:grid-cols-3 gap-6">
                 <div>
                     <label class="block text-sm font-semibold text-gray-700 mb-3">Shartnoma raqami *</label>
