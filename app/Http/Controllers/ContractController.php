@@ -18,6 +18,7 @@ use Illuminate\Support\Facades\Validator;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Log;
 use Carbon\Carbon;
+use Illuminate\Validation\Rule;
 
 class ContractController extends Controller
 {
@@ -503,162 +504,160 @@ class ContractController extends Controller
     // }
 
 
-public function storePayment(Request $request, Contract $contract)
-{
-    // Log the incoming request for debugging
-    \Log::info('Store payment request', [
-        'contract_id' => $contract->id,
-        'request_data' => $request->all()
-    ]);
-
-    try {
-        $validator = Validator::make($request->all(), [
-            'payment_date' => 'required|date|after_or_equal:' . $contract->contract_date->format('Y-m-d'),
-            'payment_amount' => 'required|numeric|min:0.01',
-            'payment_number' => 'nullable|string|max:50',
-            'payment_notes' => 'nullable|string|max:500',
-            'payment_category' => 'required|in:initial,quarterly,full',
-            'target_year' => 'nullable|integer',
-            'target_quarter' => 'nullable|integer|min:1|max:4'
+    public function storePayment(Request $request, Contract $contract)
+    {
+        // Log the incoming request for debugging
+        \Log::info('Store payment request', [
+            'contract_id' => $contract->id,
+            'request_data' => $request->all()
         ]);
 
-        if ($validator->fails()) {
+        try {
+            $validator = Validator::make($request->all(), [
+                'payment_date' => 'required|date|after_or_equal:' . $contract->contract_date->format('Y-m-d'),
+                'payment_amount' => 'required|numeric|min:0.01',
+                'payment_number' => 'nullable|string|max:50',
+                'payment_notes' => 'nullable|string|max:500',
+                'payment_category' => 'required|in:initial,quarterly,full',
+                'target_year' => 'nullable|integer',
+                'target_quarter' => 'nullable|integer|min:1|max:4'
+            ]);
+
+            if ($validator->fails()) {
+                return response()->json([
+                    'success' => false,
+                    'message' => 'Ma\'lumotlarda xatolik: ' . $validator->errors()->first(),
+                    'errors' => $validator->errors()
+                ], 422);
+            }
+
+            // Prepare payment data
+            $paymentData = [
+                'payment_date' => $request->input('payment_date'),
+                'payment_amount' => $request->input('payment_amount'),
+                'payment_number' => $request->input('payment_number'),
+                'payment_notes' => $request->input('payment_notes'),
+                'payment_category' => $request->input('payment_category', 'quarterly'),
+                'target_year' => $request->input('target_year'),
+                'target_quarter' => $request->input('target_quarter'),
+                'created_by' => auth()->id()
+            ];
+
+            \Log::info('Calling payment service', ['payment_data' => $paymentData]);
+
+            $result = $this->paymentService->addPayment($contract, $paymentData);
+
+            \Log::info('Payment service result', ['result' => $result]);
+
+            return response()->json($result);
+        } catch (\Exception $e) {
+            \Log::error('Payment creation error', [
+                'contract_id' => $contract->id,
+                'error' => $e->getMessage(),
+                'trace' => $e->getTraceAsString()
+            ]);
+
             return response()->json([
                 'success' => false,
-                'message' => 'Ma\'lumotlarda xatolik: ' . $validator->errors()->first(),
-                'errors' => $validator->errors()
-            ], 422);
+                'message' => 'To\'lov qo\'shishda xatolik yuz berdi: ' . $e->getMessage()
+            ], 500);
         }
+    }
 
-        // Prepare payment data
-        $paymentData = [
-            'payment_date' => $request->input('payment_date'),
-            'payment_amount' => $request->input('payment_amount'),
-            'payment_number' => $request->input('payment_number'),
-            'payment_notes' => $request->input('payment_notes'),
-            'payment_category' => $request->input('payment_category', 'quarterly'),
-            'target_year' => $request->input('target_year'),
-            'target_quarter' => $request->input('target_quarter'),
-            'created_by' => auth()->id()
-        ];
-
-        \Log::info('Calling payment service', ['payment_data' => $paymentData]);
-
-        $result = $this->paymentService->addPayment($contract, $paymentData);
-
-        \Log::info('Payment service result', ['result' => $result]);
-
-        return response()->json($result);
-
-    } catch (\Exception $e) {
-        \Log::error('Payment creation error', [
+    public function storeNotBoshlangichPayment(Request $request, Contract $contract)
+    {
+        \Log::info('Store payment request', [
             'contract_id' => $contract->id,
-            'error' => $e->getMessage(),
-            'trace' => $e->getTraceAsString()
+            'request_data' => $request->all()
         ]);
 
-        return response()->json([
-            'success' => false,
-            'message' => 'To\'lov qo\'shishda xatolik yuz berdi: ' . $e->getMessage()
-        ], 500);
-    }
-}
+        try {
+            // Determine if this is a form submission or AJAX
+            $isFormSubmission = !$request->wantsJson();
 
-public function storeNotBoshlangichPayment(Request $request, Contract $contract)
-{
-    \Log::info('Store payment request', [
-        'contract_id' => $contract->id,
-        'request_data' => $request->all()
-    ]);
+            // Adjust validation rules based on request type
+            $validationRules = [
+                'payment_date' => 'required|date|after_or_equal:' . $contract->contract_date->format('Y-m-d'),
+                'payment_amount' => 'required|numeric|min:0.01',
+                'payment_number' => 'nullable|string|max:50',
+                'payment_notes' => 'nullable|string|max:500',
+                'target_year' => 'nullable|integer',
+                'target_quarter' => 'nullable|integer|min:1|max:4'
+            ];
 
-    try {
-        // Determine if this is a form submission or AJAX
-        $isFormSubmission = !$request->wantsJson();
+            // Only require payment_category for AJAX requests
+            if (!$isFormSubmission) {
+                $validationRules['payment_category'] = 'required|in:initial,quarterly,full';
+            }
 
-        // Adjust validation rules based on request type
-        $validationRules = [
-            'payment_date' => 'required|date|after_or_equal:' . $contract->contract_date->format('Y-m-d'),
-            'payment_amount' => 'required|numeric|min:0.01',
-            'payment_number' => 'nullable|string|max:50',
-            'payment_notes' => 'nullable|string|max:500',
-            'target_year' => 'nullable|integer',
-            'target_quarter' => 'nullable|integer|min:1|max:4'
-        ];
+            $validator = Validator::make($request->all(), $validationRules);
 
-        // Only require payment_category for AJAX requests
-        if (!$isFormSubmission) {
-            $validationRules['payment_category'] = 'required|in:initial,quarterly,full';
-        }
+            if ($validator->fails()) {
+                if ($isFormSubmission) {
+                    return back()->withErrors($validator)->withInput();
+                }
 
-        $validator = Validator::make($request->all(), $validationRules);
+                return response()->json([
+                    'success' => false,
+                    'message' => 'Ma\'lumotlarda xatolik: ' . $validator->errors()->first(),
+                    'errors' => $validator->errors()
+                ], 422);
+            }
 
-        if ($validator->fails()) {
+            // Determine payment category if not provided (for form submissions)
+            $paymentCategory = $request->input('payment_category');
+            if (!$paymentCategory) {
+                $paymentCategory = $request->input('target_quarter') ? 'quarterly' : 'initial';
+            }
+
+            // Prepare payment data
+            $paymentData = [
+                'payment_date' => $request->input('payment_date'),
+                'payment_amount' => $request->input('payment_amount'),
+                'payment_number' => $request->input('payment_number'),
+                'payment_notes' => $request->input('payment_notes'),
+                'payment_category' => $paymentCategory,
+                'target_year' => $request->input('target_year'),
+                'target_quarter' => $request->input('target_quarter'),
+                'created_by' => auth()->id()
+            ];
+
+            \Log::info('Calling payment service', ['payment_data' => $paymentData]);
+
+            $result = $this->paymentService->addPayment($contract, $paymentData);
+
+            \Log::info('Payment service result', ['result' => $result]);
+
+            // Handle response based on request type
             if ($isFormSubmission) {
-                return back()->withErrors($validator)->withInput();
+                if ($result['success']) {
+                    return redirect()->route('contracts.payment_update', $contract)
+                        ->with('success', $result['message']);
+                } else {
+                    return back()->withInput()
+                        ->with('error', $result['message']);
+                }
+            }
+
+            return response()->json($result);
+        } catch (\Exception $e) {
+            \Log::error('Payment creation error', [
+                'contract_id' => $contract->id,
+                'error' => $e->getMessage(),
+                'trace' => $e->getTraceAsString()
+            ]);
+
+            if ($isFormSubmission) {
+                return back()->withInput()
+                    ->with('error', 'To\'lov qo\'shishda xatolik yuz berdi');
             }
 
             return response()->json([
                 'success' => false,
-                'message' => 'Ma\'lumotlarda xatolik: ' . $validator->errors()->first(),
-                'errors' => $validator->errors()
-            ], 422);
+                'message' => 'To\'lov qo\'shishda xatolik yuz berdi: ' . $e->getMessage()
+            ], 500);
         }
-
-        // Determine payment category if not provided (for form submissions)
-        $paymentCategory = $request->input('payment_category');
-        if (!$paymentCategory) {
-            $paymentCategory = $request->input('target_quarter') ? 'quarterly' : 'initial';
-        }
-
-        // Prepare payment data
-        $paymentData = [
-            'payment_date' => $request->input('payment_date'),
-            'payment_amount' => $request->input('payment_amount'),
-            'payment_number' => $request->input('payment_number'),
-            'payment_notes' => $request->input('payment_notes'),
-            'payment_category' => $paymentCategory,
-            'target_year' => $request->input('target_year'),
-            'target_quarter' => $request->input('target_quarter'),
-            'created_by' => auth()->id()
-        ];
-
-        \Log::info('Calling payment service', ['payment_data' => $paymentData]);
-
-        $result = $this->paymentService->addPayment($contract, $paymentData);
-
-        \Log::info('Payment service result', ['result' => $result]);
-
-        // Handle response based on request type
-        if ($isFormSubmission) {
-            if ($result['success']) {
-                return redirect()->route('contracts.payment_update', $contract)
-                    ->with('success', $result['message']);
-            } else {
-                return back()->withInput()
-                    ->with('error', $result['message']);
-            }
-        }
-
-        return response()->json($result);
-
-    } catch (\Exception $e) {
-        \Log::error('Payment creation error', [
-            'contract_id' => $contract->id,
-            'error' => $e->getMessage(),
-            'trace' => $e->getTraceAsString()
-        ]);
-
-        if ($isFormSubmission) {
-            return back()->withInput()
-                ->with('error', 'To\'lov qo\'shishda xatolik yuz berdi');
-        }
-
-        return response()->json([
-            'success' => false,
-            'message' => 'To\'lov qo\'shishda xatolik yuz berdi: ' . $e->getMessage()
-        ], 500);
     }
-}
 
     /**
      * Show quarter payment form
@@ -694,9 +693,31 @@ public function storeNotBoshlangichPayment(Request $request, Contract $contract)
      */
     public function createAmendment(Contract $contract): View
     {
+        $contract->load('amendments');
+
+        // Generate suggested amendment number
+        $baseContractNumber = $contract->contract_number;
+        $existingAmendments = $contract->amendments()->count();
+
+        // Smart amendment numbering - check for existing pattern
+        if (strpos($baseContractNumber, '(') !== false) {
+            // Already has amendment number, extract base
+            $baseContractNumber = preg_replace('/\(\d+\)$/', '', $baseContractNumber);
+        }
+
+        $suggestedNumber = $baseContractNumber . '(' . ($existingAmendments + 1) . ')';
+
+        // Check if suggested number already exists and increment if needed
+        while ($contract->amendments()->where('amendment_number', $suggestedNumber)->exists()) {
+            $existingAmendments++;
+            $suggestedNumber = $baseContractNumber . '(' . ($existingAmendments + 1) . ')';
+        }
+
         $paymentData = $this->paymentService->getContractPaymentData($contract);
-        return view('contracts.create-amendment', compact('contract', 'paymentData'));
+
+        return view('contracts.create-amendment', compact('contract', 'paymentData', 'suggestedNumber'));
     }
+
 
     public function createAmendmentSchedule($contract, $amendment): RedirectResponse
     {
@@ -717,45 +738,168 @@ public function storeNotBoshlangichPayment(Request $request, Contract $contract)
     public function storeAmendment(Request $request, Contract $contract): RedirectResponse
     {
         $validator = Validator::make($request->all(), [
-            'amendment_number' => 'required|string|max:50',
+            'amendment_number' => [
+                'required',
+                'string',
+                'max:50',
+                Rule::unique('contract_amendments')->where(function ($query) use ($contract) {
+                    return $query->where('contract_id', $contract->id);
+                })
+            ],
             'amendment_date' => 'required|date|after_or_equal:' . $contract->contract_date->format('Y-m-d'),
             'new_total_amount' => 'nullable|numeric|min:1',
             'new_completion_date' => 'nullable|date|after:' . $contract->contract_date->format('Y-m-d'),
             'new_initial_payment_percent' => 'nullable|numeric|min:0|max:100',
-            'new_quarters_count' => 'nullable|numeric|min:1|max:20',
-            'reason' => 'required|string|max:500'
+            'new_quarters_count' => 'nullable|integer|min:1|max:40',
+            'reason' => 'required|string|max:1000',
+            'description' => 'nullable|string|max:2000'
         ]);
 
         if ($validator->fails()) {
             return back()->withErrors($validator)->withInput();
         }
 
-        $result = $this->paymentService->createAmendment($contract, $request->all());
+        try {
+            DB::beginTransaction();
 
-        if ($result['success']) {
-            return redirect()->route('contracts.payment_update', $contract)->with('success', $result['message']);
+            // Advanced validation: Check if new amount is less than already paid
+            if ($request->new_total_amount) {
+                $totalPaid = ActualPayment::where('contract_id', $contract->id)->sum('amount');
+                if ($request->new_total_amount < $totalPaid) {
+                    throw new \Exception(
+                        "Yangi shartnoma summasi ({$request->new_total_amount}) " .
+                            "allaqachon to'langan summadan ({$totalPaid}) kam bo'lishi mumkin emas"
+                    );
+                }
+            }
+
+            // Calculate impact summary for logging
+            $changes = [];
+            if ($request->new_total_amount && $request->new_total_amount != $contract->total_amount) {
+                $changes[] = "summa: " . $contract->total_amount . " → " . $request->new_total_amount;
+            }
+            if ($request->new_initial_payment_percent && $request->new_initial_payment_percent != $contract->initial_payment_percent) {
+                $changes[] = "boshlang'ich: {$contract->initial_payment_percent}% → {$request->new_initial_payment_percent}%";
+            }
+            if ($request->new_quarters_count && $request->new_quarters_count != $contract->quarters_count) {
+                $changes[] = "choraklar: {$contract->quarters_count} → {$request->new_quarters_count}";
+            }
+
+            $amendment = ContractAmendment::create([
+                'contract_id' => $contract->id,
+                'amendment_number' => $request->amendment_number,
+                'amendment_date' => $request->amendment_date,
+                'new_total_amount' => $request->new_total_amount,
+                'new_completion_date' => $request->new_completion_date,
+                'new_initial_payment_percent' => $request->new_initial_payment_percent,
+                'new_quarters_count' => $request->new_quarters_count,
+                'reason' => $request->reason,
+                'description' => $request->description,
+                'changes_summary' => !empty($changes) ? implode(', ', $changes) : null,
+                'is_approved' => false,
+                'created_by' => auth()->id()
+            ]);
+
+            // Log amendment creation
+            Log::info('Contract amendment created', [
+                'contract_id' => $contract->id,
+                'contract_number' => $contract->contract_number,
+                'amendment_id' => $amendment->id,
+                'amendment_number' => $amendment->amendment_number,
+                'changes' => $changes,
+                'created_by' => auth()->id()
+            ]);
+
+            DB::commit();
+
+            return redirect()
+                ->route('contracts.amendments.show', [$contract, $amendment])
+                ->with('success', "Qo'shimcha kelishuv '{$amendment->amendment_number}' muvaffaqiyatli yaratildi");
+        } catch (\Exception $e) {
+            DB::rollBack();
+            Log::error('Amendment creation failed: ' . $e->getMessage());
+
+            return back()->withInput()->with('error', 'Qo\'shimcha kelishuv yaratishda xatolik: ' . $e->getMessage());
         }
-
-        return back()->withInput()->with('error', $result['message']);
     }
+
 
     /**
      * Show amendment details
      */
     public function showAmendment($contract, $amendment): View
     {
-        // Manually fetch the models
-        $contract = Contract::findOrFail($contract);
+        $contract = Contract::with(['amendments', 'status'])->findOrFail($contract);
 
-        $amendment = ContractAmendment::where('contract_id', $contract->id)
+        $amendment = ContractAmendment::with(['createdBy', 'approvedBy'])
+            ->where('contract_id', $contract->id)
             ->where('id', $amendment)
             ->firstOrFail();
 
         $paymentData = $this->paymentService->getContractPaymentData($contract);
 
-        return view('contracts.amendment-details', compact('contract', 'amendment', 'paymentData'));
+        // Get all amendments for comprehensive timeline
+        $allAmendments = $contract->amendments()
+            ->with(['createdBy', 'approvedBy'])
+            ->orderBy('amendment_date', 'desc')
+            ->get();
+
+        return view('contracts.amendment-details', compact('contract', 'amendment', 'paymentData', 'allAmendments'));
     }
 
+    /**
+     * Get historical contract data before amendments
+     */
+    private function getHistoricalContractData(Contract $contract, ContractAmendment $currentAmendment): array
+    {
+        // Get all approved amendments before this one, ordered by date
+        $previousAmendments = ContractAmendment::where('contract_id', $contract->id)
+            ->where('is_approved', true)
+            ->where('amendment_date', '<', $currentAmendment->amendment_date)
+            ->orderBy('amendment_date', 'asc')
+            ->get();
+
+        // Start with original contract values (what was set when contract was created)
+        $originalValues = [
+            'total_amount' => $contract->total_amount,
+            'initial_payment_percent' => $contract->initial_payment_percent ?? 20,
+            'quarters_count' => $contract->quarters_count ?? 8,
+            'completion_date' => $contract->completion_date
+        ];
+
+        // If this is the first amendment, show original values
+        if ($previousAmendments->isEmpty()) {
+            return [
+                'original' => $originalValues,
+                'before_current' => $originalValues,
+                'has_history' => false
+            ];
+        }
+
+        // Apply previous amendments to get the state before current amendment
+        $beforeCurrentValues = $originalValues;
+        foreach ($previousAmendments as $prevAmendment) {
+            if ($prevAmendment->new_total_amount !== null) {
+                $beforeCurrentValues['total_amount'] = $prevAmendment->new_total_amount;
+            }
+            if ($prevAmendment->new_initial_payment_percent !== null) {
+                $beforeCurrentValues['initial_payment_percent'] = $prevAmendment->new_initial_payment_percent;
+            }
+            if ($prevAmendment->new_quarters_count !== null) {
+                $beforeCurrentValues['quarters_count'] = $prevAmendment->new_quarters_count;
+            }
+            if ($prevAmendment->new_completion_date !== null) {
+                $beforeCurrentValues['completion_date'] = $prevAmendment->new_completion_date;
+            }
+        }
+
+        return [
+            'original' => $originalValues,
+            'before_current' => $beforeCurrentValues,
+            'has_history' => true,
+            'amendments_count' => $previousAmendments->count()
+        ];
+    }
     /**
      * Approve amendment
      */
@@ -779,11 +923,11 @@ public function storeNotBoshlangichPayment(Request $request, Contract $contract)
     public function editAmendment($contract, $amendment): View
     {
         $contract = Contract::findOrFail($contract);
+
         $amendment = ContractAmendment::where('contract_id', $contract->id)
             ->where('id', $amendment)
             ->firstOrFail();
 
-        // Only allow editing unapproved amendments
         if ($amendment->is_approved) {
             return redirect()->route('contracts.amendments.show', [$contract, $amendment])
                 ->with('error', 'Tasdiqlangan kelishuvni tahrirlash mumkin emas');
@@ -791,7 +935,15 @@ public function storeNotBoshlangichPayment(Request $request, Contract $contract)
 
         $paymentData = $this->paymentService->getContractPaymentData($contract);
 
-        return view('contracts.edit-amendment', compact('contract', 'amendment', 'paymentData'));
+        // Get historical data for context
+        $previousAmendments = $contract->amendments()
+            ->where('is_approved', true)
+            ->where('amendment_date', '<', $amendment->amendment_date)
+            ->orderBy('amendment_date', 'desc')
+            ->get();
+
+
+        return view('contracts.edit-amendment', compact('contract', 'amendment', 'paymentData', 'previousAmendments'));
     }
 
     /**
@@ -902,76 +1054,75 @@ public function storeNotBoshlangichPayment(Request $request, Contract $contract)
     /**
      * Update existing payment
      */
-public function updatePayment(Request $request, $paymentId): JsonResponse
-{
-    // Add debug logging
-    Log::info('UpdatePayment method called', [
-        'payment_id' => $paymentId,
-        'request_method' => $request->method(),
-        'request_uri' => $request->getRequestUri(),
-        'all_data' => $request->all(),
-        'headers' => $request->headers->all()
-    ]);
-
-    try {
-        $payment = ActualPayment::findOrFail($paymentId);
-        Log::info('Payment found', ['payment_id' => $payment->id]);
-
-        // Check permission - only allow editing payments from last 30 days
-        if ($payment->created_at->diffInDays(now()) > 30) {
-            Log::warning('Payment too old to edit', ['payment_id' => $payment->id, 'created_at' => $payment->created_at]);
-            return response()->json([
-                'success' => false,
-                'message' => 'Bu to\'lov 30 kundan ortiq vaqt oldin yaratilgan, tahrirlash mumkin emas'
-            ], 403);
-        }
-
-        $validator = Validator::make($request->all(), [
-            'payment_date' => 'required|date',
-            'payment_amount' => 'required|numeric|min:0.01',
-            'payment_number' => 'nullable|string|max:50',
-            'payment_notes' => 'nullable|string|max:500'
-        ]);
-
-        if ($validator->fails()) {
-            Log::error('Validation failed', ['errors' => $validator->errors()->toArray()]);
-            return response()->json([
-                'success' => false,
-                'message' => 'Ma\'lumotlar noto\'g\'ri',
-                'errors' => $validator->errors()
-            ], 422);
-        }
-
-        $updateData = [
-            'payment_date' => $request->payment_date,
-            'payment_amount' => $request->payment_amount,
-            'payment_number' => $request->payment_number,
-            'payment_notes' => $request->payment_notes,
-        ];
-
-        Log::info('Calling payment service', ['update_data' => $updateData]);
-
-        $result = $this->paymentService->updatePayment($payment, $updateData);
-
-        Log::info('Payment service result', ['result' => $result]);
-
-        return response()->json($result);
-
-    } catch (\Exception $e) {
-        Log::error('Payment update exception', [
+    public function updatePayment(Request $request, $paymentId): JsonResponse
+    {
+        // Add debug logging
+        Log::info('UpdatePayment method called', [
             'payment_id' => $paymentId,
-            'message' => $e->getMessage(),
-            'file' => $e->getFile(),
-            'line' => $e->getLine(),
-            'trace' => $e->getTraceAsString()
+            'request_method' => $request->method(),
+            'request_uri' => $request->getRequestUri(),
+            'all_data' => $request->all(),
+            'headers' => $request->headers->all()
         ]);
 
-        return response()->json([
-            'success' => false,
-            'message' => 'To\'lov yangilashda xatolik: ' . $e->getMessage()
-        ], 500);
+        try {
+            $payment = ActualPayment::findOrFail($paymentId);
+            Log::info('Payment found', ['payment_id' => $payment->id]);
+
+            // Check permission - only allow editing payments from last 30 days
+            if ($payment->created_at->diffInDays(now()) > 30) {
+                Log::warning('Payment too old to edit', ['payment_id' => $payment->id, 'created_at' => $payment->created_at]);
+                return response()->json([
+                    'success' => false,
+                    'message' => 'Bu to\'lov 30 kundan ortiq vaqt oldin yaratilgan, tahrirlash mumkin emas'
+                ], 403);
+            }
+
+            $validator = Validator::make($request->all(), [
+                'payment_date' => 'required|date',
+                'payment_amount' => 'required|numeric|min:0.01',
+                'payment_number' => 'nullable|string|max:50',
+                'payment_notes' => 'nullable|string|max:500'
+            ]);
+
+            if ($validator->fails()) {
+                Log::error('Validation failed', ['errors' => $validator->errors()->toArray()]);
+                return response()->json([
+                    'success' => false,
+                    'message' => 'Ma\'lumotlar noto\'g\'ri',
+                    'errors' => $validator->errors()
+                ], 422);
+            }
+
+            $updateData = [
+                'payment_date' => $request->payment_date,
+                'payment_amount' => $request->payment_amount,
+                'payment_number' => $request->payment_number,
+                'payment_notes' => $request->payment_notes,
+            ];
+
+            Log::info('Calling payment service', ['update_data' => $updateData]);
+
+            $result = $this->paymentService->updatePayment($payment, $updateData);
+
+            Log::info('Payment service result', ['result' => $result]);
+
+            return response()->json($result);
+        } catch (\Exception $e) {
+            Log::error('Payment update exception', [
+                'payment_id' => $paymentId,
+                'message' => $e->getMessage(),
+                'file' => $e->getFile(),
+                'line' => $e->getLine(),
+                'trace' => $e->getTraceAsString()
+            ]);
+
+            return response()->json([
+                'success' => false,
+                'message' => 'To\'lov yangilashda xatolik: ' . $e->getMessage()
+            ], 500);
+        }
     }
-}
 
     /**
      * Delete payment
