@@ -86,6 +86,19 @@
                 </select>
             </div>
 
+<div>
+    <label class="block text-sm font-medium text-gray-700 mb-1">Кўшимча шартномаси мавжудлар</label>
+    <select name="has_amendments" class="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500">
+        <option value="">Барча шартномалар</option>
+        <option value="1" {{ request('has_amendments') == '1' ? 'selected' : '' }}>
+            Фақат бор
+        </option>
+        <option value="0" {{ request('has_amendments') == '0' ? 'selected' : '' }}>
+         йўқ
+        </option>
+    </select>
+</div>
+
             <div class="flex items-end space-x-2">
                 <button type="submit"
                         class="px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors">

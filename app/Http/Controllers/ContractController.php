@@ -70,6 +70,20 @@ class ContractController extends Controller
             $query->whereYear('completion_date', $request->completion_year);
         }
 
+
+        if ($request->contract_number) {
+                $query->where('contract_number', 'like', "%{$request->contract_number}%");
+            }
+
+    // NEW: Amendment filter
+        if ($request->has_amendments !== null && $request->has_amendments !== '') {
+            if ($request->has_amendments == '1') {
+                $query->whereHas('amendments');
+            } else {
+                $query->whereDoesntHave('amendments');
+            }
+        }
+
         // Calculate total amount
         $totalAmount = (clone $query)
             ->whereHas('status', function ($q) {
