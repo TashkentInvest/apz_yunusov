@@ -99,7 +99,7 @@
                         <tr class="hover:bg-gray-50">
                             <td class="px-6 py-4 text-sm">{{ ($contracts->currentPage() - 1) * $contracts->perPage() + $loop->iteration }}</td>
                             <td class="px-6 py-4">
-                                <a href="{{ route('contracts.show', $contract) }}" class="text-blue-600 hover:text-blue-800">
+                                <a href="{{ route('contracts.payment_update', $contract) }}" class="text-blue-600 hover:text-blue-800">
                                     {{ $contract->contract_number }}
                                 </a>
                             </td>
