@@ -737,12 +737,15 @@ class ContractController extends Controller
     /**
      * Update existing payment
      */
+    /**
+     * Update existing payment
+     */
     public function updatePayment(Request $request, $paymentId): JsonResponse
     {
         try {
             $payment = ActualPayment::findOrFail($paymentId);
 
-            // Check permission
+            // Check permission - only allow editing payments from last 30 days
             if ($payment->created_at->diffInDays(now()) > 30) {
                 return response()->json([
                     'success' => false,
@@ -765,7 +768,15 @@ class ContractController extends Controller
                 ], 422);
             }
 
-            $result = $this->paymentService->updatePayment($payment, $request->all());
+            // Map request fields to service expected format
+            $updateData = [
+                'payment_date' => $request->payment_date,
+                'payment_amount' => $request->payment_amount,
+                'payment_number' => $request->payment_number,
+                'payment_notes' => $request->payment_notes,
+            ];
+
+            $result = $this->paymentService->updatePayment($payment, $updateData);
             return response()->json($result);
         } catch (\Exception $e) {
             Log::error('Payment update failed: ' . $e->getMessage());
@@ -775,7 +786,6 @@ class ContractController extends Controller
             ], 500);
         }
     }
-
     /**
      * Delete payment
      */
