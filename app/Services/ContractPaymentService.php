@@ -324,6 +324,9 @@ class ContractPaymentService
     /**
      * Create payment schedule - Enhanced version with initial payment logic
      */
+    /**
+     * Create payment schedule - Enhanced version with initial payment logic
+     */
     public function createPaymentSchedule(Contract $contract, array $data): array
     {
         try {
@@ -384,15 +387,21 @@ class ContractPaymentService
                 if ($scheduleType === 'auto') {
                     $quarterAmount = $totalAmount / $quartersCount;
                 } else {
-                    $percent = (float) ($data["quarter_" . ($i + 1) . "_percent"] ?? 0);
-                    $quarterAmount = $totalAmount * ($percent / 100);
+                    // FIXED: Use the amount directly from the form instead of calculating from percent
+                    $quarterAmount = (float) ($data["quarter_" . ($i + 1) . "_amount"] ?? 0);
+
+                    // Fallback to percent calculation if amount is not provided
+                    if ($quarterAmount <= 0) {
+                        $percent = (float) ($data["quarter_" . ($i + 1) . "_percent"] ?? 0);
+                        $quarterAmount = $totalAmount * ($percent / 100);
+                    }
                 }
 
                 $scheduleData = [
                     'contract_id' => $contract->id,
                     'year' => $currentYear,
                     'quarter' => $currentQuarter,
-                    'quarter_amount' => $quarterAmount,
+                    'quarter_amount' => (float) $quarterAmount, // Ensure it stays as float
                     'is_initial_payment' => false,
                     'custom_percent' => $scheduleType === 'custom' ?
                         (float) ($data["quarter_" . ($i + 1) . "_percent"] ?? 0) : null,
@@ -400,7 +409,6 @@ class ContractPaymentService
                     'created_at' => now(),
                     'updated_at' => now()
                 ];
-
                 // Add amendment_id if provided
                 if ($amendmentId) {
                     $scheduleData['amendment_id'] = $amendmentId;

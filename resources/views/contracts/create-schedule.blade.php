@@ -279,7 +279,7 @@
                                 <input type="number"
                                     name="quarter_{{ $quarterData['index'] }}_amount"
                                     data-quarter="{{ $quarterData['index'] }}"
-                                    value="{{ number_format($remainingAmount / $quartersCount, 0, '', '') }}"
+                                    value="{{ floor($remainingAmount / $quartersCount) }}"
                                     min="0" step="0.01"
                                     class="custom-amount-input w-full px-2 py-1 border border-gray-300 rounded text-sm"
                                     onchange="onAmountChange(this)">
@@ -502,10 +502,10 @@ function onPercentChange(input) {
     const percent = parseFloat(input.value) || 0;
     const amount = (remainingAmount * percent) / 100;
 
-    // Update corresponding amount input
+    // Update corresponding amount input - FIXED: Remove Math.round()
     const amountInput = document.querySelector(`input[name="quarter_${quarter}_amount"]`);
     if (amountInput) {
-        amountInput.value = Math.round(amount);
+        amountInput.value = Math.floor(amount); // Use Math.floor() or just: amount.toFixed(0)
     }
 
     validateInputs();
@@ -533,6 +533,7 @@ function onAmountChange(input) {
     validateInputs();
     updatePreview();
 }
+
 
 // Validate inputs
 function validateInputs() {
@@ -600,6 +601,7 @@ function updateSubmitButton(isValid, total) {
 }
 
 // Update preview
+// Update preview
 function updatePreview() {
     const scheduleType = document.querySelector('input[name="schedule_type"]:checked')?.value || 'auto';
     const quartersCountInput = document.querySelector('input[name="quarters_count"]');
@@ -617,9 +619,12 @@ function updatePreview() {
             percent = 100 / currentQuarters;
             amount = remainingAmount / currentQuarters;
         } else {
-            const input = document.querySelector(`input[name="quarter_${quarterData.index}_percent"]`);
-            percent = input ? parseFloat(input.value) || 0 : 0;
-            amount = remainingAmount * (percent / 100);
+            // FIXED: Get amount directly from amount input, not calculated from percent
+            const amountInput = document.querySelector(`input[name="quarter_${quarterData.index}_amount"]`);
+            const percentInput = document.querySelector(`input[name="quarter_${quarterData.index}_percent"]`);
+
+            amount = amountInput ? parseFloat(amountInput.value) || 0 : 0;
+            percent = percentInput ? parseFloat(percentInput.value) || 0 : 0;
         }
 
         html += `
