@@ -183,7 +183,7 @@
         <form method="POST" action="{{ isset($paymentData['contract']) ? route('contracts.update', $paymentData['contract']['id']) : route('contracts.store') }}" class="p-8 space-y-8">
             @csrf
             @if(isset($paymentData['contract']))
-                @method('POST')
+                @method('PUT')
                 <input type="hidden" name="from_payment_update" value="1">
             @endif
 
