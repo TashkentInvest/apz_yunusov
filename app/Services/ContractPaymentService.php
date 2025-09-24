@@ -46,9 +46,13 @@ class ContractPaymentService
     private function formatContractData(Contract $contract): array
     {
         $contractDate = Carbon::parse($contract->contract_date);
-        $initialPaymentPercent = $contract->initial_payment_percent ?? 20;
-        $initialPaymentAmount = $contract->total_amount * ($initialPaymentPercent / 100);
-        $remainingAmount = $contract->total_amount - $initialPaymentAmount;
+
+        // Use current amounts after amendments
+        $currentTotalAmount = $this->getCurrentContractAmount($contract);
+        $currentInitialPercent = $this->getCurrentInitialPercent($contract);
+
+        $initialPaymentAmount = $currentTotalAmount * ($currentInitialPercent / 100);
+        $remainingAmount = $currentTotalAmount - $initialPaymentAmount;
 
         return [
             'id' => $contract->id,
@@ -56,13 +60,13 @@ class ContractPaymentService
             'contract_date' => $contractDate->format('Y-m-d'),
             'contract_date_formatted' => $contractDate->format('d.m.Y'),
             'completion_date' => $contract->completion_date?->format('Y-m-d'),
-            'total_amount' => $contract->total_amount,
-            'total_amount_formatted' => $this->formatCurrency($contract->total_amount),
+            'total_amount' => $currentTotalAmount, // Use current amount
+            'total_amount_formatted' => $this->formatCurrency($currentTotalAmount),
             'payment_type' => $contract->payment_type,
-            'initial_payment_percent' => $initialPaymentPercent,
+            'initial_payment_percent' => $currentInitialPercent,
             'construction_period_years' => $contract->construction_period_years ?? 2,
             'quarters_count' => $contract->quarters_count ?? 8,
-            'initial_payment_amount' => $initialPaymentAmount, // ENSURE THIS IS ALWAYS SET
+            'initial_payment_amount' => $initialPaymentAmount,
             'initial_payment_formatted' => $this->formatCurrency($initialPaymentAmount),
             'remaining_amount' => $remainingAmount,
             'remaining_amount_formatted' => $this->formatCurrency($remainingAmount),
@@ -169,7 +173,10 @@ class ContractPaymentService
             return null;
         }
 
-        $initialPaymentAmount = $contract->total_amount * (($contract->initial_payment_percent ?? 20) / 100);
+        // Use current amounts after amendments
+        $currentTotalAmount = $this->getCurrentContractAmount($contract);
+        $currentInitialPercent = $this->getCurrentInitialPercent($contract);
+        $initialPaymentAmount = $currentTotalAmount * ($currentInitialPercent / 100);
 
         $initialPayments = ActualPayment::where('contract_id', $contract->id)
             ->where('is_initial_payment', true)
@@ -177,13 +184,13 @@ class ContractPaymentService
             ->get();
 
         $totalPaid = $initialPayments->sum('amount');
-        $remaining = max(0, $initialPaymentAmount - $totalPaid); // ENSURE NON-NEGATIVE
+        $remaining = max(0, $initialPaymentAmount - $totalPaid);
         $paymentPercent = $initialPaymentAmount > 0 ? ($totalPaid / $initialPaymentAmount) * 100 : 0;
 
         return [
             'plan_amount' => $initialPaymentAmount,
             'plan_amount_formatted' => $this->formatCurrency($initialPaymentAmount),
-            'total_paid' => $totalPaid, // ENSURE THIS IS ALWAYS A NUMBER
+            'total_paid' => $totalPaid,
             'total_paid_formatted' => $this->formatCurrency($totalPaid),
             'remaining' => $remaining,
             'remaining_formatted' => $this->formatCurrency($remaining),
@@ -200,8 +207,10 @@ class ContractPaymentService
      */
     private function calculateCurrentDebt(Contract $contract): float
     {
+        $currentTotalAmount = $this->getCurrentContractAmount($contract);
+
         if ($contract->payment_type === 'full') {
-            return $contract->total_amount - $contract->payments()->sum('amount');
+            return $currentTotalAmount - $contract->payments()->sum('amount');
         }
 
         $scheduledAmount = PaymentSchedule::where('contract_id', $contract->id)
@@ -218,10 +227,11 @@ class ContractPaymentService
      */
     private function calculateOverdueDebt(Contract $contract): float
     {
+        $currentTotalAmount = $this->getCurrentContractAmount($contract);
+
         if ($contract->payment_type === 'full') {
-            // For full payment, check if completion date passed and there's unpaid balance
             if ($contract->completion_date && Carbon::parse($contract->completion_date)->isPast()) {
-                $remainingDebt = $contract->total_amount - $contract->payments()->sum('amount');
+                $remainingDebt = $currentTotalAmount - $contract->payments()->sum('amount');
                 return max(0, $remainingDebt);
             }
             return 0;
@@ -230,7 +240,7 @@ class ContractPaymentService
         $now = now();
         $overdueSchedules = PaymentSchedule::where('contract_id', $contract->id)
             ->where('is_active', true)
-            ->where('is_initial_payment', false) // EXCLUDE initial payment from overdue calculation
+            ->where('is_initial_payment', false)
             ->where(function ($query) use ($now) {
                 $query->where('year', '<', $now->year)
                     ->orWhere(function ($q) use ($now) {
@@ -242,7 +252,6 @@ class ContractPaymentService
 
         $totalOverdue = 0;
         foreach ($overdueSchedules as $schedule) {
-            // Get actual payments for this schedule
             $paid = ActualPayment::where('contract_id', $contract->id)
                 ->where('year', $schedule->year)
                 ->where('quarter', $schedule->quarter)
@@ -258,67 +267,104 @@ class ContractPaymentService
     /**
      * Get summary cards data with separate initial payment tracking
      */
-    public function getSummaryCards(Contract $contract): array
-    {
-        $totalAmount = $contract->total_amount;
-        $totalPaid = $contract->payments()->sum('amount');
+public function getSummaryCards(Contract $contract): array
+{
+    // Get the current total amount (after amendments)
+    $currentTotalAmount = $this->getCurrentContractAmount($contract);
+    $totalPaid = $contract->payments()->sum('amount');
 
-        // For full payment type
-        if ($contract->payment_type === 'full') {
-            $planAmount = $totalAmount;
-            $remainingDebt = $totalAmount - $totalPaid;
+    // For full payment type
+    if ($contract->payment_type === 'full') {
+        $planAmount = $currentTotalAmount;
+        $remainingDebt = $currentTotalAmount - $totalPaid;
 
-            // Calculate overdue for full payment if completion date has passed
-            $overdueDebt = 0;
-            if ($contract->completion_date && Carbon::parse($contract->completion_date)->isPast() && $remainingDebt > 0) {
-                $overdueDebt = $remainingDebt; // All unpaid amount is overdue after completion date
-            }
-
-            return [
-                'total_plan_formatted' => number_format($planAmount, 0, '.', ' ') . ' so\'m',
-                'total_paid_formatted' => number_format($totalPaid, 0, '.', ' ') . ' so\'m',
-                'initial_payment_plan_formatted' => '0 so\'m',
-                'initial_payment_paid_formatted' => '0 so\'m',
-                'quarterly_plan_formatted' => '0 so\'m',
-                'quarterly_paid_formatted' => '0 so\'m',
-                'current_debt_formatted' => number_format($remainingDebt, 0, '.', ' ') . ' so\'m',
-                'overdue_debt_formatted' => number_format($overdueDebt, 0, '.', ' ') . ' so\'m',
-                'completion_percent' => $totalAmount > 0 ? round(($totalPaid / $totalAmount) * 100, 1) : 0,
-            ];
+        // Calculate overdue for full payment if completion date has passed
+        $overdueDebt = 0;
+        if ($contract->completion_date && Carbon::parse($contract->completion_date)->isPast() && $remainingDebt > 0) {
+            $overdueDebt = $remainingDebt;
         }
 
-        // For installment payment type (existing logic)
-        $initialPaymentPlan = $contract->initial_payment_amount;
-        $initialPaymentPaid = $contract->payments()
-            ->where('is_initial_payment', true)
-            ->sum('amount');
-
-        $quarterlyPlan = $contract->schedules()
-            ->where('is_initial_payment', false)
-            ->where('is_active', true)
-            ->sum('quarter_amount');
-
-        $quarterlyPaid = $contract->payments()
-            ->where('is_initial_payment', false)
-            ->sum('amount');
-
-        $totalPlanAmount = $initialPaymentPlan + $quarterlyPlan;
-
-        // Calculate debts
-        $currentDebt = $this->calculateCurrentDebt($contract);
-        $overdueDebt = $this->calculateOverdueDebt($contract);
-
         return [
-            'total_plan_formatted' => number_format($totalPlanAmount, 0, '.', ' ') . ' so\'m',
+            'total_plan_formatted' => number_format($planAmount, 0, '.', ' ') . ' so\'m',
             'total_paid_formatted' => number_format($totalPaid, 0, '.', ' ') . ' so\'m',
-            'initial_payment_plan_formatted' => number_format($initialPaymentPlan, 0, '.', ' ') . ' so\'m',
-            'initial_payment_paid_formatted' => number_format($initialPaymentPaid, 0, '.', ' ') . ' so\'m',
-            'quarterly_plan_formatted' => number_format($quarterlyPlan, 0, '.', ' ') . ' so\'m',
-            'quarterly_paid_formatted' => number_format($quarterlyPaid, 0, '.', ' ') . ' so\'m',
-            'current_debt_formatted' => number_format($currentDebt, 0, '.', ' ') . ' so\'m',
+            'initial_payment_plan_formatted' => '0 so\'m',
+            'initial_payment_paid_formatted' => '0 so\'m',
+            'quarterly_plan_formatted' => '0 so\'m',
+            'quarterly_paid_formatted' => '0 so\'m',
+            'current_debt_formatted' => number_format($remainingDebt, 0, '.', ' ') . ' so\'m',
             'overdue_debt_formatted' => number_format($overdueDebt, 0, '.', ' ') . ' so\'m',
-            'completion_percent' => $totalPlanAmount > 0 ? round(($totalPaid / $totalPlanAmount) * 100, 1) : 0,
+            'completion_percent' => $currentTotalAmount > 0 ? round(($totalPaid / $currentTotalAmount) * 100, 1) : 0,
         ];
+    }
+
+    // For installment payment type - use current amounts after amendments
+    $currentInitialPercent = $this->getCurrentInitialPercent($contract);
+    $currentQuartersCount = $this->getCurrentQuartersCount($contract);
+
+    $initialPaymentPlan = $currentTotalAmount * ($currentInitialPercent / 100);
+    $remainingAmountAfterInitial = $currentTotalAmount - $initialPaymentPlan;
+
+    // Calculate quarterly plan based on current amounts
+    $quarterlyPlan = $currentQuartersCount > 0 ? $remainingAmountAfterInitial : 0;
+
+    $initialPaymentPaid = $contract->payments()
+        ->where('is_initial_payment', true)
+        ->sum('amount');
+
+    $quarterlyPaid = $contract->payments()
+        ->where('is_initial_payment', false)
+        ->sum('amount');
+
+    $totalPlanAmount = $initialPaymentPlan + $quarterlyPlan;
+
+    // Calculate debts using current amounts
+    $currentDebt = max(0, $totalPlanAmount - $totalPaid);
+    $overdueDebt = $this->calculateOverdueDebt($contract);
+
+    return [
+        'total_plan_formatted' => number_format($totalPlanAmount, 0, '.', ' ') . ' so\'m',
+        'total_paid_formatted' => number_format($totalPaid, 0, '.', ' ') . ' so\'m',
+        'initial_payment_plan_formatted' => number_format($initialPaymentPlan, 0, '.', ' ') . ' so\'m',
+        'initial_payment_paid_formatted' => number_format($initialPaymentPaid, 0, '.', ' ') . ' so\'m',
+        'quarterly_plan_formatted' => number_format($quarterlyPlan, 0, '.', ' ') . ' so\'m',
+        'quarterly_paid_formatted' => number_format($quarterlyPaid, 0, '.', ' ') . ' so\'m',
+        'current_debt_formatted' => number_format($currentDebt, 0, '.', ' ') . ' so\'m',
+        'overdue_debt_formatted' => number_format($overdueDebt, 0, '.', ' ') . ' so\'m',
+        'completion_percent' => $totalPlanAmount > 0 ? round(($totalPaid / $totalPlanAmount) * 100, 1) : 0,
+    ];
+}
+
+private function getCurrentQuartersCount(Contract $contract): int
+{
+    $latestApprovedAmendment = $contract->amendments()
+        ->where('is_approved', true)
+        ->whereNotNull('new_quarters_count')
+        ->orderBy('amendment_date', 'desc')
+        ->first();
+
+    return $latestApprovedAmendment ? $latestApprovedAmendment->new_quarters_count : ($contract->quarters_count ?? 8);
+}
+
+    private function getCurrentInitialPercent(Contract $contract): float
+    {
+        $latestApprovedAmendment = $contract->amendments()
+            ->where('is_approved', true)
+            ->whereNotNull('new_initial_payment_percent')
+            ->orderBy('amendment_date', 'desc')
+            ->first();
+
+        return $latestApprovedAmendment ? $latestApprovedAmendment->new_initial_payment_percent : ($contract->initial_payment_percent ?? 20);
+    }
+
+    private function getCurrentContractAmount(Contract $contract): float
+    {
+        $latestApprovedAmendment = $contract->amendments()
+            ->where('is_approved', true)
+            ->whereNotNull('new_total_amount')
+            ->orderBy('amendment_date', 'desc')
+            ->first();
+
+        return $latestApprovedAmendment ? $latestApprovedAmendment->new_total_amount : $contract->total_amount;
     }
 
     /**
@@ -778,83 +824,83 @@ class ContractPaymentService
         }
     }
 
-private function calculateAmendmentImpact(Contract $contract, array $data): array
-{
-    $impact = [];
+    private function calculateAmendmentImpact(Contract $contract, array $data): array
+    {
+        $impact = [];
 
-    // Financial impact
-    if (isset($data['new_total_amount'])) {
-        $oldAmount = $contract->total_amount;
-        $newAmount = (float) $data['new_total_amount'];
-        $difference = $newAmount - $oldAmount;
-        $percentChange = ($difference / $oldAmount) * 100;
+        // Financial impact
+        if (isset($data['new_total_amount'])) {
+            $oldAmount = $contract->total_amount;
+            $newAmount = (float) $data['new_total_amount'];
+            $difference = $newAmount - $oldAmount;
+            $percentChange = ($difference / $oldAmount) * 100;
 
-        $impact['financial'] = [
-            'old_amount' => $oldAmount,
-            'new_amount' => $newAmount,
-            'difference' => $difference,
-            'percent_change' => round($percentChange, 2),
-            'impact_level' => $this->getImpactLevel($percentChange)
-        ];
+            $impact['financial'] = [
+                'old_amount' => $oldAmount,
+                'new_amount' => $newAmount,
+                'difference' => $difference,
+                'percent_change' => round($percentChange, 2),
+                'impact_level' => $this->getImpactLevel($percentChange)
+            ];
 
-        // Calculate new payment breakdown
-        $newInitialPercent = $data['new_initial_payment_percent'] ?? $contract->initial_payment_percent ?? 20;
-        $newQuarters = $data['new_quarters_count'] ?? $contract->quarters_count ?? 8;
+            // Calculate new payment breakdown
+            $newInitialPercent = $data['new_initial_payment_percent'] ?? $contract->initial_payment_percent ?? 20;
+            $newQuarters = $data['new_quarters_count'] ?? $contract->quarters_count ?? 8;
 
-        $newInitialAmount = $newAmount * ($newInitialPercent / 100);
-        $newRemainingAmount = $newAmount - $newInitialAmount;
-        $newQuarterlyAmount = $newQuarters > 0 ? $newRemainingAmount / $newQuarters : 0;
+            $newInitialAmount = $newAmount * ($newInitialPercent / 100);
+            $newRemainingAmount = $newAmount - $newInitialAmount;
+            $newQuarterlyAmount = $newQuarters > 0 ? $newRemainingAmount / $newQuarters : 0;
 
-        $impact['payment_structure'] = [
-            'old_initial_amount' => $contract->total_amount * (($contract->initial_payment_percent ?? 20) / 100),
-            'new_initial_amount' => $newInitialAmount,
-            'old_quarterly_amount' => $contract->quarters_count > 0 ?
-                ($contract->total_amount * (100 - ($contract->initial_payment_percent ?? 20)) / 100) / $contract->quarters_count : 0,
-            'new_quarterly_amount' => $newQuarterlyAmount
-        ];
-    }
-
-    // Schedule impact
-    if (isset($data['new_quarters_count'])) {
-        $oldQuarters = $contract->quarters_count ?? 8;
-        $newQuarters = (int) $data['new_quarters_count'];
-
-        $impact['schedule'] = [
-            'old_quarters' => $oldQuarters,
-            'new_quarters' => $newQuarters,
-            'quarters_difference' => $newQuarters - $oldQuarters,
-            'duration_change_months' => ($newQuarters - $oldQuarters) * 3
-        ];
-    }
-
-    // Timeline impact
-    if (isset($data['new_completion_date'])) {
-        $oldDate = $contract->completion_date;
-        $newDate = Carbon::parse($data['new_completion_date']);
-
-        if ($oldDate) {
-            $daysDifference = $newDate->diffInDays($oldDate, false);
-            $impact['timeline'] = [
-                'old_date' => $oldDate,
-                'new_date' => $newDate,
-                'days_difference' => $daysDifference,
-                'extended' => $daysDifference > 0
+            $impact['payment_structure'] = [
+                'old_initial_amount' => $contract->total_amount * (($contract->initial_payment_percent ?? 20) / 100),
+                'new_initial_amount' => $newInitialAmount,
+                'old_quarterly_amount' => $contract->quarters_count > 0 ?
+                    ($contract->total_amount * (100 - ($contract->initial_payment_percent ?? 20)) / 100) / $contract->quarters_count : 0,
+                'new_quarterly_amount' => $newQuarterlyAmount
             ];
         }
+
+        // Schedule impact
+        if (isset($data['new_quarters_count'])) {
+            $oldQuarters = $contract->quarters_count ?? 8;
+            $newQuarters = (int) $data['new_quarters_count'];
+
+            $impact['schedule'] = [
+                'old_quarters' => $oldQuarters,
+                'new_quarters' => $newQuarters,
+                'quarters_difference' => $newQuarters - $oldQuarters,
+                'duration_change_months' => ($newQuarters - $oldQuarters) * 3
+            ];
+        }
+
+        // Timeline impact
+        if (isset($data['new_completion_date'])) {
+            $oldDate = $contract->completion_date;
+            $newDate = Carbon::parse($data['new_completion_date']);
+
+            if ($oldDate) {
+                $daysDifference = $newDate->diffInDays($oldDate, false);
+                $impact['timeline'] = [
+                    'old_date' => $oldDate,
+                    'new_date' => $newDate,
+                    'days_difference' => $daysDifference,
+                    'extended' => $daysDifference > 0
+                ];
+            }
+        }
+
+        return $impact;
     }
 
-    return $impact;
-}
+    private function getImpactLevel(float $percentChange): string
+    {
+        $absChange = abs($percentChange);
 
-private function getImpactLevel(float $percentChange): string
-{
-    $absChange = abs($percentChange);
-
-    if ($absChange < 5) return 'minimal';
-    if ($absChange < 15) return 'moderate';
-    if ($absChange < 30) return 'significant';
-    return 'major';
-}
+        if ($absChange < 5) return 'minimal';
+        if ($absChange < 15) return 'moderate';
+        if ($absChange < 30) return 'significant';
+        return 'major';
+    }
     /**
      * Approve amendment and apply changes
      */
@@ -956,319 +1002,318 @@ private function getImpactLevel(float $percentChange): string
         }
     }
 
-private function updateSchedulesAfterAmendmentApproval(Contract $contract, ContractAmendment $amendment, array $appliedChanges): void
-{
-    try {
-        // Update initial payment schedule if needed
-        if (isset($appliedChanges['total_amount']) || isset($appliedChanges['initial_payment_percent'])) {
-            $newTotalAmount = $appliedChanges['total_amount']['new'] ?? $contract->total_amount;
-            $newInitialPercent = $appliedChanges['initial_payment_percent']['new'] ?? $contract->initial_payment_percent ?? 20;
-            $newInitialAmount = $newTotalAmount * ($newInitialPercent / 100);
+    private function updateSchedulesAfterAmendmentApproval(Contract $contract, ContractAmendment $amendment, array $appliedChanges): void
+    {
+        try {
+            // Update initial payment schedule if needed
+            if (isset($appliedChanges['total_amount']) || isset($appliedChanges['initial_payment_percent'])) {
+                $newTotalAmount = $appliedChanges['total_amount']['new'] ?? $contract->total_amount;
+                $newInitialPercent = $appliedChanges['initial_payment_percent']['new'] ?? $contract->initial_payment_percent ?? 20;
+                $newInitialAmount = $newTotalAmount * ($newInitialPercent / 100);
 
-            PaymentSchedule::where('contract_id', $contract->id)
-                ->where('is_initial_payment', true)
-                ->where('is_active', true)
-                ->update([
-                    'quarter_amount' => $newInitialAmount,
-                    'updated_by' => auth()->id() ?? 1,
-                    'amendment_impact' => "Updated by amendment {$amendment->amendment_number}"
-                ]);
+                PaymentSchedule::where('contract_id', $contract->id)
+                    ->where('is_initial_payment', true)
+                    ->where('is_active', true)
+                    ->update([
+                        'quarter_amount' => $newInitialAmount,
+                        'updated_by' => auth()->id() ?? 1,
+                        'amendment_impact' => "Updated by amendment {$amendment->amendment_number}"
+                    ]);
+            }
+
+            // Mark old quarterly schedules as inactive if major structural changes
+            if (isset($appliedChanges['total_amount']) || isset($appliedChanges['quarters_count'])) {
+                PaymentSchedule::where('contract_id', $contract->id)
+                    ->where('is_initial_payment', false)
+                    ->whereNull('amendment_id')
+                    ->update([
+                        'is_active' => false,
+                        'deactivated_reason' => "Superseded by amendment {$amendment->amendment_number}",
+                        'deactivated_at' => now(),
+                        'updated_by' => auth()->id() ?? 1
+                    ]);
+            }
+        } catch (\Exception $e) {
+            Log::error('Failed to update schedules after amendment approval', [
+                'amendment_id' => $amendment->id,
+                'error' => $e->getMessage()
+            ]);
+            // Don't throw - main approval should still succeed
         }
-
-        // Mark old quarterly schedules as inactive if major structural changes
-        if (isset($appliedChanges['total_amount']) || isset($appliedChanges['quarters_count'])) {
-            PaymentSchedule::where('contract_id', $contract->id)
-                ->where('is_initial_payment', false)
-                ->whereNull('amendment_id')
-                ->update([
-                    'is_active' => false,
-                    'deactivated_reason' => "Superseded by amendment {$amendment->amendment_number}",
-                    'deactivated_at' => now(),
-                    'updated_by' => auth()->id() ?? 1
-                ]);
-        }
-
-    } catch (\Exception $e) {
-        Log::error('Failed to update schedules after amendment approval', [
-            'amendment_id' => $amendment->id,
-            'error' => $e->getMessage()
-        ]);
-        // Don't throw - main approval should still succeed
     }
-}
 
-private function createAmendmentAuditLog(Contract $contract, ContractAmendment $amendment, array $appliedChanges): void
-{
-    try {
-        $auditData = [
-            'contract_id' => $contract->id,
-            'contract_number' => $contract->contract_number,
-            'amendment_id' => $amendment->id,
-            'amendment_number' => $amendment->amendment_number,
-            'action' => 'amendment_approved',
-            'applied_changes' => $appliedChanges,
-            'reason' => $amendment->reason,
-            'approved_by' => auth()->id() ?? 1,
-            'approved_at' => now(),
-            'previous_state' => [
-                'total_amount' => $appliedChanges['total_amount']['old'] ?? $contract->total_amount,
-                'initial_payment_percent' => $appliedChanges['initial_payment_percent']['old'] ?? $contract->initial_payment_percent,
-                'quarters_count' => $appliedChanges['quarters_count']['old'] ?? $contract->quarters_count,
-                'completion_date' => $appliedChanges['completion_date']['old'] ?? $contract->completion_date
+    private function createAmendmentAuditLog(Contract $contract, ContractAmendment $amendment, array $appliedChanges): void
+    {
+        try {
+            $auditData = [
+                'contract_id' => $contract->id,
+                'contract_number' => $contract->contract_number,
+                'amendment_id' => $amendment->id,
+                'amendment_number' => $amendment->amendment_number,
+                'action' => 'amendment_approved',
+                'applied_changes' => $appliedChanges,
+                'reason' => $amendment->reason,
+                'approved_by' => auth()->id() ?? 1,
+                'approved_at' => now(),
+                'previous_state' => [
+                    'total_amount' => $appliedChanges['total_amount']['old'] ?? $contract->total_amount,
+                    'initial_payment_percent' => $appliedChanges['initial_payment_percent']['old'] ?? $contract->initial_payment_percent,
+                    'quarters_count' => $appliedChanges['quarters_count']['old'] ?? $contract->quarters_count,
+                    'completion_date' => $appliedChanges['completion_date']['old'] ?? $contract->completion_date
+                ]
+            ];
+
+            Log::info('Contract amendment approved - audit log', $auditData);
+
+            // You can also store this in a dedicated audit table if you have one
+            // ContractAuditLog::create($auditData);
+
+        } catch (\Exception $e) {
+            Log::error('Failed to create amendment audit log', [
+                'amendment_id' => $amendment->id,
+                'error' => $e->getMessage()
+            ]);
+        }
+    }
+    public function getAmendmentHistory(Contract $contract): array
+    {
+        $amendments = $contract->amendments()
+            ->with(['createdBy', 'approvedBy'])
+            ->orderBy('amendment_date', 'desc')
+            ->get();
+
+        $history = [];
+
+        foreach ($amendments as $amendment) {
+            $changes = [];
+
+            if ($amendment->new_total_amount) {
+                $changes[] = "Summa: " . $this->formatCurrency($amendment->new_total_amount);
+            }
+
+            if ($amendment->new_initial_payment_percent) {
+                $changes[] = "Boshlang'ich: {$amendment->new_initial_payment_percent}%";
+            }
+
+            if ($amendment->new_quarters_count) {
+                $changes[] = "Choraklar: {$amendment->new_quarters_count}";
+            }
+
+            if ($amendment->new_completion_date) {
+                $changes[] = "Muddat: " . $amendment->new_completion_date->format('d.m.Y');
+            }
+
+            $history[] = [
+                'id' => $amendment->id,
+                'amendment_number' => $amendment->amendment_number,
+                'date' => $amendment->amendment_date->format('d.m.Y'),
+                'reason' => $amendment->reason,
+                'changes' => $changes,
+                'changes_text' => implode(', ', $changes),
+                'is_approved' => $amendment->is_approved,
+                'status' => $amendment->is_approved ? 'Tasdiqlangan' : 'Kutilmoqda',
+                'created_by' => $amendment->createdBy?->name ?? 'Noma\'lum',
+                'approved_by' => $amendment->approvedBy?->name,
+                'created_at' => $amendment->created_at->format('d.m.Y H:i'),
+                'approved_at' => $amendment->approved_at?->format('d.m.Y H:i')
+            ];
+        }
+
+        return [
+            'amendments' => $history,
+            'total_count' => count($history),
+            'approved_count' => $amendments->where('is_approved', true)->count(),
+            'pending_count' => $amendments->where('is_approved', false)->count()
+        ];
+    }
+
+
+    public function generateAmendmentSuggestions(Contract $contract): array
+    {
+        $suggestions = [];
+
+        // Analyze payment patterns
+        $totalPaid = ActualPayment::where('contract_id', $contract->id)->sum('amount');
+        $paymentPercent = $contract->total_amount > 0 ? ($totalPaid / $contract->total_amount) * 100 : 0;
+
+        // Check if contract is significantly behind schedule
+        if ($contract->completion_date && $contract->completion_date->isPast()) {
+            if ($paymentPercent < 90) {
+                $suggestions[] = [
+                    'type' => 'extend_deadline',
+                    'priority' => 'high',
+                    'title' => 'Muddatni uzaytirish',
+                    'description' => 'Shartnoma muddati o\'tgan, lekin to\'lovlar yakunlanmagan',
+                    'suggested_date' => now()->addMonths(6)->format('Y-m-d')
+                ];
+            }
+        }
+
+        // Check for payment difficulties
+        $recentPayments = ActualPayment::where('contract_id', $contract->id)
+            ->where('payment_date', '>=', now()->subMonths(3))
+            ->count();
+
+        if ($recentPayments == 0 && $paymentPercent < 100) {
+            $suggestions[] = [
+                'type' => 'restructure_payments',
+                'priority' => 'medium',
+                'title' => 'To\'lov tuzilmasini o\'zgartirish',
+                'description' => 'So\'nggi 3 oyda to\'lovlar amalga oshirilmagan',
+                'suggested_quarters' => $contract->quarters_count + 4
+            ];
+        }
+
+        // Check for overpayment
+        if ($paymentPercent > 100) {
+            $overpayment = $totalPaid - $contract->total_amount;
+            $suggestions[] = [
+                'type' => 'increase_amount',
+                'priority' => 'low',
+                'title' => 'Shartnoma summasini oshirish',
+                'description' => 'Ortiqcha to\'lov amalga oshirilgan',
+                'suggested_amount' => $totalPaid,
+                'overpayment' => $overpayment
+            ];
+        }
+
+        return $suggestions;
+    }
+
+    public function validateAmendmentData(Contract $contract, array $data): array
+    {
+        $errors = [];
+        $warnings = [];
+
+        // Validate total amount
+        if (isset($data['new_total_amount'])) {
+            $newAmount = (float) $data['new_total_amount'];
+            $totalPaid = ActualPayment::where('contract_id', $contract->id)->sum('amount');
+
+            if ($newAmount < $totalPaid) {
+                $errors[] = "Yangi summa allaqachon to'langan summadan kam: " .
+                    $this->formatCurrency($totalPaid);
+            }
+
+            $percentChange = abs(($newAmount - $contract->total_amount) / $contract->total_amount) * 100;
+            if ($percentChange > 50) {
+                $warnings[] = "Katta o'zgarish ({$percentChange}% dan ortiq)";
+            }
+
+            if ($percentChange < 1) {
+                $warnings[] = "Juda kichik o'zgarish ({$percentChange}%)";
+            }
+        }
+
+        // Validate quarters count
+        if (isset($data['new_quarters_count'])) {
+            $newQuarters = (int) $data['new_quarters_count'];
+
+            if ($newQuarters < 1) {
+                $errors[] = "Choraklar soni kamida 1 bo'lishi kerak";
+            }
+
+            if ($newQuarters > 40) {
+                $errors[] = "Choraklar soni 40 dan ortiq bo'lmasligi kerak";
+            }
+
+            $existingPayments = ActualPayment::where('contract_id', $contract->id)
+                ->where('is_initial_payment', false)
+                ->distinct('year', 'quarter')
+                ->count();
+
+            if ($newQuarters < $existingPayments) {
+                $warnings[] = "Yangi choraklar soni mavjud to'lovlarga mos emas";
+            }
+        }
+
+        // Validate completion date
+        if (isset($data['new_completion_date'])) {
+            $newDate = Carbon::parse($data['new_completion_date']);
+
+            if ($newDate->lt($contract->contract_date)) {
+                $errors[] = "Yakunlash sanasi shartnoma sanasidan oldin bo'lishi mumkin emas";
+            }
+
+            if ($newDate->lt(now())) {
+                $warnings[] = "Yakunlash sanasi o'tmishda";
+            }
+        }
+
+        return [
+            'valid' => empty($errors),
+            'errors' => $errors,
+            'warnings' => $warnings
+        ];
+    }
+
+
+    public function getAmendmentImpactPreview(Contract $contract, array $data): array
+    {
+        $preview = [];
+
+        // Current state
+        $currentState = [
+            'total_amount' => $contract->total_amount,
+            'initial_payment_percent' => $contract->initial_payment_percent ?? 20,
+            'quarters_count' => $contract->quarters_count ?? 8,
+            'completion_date' => $contract->completion_date
+        ];
+
+        // New state
+        $newState = [
+            'total_amount' => $data['new_total_amount'] ?? $currentState['total_amount'],
+            'initial_payment_percent' => $data['new_initial_payment_percent'] ?? $currentState['initial_payment_percent'],
+            'quarters_count' => $data['new_quarters_count'] ?? $currentState['quarters_count'],
+            'completion_date' => isset($data['new_completion_date']) ?
+                Carbon::parse($data['new_completion_date']) : $currentState['completion_date']
+        ];
+
+        // Calculate payment structure changes
+        $currentInitialAmount = $currentState['total_amount'] * ($currentState['initial_payment_percent'] / 100);
+        $currentRemainingAmount = $currentState['total_amount'] - $currentInitialAmount;
+        $currentQuarterlyAmount = $currentState['quarters_count'] > 0 ?
+            $currentRemainingAmount / $currentState['quarters_count'] : 0;
+
+        $newInitialAmount = $newState['total_amount'] * ($newState['initial_payment_percent'] / 100);
+        $newRemainingAmount = $newState['total_amount'] - $newInitialAmount;
+        $newQuarterlyAmount = $newState['quarters_count'] > 0 ?
+            $newRemainingAmount / $newState['quarters_count'] : 0;
+
+        $preview['payment_structure'] = [
+            'initial_payment' => [
+                'current' => $currentInitialAmount,
+                'new' => $newInitialAmount,
+                'difference' => $newInitialAmount - $currentInitialAmount,
+                'current_formatted' => $this->formatCurrency($currentInitialAmount),
+                'new_formatted' => $this->formatCurrency($newInitialAmount)
+            ],
+            'quarterly_payment' => [
+                'current' => $currentQuarterlyAmount,
+                'new' => $newQuarterlyAmount,
+                'difference' => $newQuarterlyAmount - $currentQuarterlyAmount,
+                'current_formatted' => $this->formatCurrency($currentQuarterlyAmount),
+                'new_formatted' => $this->formatCurrency($newQuarterlyAmount)
             ]
         ];
 
-        Log::info('Contract amendment approved - audit log', $auditData);
-
-        // You can also store this in a dedicated audit table if you have one
-        // ContractAuditLog::create($auditData);
-
-    } catch (\Exception $e) {
-        Log::error('Failed to create amendment audit log', [
-            'amendment_id' => $amendment->id,
-            'error' => $e->getMessage()
-        ]);
-    }
-}
-public function getAmendmentHistory(Contract $contract): array
-{
-    $amendments = $contract->amendments()
-        ->with(['createdBy', 'approvedBy'])
-        ->orderBy('amendment_date', 'desc')
-        ->get();
-
-    $history = [];
-
-    foreach ($amendments as $amendment) {
-        $changes = [];
-
-        if ($amendment->new_total_amount) {
-            $changes[] = "Summa: " . $this->formatCurrency($amendment->new_total_amount);
-        }
-
-        if ($amendment->new_initial_payment_percent) {
-            $changes[] = "Boshlang'ich: {$amendment->new_initial_payment_percent}%";
-        }
-
-        if ($amendment->new_quarters_count) {
-            $changes[] = "Choraklar: {$amendment->new_quarters_count}";
-        }
-
-        if ($amendment->new_completion_date) {
-            $changes[] = "Muddat: " . $amendment->new_completion_date->format('d.m.Y');
-        }
-
-        $history[] = [
-            'id' => $amendment->id,
-            'amendment_number' => $amendment->amendment_number,
-            'date' => $amendment->amendment_date->format('d.m.Y'),
-            'reason' => $amendment->reason,
-            'changes' => $changes,
-            'changes_text' => implode(', ', $changes),
-            'is_approved' => $amendment->is_approved,
-            'status' => $amendment->is_approved ? 'Tasdiqlangan' : 'Kutilmoqda',
-            'created_by' => $amendment->createdBy?->name ?? 'Noma\'lum',
-            'approved_by' => $amendment->approvedBy?->name,
-            'created_at' => $amendment->created_at->format('d.m.Y H:i'),
-            'approved_at' => $amendment->approved_at?->format('d.m.Y H:i')
-        ];
-    }
-
-    return [
-        'amendments' => $history,
-        'total_count' => count($history),
-        'approved_count' => $amendments->where('is_approved', true)->count(),
-        'pending_count' => $amendments->where('is_approved', false)->count()
-    ];
-}
-
-
-public function generateAmendmentSuggestions(Contract $contract): array
-{
-    $suggestions = [];
-
-    // Analyze payment patterns
-    $totalPaid = ActualPayment::where('contract_id', $contract->id)->sum('amount');
-    $paymentPercent = $contract->total_amount > 0 ? ($totalPaid / $contract->total_amount) * 100 : 0;
-
-    // Check if contract is significantly behind schedule
-    if ($contract->completion_date && $contract->completion_date->isPast()) {
-        if ($paymentPercent < 90) {
-            $suggestions[] = [
-                'type' => 'extend_deadline',
-                'priority' => 'high',
-                'title' => 'Muddatni uzaytirish',
-                'description' => 'Shartnoma muddati o\'tgan, lekin to\'lovlar yakunlanmagan',
-                'suggested_date' => now()->addMonths(6)->format('Y-m-d')
-            ];
-        }
-    }
-
-    // Check for payment difficulties
-    $recentPayments = ActualPayment::where('contract_id', $contract->id)
-        ->where('payment_date', '>=', now()->subMonths(3))
-        ->count();
-
-    if ($recentPayments == 0 && $paymentPercent < 100) {
-        $suggestions[] = [
-            'type' => 'restructure_payments',
-            'priority' => 'medium',
-            'title' => 'To\'lov tuzilmasini o\'zgartirish',
-            'description' => 'So\'nggi 3 oyda to\'lovlar amalga oshirilmagan',
-            'suggested_quarters' => $contract->quarters_count + 4
-        ];
-    }
-
-    // Check for overpayment
-    if ($paymentPercent > 100) {
-        $overpayment = $totalPaid - $contract->total_amount;
-        $suggestions[] = [
-            'type' => 'increase_amount',
-            'priority' => 'low',
-            'title' => 'Shartnoma summasini oshirish',
-            'description' => 'Ortiqcha to\'lov amalga oshirilgan',
-            'suggested_amount' => $totalPaid,
-            'overpayment' => $overpayment
-        ];
-    }
-
-    return $suggestions;
-}
-
-public function validateAmendmentData(Contract $contract, array $data): array
-{
-    $errors = [];
-    $warnings = [];
-
-    // Validate total amount
-    if (isset($data['new_total_amount'])) {
-        $newAmount = (float) $data['new_total_amount'];
+        // Payment impact on existing payments
         $totalPaid = ActualPayment::where('contract_id', $contract->id)->sum('amount');
+        $currentDebt = $currentState['total_amount'] - $totalPaid;
+        $newDebt = $newState['total_amount'] - $totalPaid;
 
-        if ($newAmount < $totalPaid) {
-            $errors[] = "Yangi summa allaqachon to'langan summadan kam: " .
-                       $this->formatCurrency($totalPaid);
-        }
+        $preview['payment_impact'] = [
+            'total_paid' => $totalPaid,
+            'current_debt' => $currentDebt,
+            'new_debt' => $newDebt,
+            'debt_change' => $newDebt - $currentDebt,
+            'total_paid_formatted' => $this->formatCurrency($totalPaid),
+            'current_debt_formatted' => $this->formatCurrency($currentDebt),
+            'new_debt_formatted' => $this->formatCurrency($newDebt)
+        ];
 
-        $percentChange = abs(($newAmount - $contract->total_amount) / $contract->total_amount) * 100;
-        if ($percentChange > 50) {
-            $warnings[] = "Katta o'zgarish ({$percentChange}% dan ortiq)";
-        }
-
-        if ($percentChange < 1) {
-            $warnings[] = "Juda kichik o'zgarish ({$percentChange}%)";
-        }
+        return $preview;
     }
-
-    // Validate quarters count
-    if (isset($data['new_quarters_count'])) {
-        $newQuarters = (int) $data['new_quarters_count'];
-
-        if ($newQuarters < 1) {
-            $errors[] = "Choraklar soni kamida 1 bo'lishi kerak";
-        }
-
-        if ($newQuarters > 40) {
-            $errors[] = "Choraklar soni 40 dan ortiq bo'lmasligi kerak";
-        }
-
-        $existingPayments = ActualPayment::where('contract_id', $contract->id)
-            ->where('is_initial_payment', false)
-            ->distinct('year', 'quarter')
-            ->count();
-
-        if ($newQuarters < $existingPayments) {
-            $warnings[] = "Yangi choraklar soni mavjud to'lovlarga mos emas";
-        }
-    }
-
-    // Validate completion date
-    if (isset($data['new_completion_date'])) {
-        $newDate = Carbon::parse($data['new_completion_date']);
-
-        if ($newDate->lt($contract->contract_date)) {
-            $errors[] = "Yakunlash sanasi shartnoma sanasidan oldin bo'lishi mumkin emas";
-        }
-
-        if ($newDate->lt(now())) {
-            $warnings[] = "Yakunlash sanasi o'tmishda";
-        }
-    }
-
-    return [
-        'valid' => empty($errors),
-        'errors' => $errors,
-        'warnings' => $warnings
-    ];
-}
-
-
-public function getAmendmentImpactPreview(Contract $contract, array $data): array
-{
-    $preview = [];
-
-    // Current state
-    $currentState = [
-        'total_amount' => $contract->total_amount,
-        'initial_payment_percent' => $contract->initial_payment_percent ?? 20,
-        'quarters_count' => $contract->quarters_count ?? 8,
-        'completion_date' => $contract->completion_date
-    ];
-
-    // New state
-    $newState = [
-        'total_amount' => $data['new_total_amount'] ?? $currentState['total_amount'],
-        'initial_payment_percent' => $data['new_initial_payment_percent'] ?? $currentState['initial_payment_percent'],
-        'quarters_count' => $data['new_quarters_count'] ?? $currentState['quarters_count'],
-        'completion_date' => isset($data['new_completion_date']) ?
-            Carbon::parse($data['new_completion_date']) : $currentState['completion_date']
-    ];
-
-    // Calculate payment structure changes
-    $currentInitialAmount = $currentState['total_amount'] * ($currentState['initial_payment_percent'] / 100);
-    $currentRemainingAmount = $currentState['total_amount'] - $currentInitialAmount;
-    $currentQuarterlyAmount = $currentState['quarters_count'] > 0 ?
-        $currentRemainingAmount / $currentState['quarters_count'] : 0;
-
-    $newInitialAmount = $newState['total_amount'] * ($newState['initial_payment_percent'] / 100);
-    $newRemainingAmount = $newState['total_amount'] - $newInitialAmount;
-    $newQuarterlyAmount = $newState['quarters_count'] > 0 ?
-        $newRemainingAmount / $newState['quarters_count'] : 0;
-
-    $preview['payment_structure'] = [
-        'initial_payment' => [
-            'current' => $currentInitialAmount,
-            'new' => $newInitialAmount,
-            'difference' => $newInitialAmount - $currentInitialAmount,
-            'current_formatted' => $this->formatCurrency($currentInitialAmount),
-            'new_formatted' => $this->formatCurrency($newInitialAmount)
-        ],
-        'quarterly_payment' => [
-            'current' => $currentQuarterlyAmount,
-            'new' => $newQuarterlyAmount,
-            'difference' => $newQuarterlyAmount - $currentQuarterlyAmount,
-            'current_formatted' => $this->formatCurrency($currentQuarterlyAmount),
-            'new_formatted' => $this->formatCurrency($newQuarterlyAmount)
-        ]
-    ];
-
-    // Payment impact on existing payments
-    $totalPaid = ActualPayment::where('contract_id', $contract->id)->sum('amount');
-    $currentDebt = $currentState['total_amount'] - $totalPaid;
-    $newDebt = $newState['total_amount'] - $totalPaid;
-
-    $preview['payment_impact'] = [
-        'total_paid' => $totalPaid,
-        'current_debt' => $currentDebt,
-        'new_debt' => $newDebt,
-        'debt_change' => $newDebt - $currentDebt,
-        'total_paid_formatted' => $this->formatCurrency($totalPaid),
-        'current_debt_formatted' => $this->formatCurrency($currentDebt),
-        'new_debt_formatted' => $this->formatCurrency($newDebt)
-    ];
-
-    return $preview;
-}
 
     /**
      * Create payment schedule for amendment
