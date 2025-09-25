@@ -528,6 +528,9 @@ public function monitoring(Request $request)
         'active_count' => 0,
         'cancelled_count' => 0,
         'completed_count' => 0,
+        'cancelled_amount' => 0,
+        'completed_amount' => 0,
+        'active_amount' => 0,
         'returned_amount' => 0,
         'total_paid' => 0,
         'total_debt' => 0,
@@ -554,8 +557,16 @@ public function monitoring(Request $request)
         });
 
         $totalAmount = $allContracts->whereNotIn('status.name_uz', ['Бекор қилинган'])->sum('total_amount');
+
+        // Calculate actual payments using the same method as in your contract display
         $totalPaid = ActualPayment::whereIn('contract_id', $contractIds)->sum('amount');
+
         $totalDebt = $totalAmount - $totalPaid;
+
+        // Calculate amounts for each status
+        $cancelledAmount = $cancelledContracts->sum('total_amount');
+        $completedAmount = $completedContracts->sum('total_amount');
+        $activeAmount = $activeContracts->sum('total_amount');
 
         // Debt for 2025
         $debt2025 = Contract::whereIn('id', $contractIds)
@@ -569,30 +580,30 @@ public function monitoring(Request $request)
                 return max(0, $contract->total_amount - $paid);
             });
 
-        // Count by permit types (you'll need to adjust based on your permit type codes)
+        // Count by permit types
         $apzCount = Contract::whereIn('id', $contractIds)
             ->whereHas('object', function($q) {
-                $q->where('permit_type_id', 1); // APZ permit type
+                $q->where('permit_type_id', 1);
             })->count();
 
         $gasnCount = Contract::whereIn('id', $contractIds)
             ->whereHas('object', function($q) {
-                $q->where('permit_type_id', 2); // GASN permit type
+                $q->where('permit_type_id', 2);
             })->count();
 
         $kengashCount = Contract::whereIn('id', $contractIds)
             ->whereHas('object', function($q) {
-                $q->where('permit_type_id', 3); // Kengash permit type
+                $q->where('permit_type_id', 3);
             })->count();
 
         $permitCount = Contract::whereIn('id', $contractIds)
             ->whereHas('object', function($q) {
-                $q->where('permit_type_id', 4); // Ruxsatnoma
+                $q->where('permit_type_id', 4);
             })->count();
 
         $expertiseCount = Contract::whereIn('id', $contractIds)
             ->whereHas('object', function($q) {
-                $q->where('permit_type_id', 5); // Ekspertiza
+                $q->where('permit_type_id', 5);
             })->count();
 
         $districtData = [
@@ -607,7 +618,10 @@ public function monitoring(Request $request)
             'active_count' => $activeContracts->count(),
             'cancelled_count' => $cancelledContracts->count(),
             'completed_count' => $completedContracts->count(),
-            'returned_amount' => 0, // Add logic if you track returned amounts
+            'cancelled_amount' => $cancelledAmount,
+            'completed_amount' => $completedAmount,
+            'active_amount' => $activeAmount,
+            'returned_amount' => 0,
             'total_paid' => $totalPaid,
             'total_debt' => $totalDebt,
             'debt_2025' => $debt2025,
@@ -625,7 +639,6 @@ public function monitoring(Request $request)
 
     return view('monitoring.index', compact('monitoringData', 'cityTotals'));
 }
-
 public function monitoringDistrict(District $district)
 {
     $contracts = Contract::whereHas('object', function($q) use ($district) {
