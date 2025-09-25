@@ -373,128 +373,253 @@ private function getCurrentQuartersCount(Contract $contract): int
     /**
      * Create payment schedule - Enhanced version with initial payment logic
      */
-    public function createPaymentSchedule(Contract $contract, array $data): array
-    {
-        try {
-            DB::beginTransaction();
 
-            // Clear existing active schedules if not amendment-based
-            if (!isset($data['amendment_id'])) {
-                PaymentSchedule::where('contract_id', $contract->id)
-                    ->where('is_active', true)
-                    ->whereNull('amendment_id')
-                    ->update(['is_active' => false]);
-            }
+public function createPaymentSchedule(Contract $contract, array $data): array
+{
+    try {
+        DB::beginTransaction();
 
-            $scheduleType = $data['schedule_type'];
-            $quartersCount = (int) $data['quarters_count'];
-            $totalAmount = (float) $data['total_schedule_amount'];
-            $amendmentId = $data['amendment_id'] ?? null;
-
-            $contractDate = Carbon::parse($contract->contract_date);
-            $currentYear = $contractDate->year;
-            $currentQuarter = ceil($contractDate->month / 3);
-
-            // Create initial payment schedule first
-            if (!$amendmentId) {
-                $initialPaymentAmount = $contract->total_amount * (($contract->initial_payment_percent ?? 20) / 100);
-
-                PaymentSchedule::create([
-                    'contract_id' => $contract->id,
-                    'year' => $currentYear,
-                    'quarter' => 0, // Special quarter for initial payment
-                    'quarter_amount' => $initialPaymentAmount,
-                    'is_initial_payment' => true,
-                    'is_active' => true,
-                    'created_at' => now(),
-                    'updated_at' => now()
-                ]);
-            }
-
-            // Validate custom percentages if needed
-            if ($scheduleType === 'custom') {
-                $totalPercent = 0;
-                for ($i = 1; $i <= $quartersCount; $i++) {
-                    $percent = (float) ($data["quarter_{$i}_percent"] ?? 0);
-                    $totalPercent += $percent;
-                }
-
-                if (abs($totalPercent - 100) > 0.1) {
-                    throw new \Exception("Foizlar yig'indisi 100% bo'lishi kerak. Joriy: {$totalPercent}%");
-                }
-            }
-
-            // Create quarterly schedules
-            $quarterlySchedule = [];
-
-            for ($i = 0; $i < $quartersCount; $i++) {
-                $quarterAmount = 0;
-
-                if ($scheduleType === 'auto') {
-                    $quarterAmount = $totalAmount / $quartersCount;
-                } else {
-                    // FIXED: Use the amount directly from the form instead of calculating from percent
-                    $quarterAmount = (float) ($data["quarter_" . ($i + 1) . "_amount"] ?? 0);
-
-                    // Fallback to percent calculation if amount is not provided
-                    if ($quarterAmount <= 0) {
-                        $percent = (float) ($data["quarter_" . ($i + 1) . "_percent"] ?? 0);
-                        $quarterAmount = $totalAmount * ($percent / 100);
-                    }
-                }
-
-                $scheduleData = [
-                    'contract_id' => $contract->id,
-                    'year' => $currentYear,
-                    'quarter' => $currentQuarter,
-                    'quarter_amount' => (float) $quarterAmount, // Ensure it stays as float
-                    'is_initial_payment' => false,
-                    'custom_percent' => $scheduleType === 'custom' ?
-                        (float) ($data["quarter_" . ($i + 1) . "_percent"] ?? 0) : null,
-                    'is_active' => true,
-                    'created_at' => now(),
-                    'updated_at' => now()
-                ];
-                // Add amendment_id if provided
-                if ($amendmentId) {
-                    $scheduleData['amendment_id'] = $amendmentId;
-                }
-
-                $quarterlySchedule[] = $scheduleData;
-
-                $currentQuarter++;
-                if ($currentQuarter > 4) {
-                    $currentQuarter = 1;
-                    $currentYear++;
-                }
-            }
-
-            PaymentSchedule::insert($quarterlySchedule);
-
-            // Update contract quarters count if not amendment
-            if (!$amendmentId) {
-                $contract->update(['quarters_count' => $quartersCount]);
-            }
-
-            DB::commit();
-
-            return [
-                'success' => true,
-                'message' => $amendmentId ?
-                    'Qo\'shimcha kelishuv jadvali muvaffaqiyatli yaratildi' :
-                    'To\'lov jadvali muvaffaqiyatli yaratildi',
-                'schedule_count' => count($quarterlySchedule) + ($amendmentId ? 0 : 1)
-            ];
-        } catch (\Exception $e) {
-            DB::rollBack();
-            Log::error('Payment schedule creation failed: ' . $e->getMessage());
-
-            return [
-                'success' => false,
-                'message' => 'Jadval yaratishda xatolik: ' . $e->getMessage()
-            ];
+        // Clear existing active schedules if not amendment-based
+        if (!isset($data['amendment_id'])) {
+            PaymentSchedule::where('contract_id', $contract->id)
+                ->where('is_active', true)
+                ->whereNull('amendment_id')
+                ->update(['is_active' => false]);
         }
+
+        $scheduleType = $data['schedule_type'];
+        $quartersCount = (int) $data['quarters_count'];
+        $totalAmount = (float) $data['total_schedule_amount'];
+        $amendmentId = $data['amendment_id'] ?? null;
+
+        $contractDate = Carbon::parse($contract->contract_date);
+        $currentYear = $contractDate->year;
+        $currentQuarter = ceil($contractDate->month / 3);
+
+        // Create initial payment schedule first
+        if (!$amendmentId) {
+            $initialPaymentAmount = $contract->total_amount * (($contract->initial_payment_percent ?? 20) / 100);
+
+            PaymentSchedule::create([
+                'contract_id' => $contract->id,
+                'year' => $currentYear,
+                'quarter' => 0,
+                'quarter_amount' => $initialPaymentAmount,
+                'is_initial_payment' => true,
+                'is_active' => true,
+                'created_at' => now(),
+                'updated_at' => now()
+            ]);
+        }
+
+        // Validate custom percentages if needed
+        if ($scheduleType === 'custom') {
+            $totalPercent = 0;
+            for ($i = 1; $i <= $quartersCount; $i++) {
+                $percent = (float) ($data["quarter_{$i}_percent"] ?? 0);
+                $totalPercent += $percent;
+            }
+
+            if (abs($totalPercent - 100) > 0.1) {
+                throw new \Exception("Foizlar yig'indisi 100% bo'lishi kerak. Joriy: {$totalPercent}%");
+            }
+        }
+
+        // Create quarterly schedules
+        $quarterlySchedule = [];
+
+        // FIXED: Start from the contract's quarter and year
+        $year = $currentYear;
+        $quarter = $currentQuarter;
+
+        for ($i = 0; $i < $quartersCount; $i++) {
+            $quarterAmount = 0;
+
+            if ($scheduleType === 'auto') {
+                $quarterAmount = $totalAmount / $quartersCount;
+            } else {
+                $quarterAmount = (float) ($data["quarter_" . ($i + 1) . "_amount"] ?? 0);
+
+                if ($quarterAmount <= 0) {
+                    $percent = (float) ($data["quarter_" . ($i + 1) . "_percent"] ?? 0);
+                    $quarterAmount = $totalAmount * ($percent / 100);
+                }
+            }
+
+            $scheduleData = [
+                'contract_id' => $contract->id,
+                'year' => $year,
+                'quarter' => $quarter,
+                'quarter_amount' => (float) $quarterAmount,
+                'is_initial_payment' => false,
+                'custom_percent' => $scheduleType === 'custom' ?
+                    (float) ($data["quarter_" . ($i + 1) . "_percent"] ?? 0) : null,
+                'is_active' => true,
+                'created_at' => now(),
+                'updated_at' => now()
+            ];
+
+            if ($amendmentId) {
+                $scheduleData['amendment_id'] = $amendmentId;
+            }
+
+            $quarterlySchedule[] = $scheduleData;
+
+            // FIXED: Increment quarter and year properly
+            $quarter++;
+            if ($quarter > 4) {
+                $quarter = 1;
+                $year++;
+            }
+        }
+
+        PaymentSchedule::insert($quarterlySchedule);
+
+        if (!$amendmentId) {
+            $contract->update(['quarters_count' => $quartersCount]);
+        }
+
+        DB::commit();
+
+        return [
+            'success' => true,
+            'message' => $amendmentId ?
+                'Qo\'shimcha kelishuv jadvali muvaffaqiyatli yaratildi' :
+                'To\'lov jadvali muvaffaqiyatli yaratildi',
+            'schedule_count' => count($quarterlySchedule) + ($amendmentId ? 0 : 1)
+        ];
+    } catch (\Exception $e) {
+        DB::rollBack();
+        Log::error('Payment schedule creation failed: ' . $e->getMessage());
+
+        return [
+            'success' => false,
+            'message' => 'Jadval yaratishda xatolik: ' . $e->getMessage()
+        ];
     }
+}
+    // public function createPaymentSchedule(Contract $contract, array $data): array
+    // {
+    //     try {
+    //         DB::beginTransaction();
+
+    //         // Clear existing active schedules if not amendment-based
+    //         if (!isset($data['amendment_id'])) {
+    //             PaymentSchedule::where('contract_id', $contract->id)
+    //                 ->where('is_active', true)
+    //                 ->whereNull('amendment_id')
+    //                 ->update(['is_active' => false]);
+    //         }
+
+    //         $scheduleType = $data['schedule_type'];
+    //         $quartersCount = (int) $data['quarters_count'];
+    //         $totalAmount = (float) $data['total_schedule_amount'];
+    //         $amendmentId = $data['amendment_id'] ?? null;
+
+    //         $contractDate = Carbon::parse($contract->contract_date);
+    //         $currentYear = $contractDate->year;
+    //         $currentQuarter = ceil($contractDate->month / 3);
+
+    //         // Create initial payment schedule first
+    //         if (!$amendmentId) {
+    //             $initialPaymentAmount = $contract->total_amount * (($contract->initial_payment_percent ?? 20) / 100);
+
+    //             PaymentSchedule::create([
+    //                 'contract_id' => $contract->id,
+    //                 'year' => $currentYear,
+    //                 'quarter' => 0, // Special quarter for initial payment
+    //                 'quarter_amount' => $initialPaymentAmount,
+    //                 'is_initial_payment' => true,
+    //                 'is_active' => true,
+    //                 'created_at' => now(),
+    //                 'updated_at' => now()
+    //             ]);
+    //         }
+
+    //         // Validate custom percentages if needed
+    //         if ($scheduleType === 'custom') {
+    //             $totalPercent = 0;
+    //             for ($i = 1; $i <= $quartersCount; $i++) {
+    //                 $percent = (float) ($data["quarter_{$i}_percent"] ?? 0);
+    //                 $totalPercent += $percent;
+    //             }
+
+    //             if (abs($totalPercent - 100) > 0.1) {
+    //                 throw new \Exception("Foizlar yig'indisi 100% bo'lishi kerak. Joriy: {$totalPercent}%");
+    //             }
+    //         }
+
+    //         // Create quarterly schedules
+    //         $quarterlySchedule = [];
+
+    //         for ($i = 0; $i < $quartersCount; $i++) {
+    //             $quarterAmount = 0;
+
+    //             if ($scheduleType === 'auto') {
+    //                 $quarterAmount = $totalAmount / $quartersCount;
+    //             } else {
+    //                 // FIXED: Use the amount directly from the form instead of calculating from percent
+    //                 $quarterAmount = (float) ($data["quarter_" . ($i + 1) . "_amount"] ?? 0);
+
+    //                 // Fallback to percent calculation if amount is not provided
+    //                 if ($quarterAmount <= 0) {
+    //                     $percent = (float) ($data["quarter_" . ($i + 1) . "_percent"] ?? 0);
+    //                     $quarterAmount = $totalAmount * ($percent / 100);
+    //                 }
+    //             }
+
+    //             $scheduleData = [
+    //                 'contract_id' => $contract->id,
+    //                 'year' => $currentYear,
+    //                 'quarter' => $currentQuarter,
+    //                 'quarter_amount' => (float) $quarterAmount, // Ensure it stays as float
+    //                 'is_initial_payment' => false,
+    //                 'custom_percent' => $scheduleType === 'custom' ?
+    //                     (float) ($data["quarter_" . ($i + 1) . "_percent"] ?? 0) : null,
+    //                 'is_active' => true,
+    //                 'created_at' => now(),
+    //                 'updated_at' => now()
+    //             ];
+    //             // Add amendment_id if provided
+    //             if ($amendmentId) {
+    //                 $scheduleData['amendment_id'] = $amendmentId;
+    //             }
+
+    //             $quarterlySchedule[] = $scheduleData;
+
+    //             $currentQuarter++;
+    //             if ($currentQuarter > 4) {
+    //                 $currentQuarter = 1;
+    //                 $currentYear++;
+    //             }
+    //         }
+
+    //         PaymentSchedule::insert($quarterlySchedule);
+
+    //         // Update contract quarters count if not amendment
+    //         if (!$amendmentId) {
+    //             $contract->update(['quarters_count' => $quartersCount]);
+    //         }
+
+    //         DB::commit();
+
+    //         return [
+    //             'success' => true,
+    //             'message' => $amendmentId ?
+    //                 'Qo\'shimcha kelishuv jadvali muvaffaqiyatli yaratildi' :
+    //                 'To\'lov jadvali muvaffaqiyatli yaratildi',
+    //             'schedule_count' => count($quarterlySchedule) + ($amendmentId ? 0 : 1)
+    //         ];
+    //     } catch (\Exception $e) {
+    //         DB::rollBack();
+    //         Log::error('Payment schedule creation failed: ' . $e->getMessage());
+
+    //         return [
+    //             'success' => false,
+    //             'message' => 'Jadval yaratishda xatolik: ' . $e->getMessage()
+    //         ];
+    //     }
+    // }
 
     /**
      * Add payment to contract - Enhanced version with initial payment logic

@@ -457,7 +457,7 @@ public function payment_update(Contract $contract): View
     {
         $validator = Validator::make($request->all(), [
             'schedule_type' => 'required|in:auto,custom',
-            'quarters_count' => 'required|integer|min:1|max:20',
+            'quarters_count' => 'required|integer|min:1|max:40',
             'total_schedule_amount' => 'required|numeric|min:0.01'
         ]);
 
