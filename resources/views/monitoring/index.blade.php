@@ -24,7 +24,7 @@
                 <thead class="bg-gray-50">
                     <tr>
                         <th rowspan="3" class="border border-gray-300 px-2 py-2 text-xs font-semibold text-gray-700">Т/р</th>
-                        <th rowspan="3" class="border border-gray-300 px-2 py-2 text-xs font-semibold text-gray-700 min-w-[120px]">Ҳудуд номи</th>
+                        <th rowspan="3" class="border border-gray-300 px-2 py-2 text-xs font-semibold text-gray-700 min-w-[120px] sticky left-0 bg-gray-50 z-10">Ҳудуд номи</th>
 
                         <!-- Жами шартнома -->
                         <th colspan="2" rowspan="2" class="border border-gray-300 px-2 py-2 text-xs font-semibold text-gray-700">Жами шартнома</th>
@@ -118,8 +118,8 @@
                 <tbody>
                     <!-- City Total Row -->
                     <tr class="bg-yellow-100 font-semibold">
-                        <td class="border border-gray-300 px-2 py-2"></td>
-                        <td class="border border-gray-300 px-2 py-2">Тошкент шаҳри</td>
+                        <td class="border border-gray-300 px-2 py-2 text-center"></td>
+                        <td class="border border-gray-300 px-2 py-2 sticky left-0 bg-yellow-100 z-10">Тошкент шаҳри</td>
                         <td class="border border-gray-300 px-2 py-2 text-center">{{ $cityTotals['total_contracts'] }}</td>
                         <td class="border border-gray-300 px-2 py-2 text-right">{{ number_format($cityTotals['total_amount'] / 1000000, 1) }}</td>
 
@@ -143,7 +143,7 @@
                         <td class="border border-gray-300 px-2 py-2 text-center bg-yellow-50">
                             <a href="{{ route('monitoring.status', 'active') }}" class="hover:underline">{{ $cityTotals['active_count'] }}</a>
                         </td>
-                        <td class="border border-gray-300 px-2 py-2 text-right bg-yellow-50">{{ number_format(($cityTotals['active_amount'] ?? 0) / 1000000, 1) }}</td>
+                        <td class="border border-gray-300 px-2 py-2 text-right bg-yellow-50">{{ number_format($cityTotals['total_paid'] / 1000000, 1) }}</td>
 
                         <!-- Permit types -->
                         <td class="border border-gray-300 px-2 py-2 text-center bg-blue-50">
@@ -193,7 +193,7 @@
                     @foreach($monitoringData as $index => $data)
                     <tr class="hover:bg-gray-50">
                         <td class="border border-gray-300 px-2 py-2 text-center">{{ $index + 1 }}</td>
-                        <td class="border border-gray-300 px-2 py-2">
+                        <td class="border border-gray-300 px-2 py-2 sticky left-0 bg-white z-10">
                             <a href="{{ route('monitoring.district', $data['district']) }}" class="text-blue-600 hover:underline">
                                 {{ $data['district']->name_uz }}
                             </a>
@@ -217,7 +217,7 @@
                         <td class="border border-gray-300 px-2 py-2 text-center bg-yellow-50">
                             <a href="{{ route('monitoring.status', 'active') }}?district={{ $data['district']->id }}" class="hover:underline">{{ $data['active_count'] }}</a>
                         </td>
-                        <td class="border border-gray-300 px-2 py-2 text-right bg-yellow-50">{{ number_format(($data['active_amount'] ?? 0) / 1000000, 1) }}</td>
+                        <td class="border border-gray-300 px-2 py-2 text-right bg-yellow-50">{{ number_format($data['total_paid'] / 1000000, 1) }}</td>
 
                         <td class="border border-gray-300 px-2 py-2 text-center bg-blue-50">
                             <a href="{{ route('monitoring.permit-type', 1) }}?district={{ $data['district']->id }}" class="hover:underline">{{ $data['apz_count'] }}</a>
