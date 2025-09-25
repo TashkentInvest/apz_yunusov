@@ -190,7 +190,6 @@
             @if(preg_match('/^[А-Яа-яЎўҚқҒғҲҳ]/u', $district->name_uz))
                 <option value="{{ $district->id }}"
                     {{ $contract->object->district_id == $district->id ? 'selected' : '' }}>
-                    {{ $district->name_uz }} - {{ $district->name_ru ?? '' }}
                 </option>
             @endif
         @endforeach
@@ -208,7 +207,7 @@
             @foreach($permitTypes ?? [] as $permitType)
                 <option value="{{ $permitType->id }}"
                     {{ $contract->object->permit_type_id == $permitType->id ? 'selected' : '' }}>
-                    {{ $permitType->name_uz }}
+                    {{ $permitType->name_uz }} - {{ $permitType->name_ru }}
                 </option>
             @endforeach
         </select>
