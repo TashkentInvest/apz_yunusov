@@ -155,39 +155,77 @@
                 <!-- Complete Working Status Selector -->
                 @if (isset($paymentData['contract']) && isset($statuses))
                     <div class="flex-1 px-8">
-                        <form id="status-update-form" method="POST"
-                            action="{{ route('contracts.update-status', ['contract' => $contract->id]) }}"
-                            class="space-y-2">
-                            @csrf
-                            @method('PATCH')
+<form id="status-update-form" method="POST"
+    action="{{ route('contracts.update-status', ['contract' => $contract->id]) }}"
+    class="space-y-4">
+    @csrf
+    @method('PATCH')
 
-                            <label for="status_id" class="block text-sm font-medium opacity-90">
-                                Shartnoma holati
-                            </label>
-                            <div class="flex items-center space-x-3">
-                                <select id="status_id" name="status_id"
-                                    class="flex-1 rounded-lg border-white/20 bg-white/10 text-white focus:ring-2 focus:ring-white/50 px-4 py-2"
-                                    required>
-                                    @foreach ($statuses as $status)
-                                        <option value="{{ $status->id }}" data-color="{{ $status->color }}"
-                                            {{ $contract->status_id == $status->id ? 'selected' : '' }}
-                                            style="color: #000; background: #fff;">
-                                            {{ $status->name_uz }}
-                                        </option>
-                                    @endforeach
-                                </select>
+    <!-- Status Selection -->
+    <div>
+        <label for="status_id" class="block text-sm font-medium text-gray-700 mb-2 text-white">
+            Shartnoma holati *
+        </label>
+        <select id="status_id" name="status_id"
+            class="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 text-gray-900 bg-white"
+            required>
+            @foreach ($statuses as $status)
+                <option value="{{ $status->id }}"
+                    {{ $contract->status_id == $status->id ? 'selected' : '' }}>
+                    {{ $status->name_uz }}
+                </option>
+            @endforeach
+        </select>
+    </div>
 
-                                <button type="submit" id="save-status-btn"
-                                    class="px-4 py-2 bg-green-500 hover:bg-green-600 text-white text-sm font-medium rounded-lg transition-colors">
-                                    <svg class="w-4 h-4 inline-block mr-1" fill="none" stroke="currentColor"
-                                        viewBox="0 0 24 24">
-                                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
-                                            d="M5 13l4 4L19 7" />
-                                    </svg>
-                                    Saqlash
-                                </button>
-                            </div>
-                        </form>
+    <!-- District Selection -->
+<div>
+    <label for="district_id" class="block text-sm font-medium text-white mb-2">
+        Tuman
+    </label>
+    <select id="district_id" name="district_id"
+        class="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 text-gray-900 bg-white">
+        <option value="">Tanlash (ixtiyoriy)</option>
+        @foreach($districts ?? [] as $district)
+            @if(preg_match('/^[А-Яа-яЎўҚқҒғҲҳ]/u', $district->name_uz))
+                <option value="{{ $district->id }}"
+                    {{ $contract->object->district_id == $district->id ? 'selected' : '' }}>
+                    {{ $district->name_uz }}
+                </option>
+            @endif
+        @endforeach
+    </select>
+</div>
+
+    <!-- Permit Type Selection -->
+    <div>
+        <label for="permit_type_id" class="block text-sm font-medium text-gray-700 mb-2 text-white">
+            Ruxsatnoma turi
+        </label>
+        <select id="permit_type_id" name="permit_type_id"
+            class="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 text-gray-900 bg-white">
+            <option value="">Tanlash (ixtiyoriy)</option>
+            @foreach($permitTypes ?? [] as $permitType)
+                <option value="{{ $permitType->id }}"
+                    {{ $contract->object->permit_type_id == $permitType->id ? 'selected' : '' }}>
+                    {{ $permitType->name_uz }}
+                </option>
+            @endforeach
+        </select>
+    </div>
+
+    <!-- Submit Button -->
+    <div class="flex justify-end space-x-3 pt-4">
+        <button type="submit"
+            class="inline-flex items-center px-4 py-2 bg-blue-600 hover:bg-blue-700 text-white text-sm font-medium rounded-lg transition-colors">
+            <svg class="w-4 h-4 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7" />
+            </svg>
+            Saqlash
+        </button>
+    </div>
+</form>
+
                     </div>
 
 
@@ -249,10 +287,7 @@
                         })();
                     </script>
                 @endif
-                <div class="text-right">
-                    <p class="text-lg font-semibold">{{ date('d.m.Y') }}</p>
-                    <p class="opacity-90">{{ date('H:i') }}</p>
-                </div>
+
             </div>
         </div>
 

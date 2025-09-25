@@ -357,14 +357,17 @@ class ContractController extends Controller
     /**
      * Display contract payment management page
      */
-    public function payment_update(Contract $contract): View
-    {
-        $contract->load(['subject', 'object.district', 'status', 'payments', 'schedules']);
-        $paymentData = $this->paymentService->getContractPaymentData($contract);
-        $statuses = \App\Models\ContractStatus::where('is_active', true)->orderBy('id')->get();
+public function payment_update(Contract $contract): View
+{
+    $contract->load(['subject', 'object.district', 'status', 'payments', 'schedules']);
+    $paymentData = $this->paymentService->getContractPaymentData($contract);
 
-        return view('contracts.payment_update', compact('paymentData', 'statuses', 'contract'));
-    }
+    $statuses = \App\Models\ContractStatus::where('is_active', true)->orderBy('id')->get();
+    $districts = \App\Models\District::where('is_active', true)->orderBy('name_uz')->get();
+    $permitTypes = \App\Models\PermitType::where('is_active', true)->orderBy('name_uz')->get();
+
+    return view('contracts.payment_update', compact('paymentData', 'statuses', 'districts', 'permitTypes', 'contract'));
+}
 
 
     /**
@@ -375,6 +378,8 @@ class ContractController extends Controller
         // Validate input
         $request->validate([
             'status_id' => 'required|exists:contract_statuses,id',
+            'district_id' => 'nullable|exists:districts,id',
+            'permit_type_id' => 'nullable|exists:permit_types,id',
         ]);
 
         try {
@@ -388,7 +393,21 @@ class ContractController extends Controller
                 'status_id' => $request->status_id,
                 'updated_by' => auth()->id()
             ]);
-            // dd($contract->status_id);
+
+            // Update object fields if provided
+            $objectUpdates = [];
+
+            if ($request->filled('district_id')) {
+                $objectUpdates['district_id'] = $request->district_id;
+            }
+
+            if ($request->filled('permit_type_id')) {
+                $objectUpdates['permit_type_id'] = $request->permit_type_id;
+            }
+
+            if (!empty($objectUpdates)) {
+                $contract->object->update($objectUpdates);
+            }
 
             DB::commit();
 
