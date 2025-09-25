@@ -190,7 +190,7 @@
             @if(preg_match('/^[А-Яа-яЎўҚқҒғҲҳ]/u', $district->name_uz))
                 <option value="{{ $district->id }}"
                     {{ $contract->object->district_id == $district->id ? 'selected' : '' }}>
-                    {{ $district->name_uz }}
+                    {{ $district->name_uz }} - {{ $district->name_ru ?? '' }}
                 </option>
             @endif
         @endforeach
