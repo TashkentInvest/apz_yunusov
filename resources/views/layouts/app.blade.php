@@ -79,6 +79,13 @@
                        <span class="font-medium">Бош саҳифа</span>
                     </a>
 
+        <a href="{{ route('monitoring') }}"
+                       class="flex items-center px-4 py-3 text-gray-700 rounded-lg hover:bg-gray-100 group transition-colors {{ request()->routeIs('monitoring') ? 'bg-blue-50 text-blue-700' : '' }}">
+                        <i data-feather="activity" class="w-5 h-5 mr-3 text-gray-400 group-hover:text-gray-600 {{ request()->routeIs('monitoring') ? 'text-blue-600' : '' }}"></i>
+                       <span class="font-medium">Мониторинг</span>
+                    </a>
+
+
                     <a href="{{ route('contracts.index') }}"
                        class="flex items-center px-4 py-3 text-gray-700 rounded-lg hover:bg-gray-100 group transition-colors {{ request()->routeIs('contracts.*') ? 'bg-blue-50 text-blue-700' : '' }}">
                         <i data-feather="file-text" class="w-5 h-5 mr-3 text-gray-400 group-hover:text-gray-600 {{ request()->routeIs('contracts.*') ? 'text-blue-600' : '' }}"></i>

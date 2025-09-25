@@ -550,4 +550,134 @@ class DashboardController extends Controller
             'Content-Type' => 'text/csv; charset=UTF-8',
         ]);
     }
+
+//monitoring
+public function monitoring(Request $request)
+{
+    $districts = District::where('is_active', true)
+        ->where('name_uz', 'REGEXP', '^[А-Яа-яЎўҚқҒғҲҳ]')
+        ->orderBy('name_uz')
+        ->get();
+
+    $monitoringData = [];
+    $cityTotals = [
+        'total_contracts' => 0,
+        'total_amount' => 0,
+        'apz_count' => 0,
+        'gasn_count' => 0,
+        'kengash_count' => 0,
+        'permit_count' => 0,
+        'expertise_count' => 0,
+        'active_count' => 0,
+        'cancelled_count' => 0,
+        'completed_count' => 0,
+        'returned_amount' => 0,
+        'total_paid' => 0,
+        'total_debt' => 0,
+        'debt_2025' => 0,
+    ];
+
+    foreach ($districts as $district) {
+        $contractIds = Contract::whereHas('object', function($q) use ($district) {
+            $q->where('district_id', $district->id);
+        })->where('is_active', true)->pluck('id');
+
+        $allContracts = Contract::whereIn('id', $contractIds)->get();
+
+        $activeContracts = $allContracts->filter(function($c) {
+            return $c->status && $c->status->code === 'ACTIVE';
+        });
+
+        $cancelledContracts = $allContracts->filter(function($c) {
+            return $c->status && $c->status->name_uz === 'Бекор қилинган';
+        });
+
+        $completedContracts = $allContracts->filter(function($c) {
+            return $c->status && $c->status->code === 'COMPLETED';
+        });
+
+        $totalAmount = $allContracts->whereNotIn('status.name_uz', ['Бекор қилинган'])->sum('total_amount');
+        $totalPaid = ActualPayment::whereIn('contract_id', $contractIds)->sum('amount');
+        $totalDebt = $totalAmount - $totalPaid;
+
+        // Debt for 2025
+        $debt2025 = Contract::whereIn('id', $contractIds)
+            ->whereYear('completion_date', 2025)
+            ->whereHas('status', function($q) {
+                $q->where('name_uz', '!=', 'Бекор қилинган');
+            })
+            ->get()
+            ->sum(function($contract) {
+                $paid = $contract->actualPayments->sum('amount');
+                return max(0, $contract->total_amount - $paid);
+            });
+
+        // Count by permit types (you'll need to adjust based on your permit type codes)
+        $apzCount = Contract::whereIn('id', $contractIds)
+            ->whereHas('object', function($q) {
+                $q->where('permit_type_id', 1); // APZ permit type
+            })->count();
+
+        $gasnCount = Contract::whereIn('id', $contractIds)
+            ->whereHas('object', function($q) {
+                $q->where('permit_type_id', 2); // GASN permit type
+            })->count();
+
+        $kengashCount = Contract::whereIn('id', $contractIds)
+            ->whereHas('object', function($q) {
+                $q->where('permit_type_id', 3); // Kengash permit type
+            })->count();
+
+        $permitCount = Contract::whereIn('id', $contractIds)
+            ->whereHas('object', function($q) {
+                $q->where('permit_type_id', 4); // Ruxsatnoma
+            })->count();
+
+        $expertiseCount = Contract::whereIn('id', $contractIds)
+            ->whereHas('object', function($q) {
+                $q->where('permit_type_id', 5); // Ekspertiza
+            })->count();
+
+        $districtData = [
+            'district' => $district,
+            'total_contracts' => $allContracts->count(),
+            'total_amount' => $totalAmount,
+            'apz_count' => $apzCount,
+            'gasn_count' => $gasnCount,
+            'kengash_count' => $kengashCount,
+            'permit_count' => $permitCount,
+            'expertise_count' => $expertiseCount,
+            'active_count' => $activeContracts->count(),
+            'cancelled_count' => $cancelledContracts->count(),
+            'completed_count' => $completedContracts->count(),
+            'returned_amount' => 0, // Add logic if you track returned amounts
+            'total_paid' => $totalPaid,
+            'total_debt' => $totalDebt,
+            'debt_2025' => $debt2025,
+        ];
+
+        $monitoringData[] = $districtData;
+
+        // Add to city totals
+        foreach ($cityTotals as $key => $value) {
+            if ($key !== 'district') {
+                $cityTotals[$key] += $districtData[$key];
+            }
+        }
+    }
+
+    return view('monitoring.index', compact('monitoringData', 'cityTotals'));
+}
+
+public function monitoringDistrict(District $district)
+{
+    $contracts = Contract::whereHas('object', function($q) use ($district) {
+        $q->where('district_id', $district->id);
+    })
+    ->with(['subject', 'status', 'object.permitType', 'actualPayments'])
+    ->where('is_active', true)
+    ->paginate(50);
+
+    return view('monitoring.district', compact('district', 'contracts'));
+}
 }

@@ -37,6 +37,9 @@ Route::middleware(['auth'])->group(function () {
     Route::get('/dashboard/export', [DashboardController::class, 'export'])->name('dashboard.export');
     Route::get('/dashboard/contracts/{status}', [DashboardController::class, 'contractsByStatus'])->name('dashboard.contracts.status');
     Route::get('/dashboard/district/{district}/contracts', [DashboardController::class, 'districtContracts'])->name('dashboard.district.contracts');
+// In web.php, add to the authenticated group:
+    Route::get('/monitoring', [DashboardController::class, 'monitoring'])->name('monitoring');
+    Route::get('/monitoring/district/{district}', [DashboardController::class, 'monitoringDistrict'])->name('monitoring.district');
 
     // Contracts Management
     Route::prefix('contracts')->name('contracts.')->group(function () {
