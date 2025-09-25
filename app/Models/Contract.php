@@ -25,6 +25,8 @@ class Contract extends Model
         'total_amount',
         'payment_type',
         'initial_payment_percent',
+        'initial_payment_amount', // ADD THIS
+
         'construction_period_years',
         'quarters_count',
         'formula',
@@ -34,16 +36,17 @@ class Contract extends Model
     ];
 
     protected $casts = [
-        'contract_date' => 'date',
-        'completion_date' => 'date',
-        'total_amount' => 'decimal:2',
-        'contract_volume' => 'decimal:2',
-        'coefficient' => 'decimal:4',
-        'initial_payment_percent' => 'decimal:2',
-        'construction_period_years' => 'integer',
-        'quarters_count' => 'integer',
-        'is_active' => 'boolean'
-    ];
+    'contract_date' => 'date',
+    'completion_date' => 'date',
+    'total_amount' => 'decimal:2',
+    'contract_volume' => 'decimal:2',
+    'coefficient' => 'decimal:4',
+    'initial_payment_percent' => 'decimal:8', // Changed from :2 to :8
+    'initial_payment_amount' => 'decimal:8',  // ADD THIS with :8
+    'construction_period_years' => 'integer',
+    'quarters_count' => 'integer',
+    'is_active' => 'boolean'
+];
 
     // ========== RELATIONSHIPS ==========
 
@@ -196,14 +199,14 @@ class Contract extends Model
 
     public function scopeCurrent($query)
     {
-        return $query->whereHas('status', function($q) {
+        return $query->whereHas('status', function ($q) {
             $q->where('code', 'current');
         });
     }
 
     public function scopeInProcess($query)
     {
-        return $query->whereHas('status', function($q) {
+        return $query->whereHas('status', function ($q) {
             $q->where('code', 'process');
         });
     }

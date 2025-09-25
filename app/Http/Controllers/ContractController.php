@@ -72,10 +72,10 @@ class ContractController extends Controller
 
 
         if ($request->contract_number) {
-                $query->where('contract_number', 'like', "%{$request->contract_number}%");
-            }
+            $query->where('contract_number', 'like', "%{$request->contract_number}%");
+        }
 
-    // NEW: Amendment filter
+        // NEW: Amendment filter
         if ($request->has_amendments !== null && $request->has_amendments !== '') {
             if ($request->has_amendments == '1') {
                 $query->whereHas('amendments');
@@ -275,6 +275,7 @@ class ContractController extends Controller
             'total_amount' => 'required|numeric|min:1',
             'payment_type' => 'required|in:installment,full',
             'initial_payment_percent' => 'nullable|numeric|min:0|max:100',
+            'initial_payment_amount' => 'nullable|numeric|min:0', // NEW
             'construction_period_years' => 'nullable|numeric|min:1|max:10',
             'quarters_count' => 'nullable|numeric|min:1|max:20'
         ]);
@@ -286,6 +287,18 @@ class ContractController extends Controller
         try {
             DB::beginTransaction();
 
+            // Calculate initial payment amount if not provided
+            $initialPaymentAmount = $request->initial_payment_amount;
+            if (!$initialPaymentAmount && $request->initial_payment_percent) {
+                $initialPaymentAmount = ($request->total_amount * $request->initial_payment_percent) / 100;
+            }
+
+            // Calculate initial payment percent if not provided but amount is
+            $initialPaymentPercent = $request->initial_payment_percent;
+            if (!$initialPaymentPercent && $initialPaymentAmount) {
+                $initialPaymentPercent = ($initialPaymentAmount / $request->total_amount) * 100;
+            }
+
             $contract->update([
                 'contract_number' => $request->contract_number,
                 'subject_id' => $request->subject_id ?? $contract->subject_id,
@@ -294,7 +307,8 @@ class ContractController extends Controller
                 'completion_date' => $request->completion_date,
                 'total_amount' => $request->total_amount,
                 'payment_type' => $request->payment_type,
-                'initial_payment_percent' => $request->initial_payment_percent ?? ($request->payment_type === 'full' ? 100 : 20),
+                'initial_payment_percent' => $initialPaymentPercent ?? ($request->payment_type === 'full' ? 100 : 20),
+                'initial_payment_amount' => $initialPaymentAmount, // NEW
                 'construction_period_years' => $request->construction_period_years ?? 2,
                 'quarters_count' => $request->quarters_count ?? ($request->payment_type === 'full' ? 0 : 8),
                 'updated_by' => auth()->id()
@@ -307,13 +321,12 @@ class ContractController extends Controller
                 ->first();
 
             if ($initialSchedule) {
-                $newInitialAmount = $contract->fresh()->initial_payment_amount;
+                $newInitialAmount = $contract->fresh()->initial_payment_amount ?? $contract->fresh()->initial_payment_amount;
                 $initialSchedule->update(['quarter_amount' => $newInitialAmount]);
             }
 
             DB::commit();
 
-            // If we're in payment update context, redirect there
             if ($request->has('from_payment_update')) {
                 return redirect()->route('contracts.payment_update', $contract)
                     ->with('success', 'Shartnoma muvaffaqiyatli yangilandi');
@@ -754,41 +767,44 @@ class ContractController extends Controller
             ]);
     }
 
-public function getAmendmentStatistics(Contract $contract): JsonResponse
-{
-    try {
-        $statistics = [
-            'total_amendments' => $contract->amendments()->count(),
-            'approved_amendments' => $contract->amendments()->where('is_approved', true)->count(),
-            'pending_amendments' => $contract->amendments()->where('is_approved', false)->count(),
-            'latest_amendment' => $contract->amendments()->latest('amendment_date')->first()?->only([
-                'id', 'amendment_number', 'amendment_date', 'reason', 'is_approved'
-            ]),
-            'total_amount_changes' => $contract->amendments()
-                ->where('is_approved', true)
-                ->whereNotNull('new_total_amount')
-                ->count(),
-            'schedule_changes' => $contract->amendments()
-                ->where('is_approved', true)
-                ->where(function($q) {
-                    $q->whereNotNull('new_quarters_count')
-                      ->orWhereNotNull('new_initial_payment_percent');
-                })
-                ->count()
-        ];
+    public function getAmendmentStatistics(Contract $contract): JsonResponse
+    {
+        try {
+            $statistics = [
+                'total_amendments' => $contract->amendments()->count(),
+                'approved_amendments' => $contract->amendments()->where('is_approved', true)->count(),
+                'pending_amendments' => $contract->amendments()->where('is_approved', false)->count(),
+                'latest_amendment' => $contract->amendments()->latest('amendment_date')->first()?->only([
+                    'id',
+                    'amendment_number',
+                    'amendment_date',
+                    'reason',
+                    'is_approved'
+                ]),
+                'total_amount_changes' => $contract->amendments()
+                    ->where('is_approved', true)
+                    ->whereNotNull('new_total_amount')
+                    ->count(),
+                'schedule_changes' => $contract->amendments()
+                    ->where('is_approved', true)
+                    ->where(function ($q) {
+                        $q->whereNotNull('new_quarters_count')
+                            ->orWhereNotNull('new_initial_payment_percent');
+                    })
+                    ->count()
+            ];
 
-        return response()->json([
-            'success' => true,
-            'statistics' => $statistics
-        ]);
-
-    } catch (\Exception $e) {
-        return response()->json([
-            'success' => false,
-            'message' => 'Statistika olishda xatolik: ' . $e->getMessage()
-        ], 500);
+            return response()->json([
+                'success' => true,
+                'statistics' => $statistics
+            ]);
+        } catch (\Exception $e) {
+            return response()->json([
+                'success' => false,
+                'message' => 'Statistika olishda xatolik: ' . $e->getMessage()
+            ], 500);
+        }
     }
-}
 
     /**
      * Store new amendment
@@ -1055,84 +1071,82 @@ public function getAmendmentStatistics(Contract $contract): JsonResponse
         }
     }
 
-private function updateSchedulesAfterAmendment(Contract $contract, ContractAmendment $amendment): void
-{
-    try {
-        // Update initial payment schedule if initial payment percent changed
-        if ($amendment->new_initial_payment_percent !== null || $amendment->new_total_amount !== null) {
-            $newTotalAmount = $amendment->new_total_amount ?? $contract->total_amount;
-            $newInitialPercent = $amendment->new_initial_payment_percent ?? $contract->initial_payment_percent;
-            $newInitialAmount = $newTotalAmount * ($newInitialPercent / 100);
+    private function updateSchedulesAfterAmendment(Contract $contract, ContractAmendment $amendment): void
+    {
+        try {
+            // Update initial payment schedule if initial payment percent changed
+            if ($amendment->new_initial_payment_percent !== null || $amendment->new_total_amount !== null) {
+                $newTotalAmount = $amendment->new_total_amount ?? $contract->total_amount;
+                $newInitialPercent = $amendment->new_initial_payment_percent ?? $contract->initial_payment_percent;
+                $newInitialAmount = $newTotalAmount * ($newInitialPercent / 100);
 
-            PaymentSchedule::where('contract_id', $contract->id)
-                ->where('is_initial_payment', true)
-                ->where('is_active', true)
-                ->update([
-                    'quarter_amount' => $newInitialAmount,
-                    'updated_by' => auth()->id()
-                ]);
+                PaymentSchedule::where('contract_id', $contract->id)
+                    ->where('is_initial_payment', true)
+                    ->where('is_active', true)
+                    ->update([
+                        'quarter_amount' => $newInitialAmount,
+                        'updated_by' => auth()->id()
+                    ]);
+            }
+
+            // Mark old quarterly schedules as inactive if major changes were made
+            if ($amendment->new_total_amount !== null || $amendment->new_quarters_count !== null) {
+                PaymentSchedule::where('contract_id', $contract->id)
+                    ->where('is_initial_payment', false)
+                    ->whereNull('amendment_id')
+                    ->update([
+                        'is_active' => false,
+                        'deactivated_reason' => "Amendment {$amendment->amendment_number} applied",
+                        'updated_by' => auth()->id()
+                    ]);
+            }
+        } catch (\Exception $e) {
+            Log::error('Failed to update schedules after amendment: ' . $e->getMessage());
+            // Don't throw here as the main amendment approval should succeed
         }
+    }
 
-        // Mark old quarterly schedules as inactive if major changes were made
-        if ($amendment->new_total_amount !== null || $amendment->new_quarters_count !== null) {
-            PaymentSchedule::where('contract_id', $contract->id)
-                ->where('is_initial_payment', false)
-                ->whereNull('amendment_id')
-                ->update([
-                    'is_active' => false,
-                    'deactivated_reason' => "Amendment {$amendment->amendment_number} applied",
-                    'updated_by' => auth()->id()
-                ]);
+    private function formatCurrency(float $amount): string
+    {
+        return number_format($amount, 0, '.', ' ') . ' so\'m';
+    }
+    public function getAmendmentChain(Contract $contract): JsonResponse
+    {
+        try {
+            $amendments = $contract->amendments()
+                ->with(['createdBy', 'approvedBy'])
+                ->orderBy('amendment_date', 'asc')
+                ->get()
+                ->map(function ($amendment) {
+                    return [
+                        'id' => $amendment->id,
+                        'amendment_number' => $amendment->amendment_number,
+                        'amendment_date' => $amendment->amendment_date->format('d.m.Y'),
+                        'reason' => $amendment->reason,
+                        'is_approved' => $amendment->is_approved,
+                        'created_by' => $amendment->createdBy?->name,
+                        'approved_by' => $amendment->approvedBy?->name,
+                        'changes' => [
+                            'total_amount' => $amendment->new_total_amount ? $this->formatCurrency($amendment->new_total_amount) : null,
+                            'initial_payment_percent' => $amendment->new_initial_payment_percent ? $amendment->new_initial_payment_percent . '%' : null,
+                            'quarters_count' => $amendment->new_quarters_count,
+                            'completion_date' => $amendment->new_completion_date?->format('d.m.Y')
+                        ]
+                    ];
+                });
+
+            return response()->json([
+                'success' => true,
+                'amendments' => $amendments,
+                'total_count' => $amendments->count()
+            ]);
+        } catch (\Exception $e) {
+            return response()->json([
+                'success' => false,
+                'message' => 'Amendment chain olishda xatolik: ' . $e->getMessage()
+            ], 500);
         }
-
-    } catch (\Exception $e) {
-        Log::error('Failed to update schedules after amendment: ' . $e->getMessage());
-        // Don't throw here as the main amendment approval should succeed
     }
-}
-
-private function formatCurrency(float $amount): string
-{
-    return number_format($amount, 0, '.', ' ') . ' so\'m';
-}
-public function getAmendmentChain(Contract $contract): JsonResponse
-{
-    try {
-        $amendments = $contract->amendments()
-            ->with(['createdBy', 'approvedBy'])
-            ->orderBy('amendment_date', 'asc')
-            ->get()
-            ->map(function ($amendment) {
-                return [
-                    'id' => $amendment->id,
-                    'amendment_number' => $amendment->amendment_number,
-                    'amendment_date' => $amendment->amendment_date->format('d.m.Y'),
-                    'reason' => $amendment->reason,
-                    'is_approved' => $amendment->is_approved,
-                    'created_by' => $amendment->createdBy?->name,
-                    'approved_by' => $amendment->approvedBy?->name,
-                    'changes' => [
-                        'total_amount' => $amendment->new_total_amount ? $this->formatCurrency($amendment->new_total_amount) : null,
-                        'initial_payment_percent' => $amendment->new_initial_payment_percent ? $amendment->new_initial_payment_percent . '%' : null,
-                        'quarters_count' => $amendment->new_quarters_count,
-                        'completion_date' => $amendment->new_completion_date?->format('d.m.Y')
-                    ]
-                ];
-            });
-
-        return response()->json([
-            'success' => true,
-            'amendments' => $amendments,
-            'total_count' => $amendments->count()
-        ]);
-
-    } catch (\Exception $e) {
-        return response()->json([
-            'success' => false,
-            'message' => 'Amendment chain olishda xatolik: ' . $e->getMessage()
-        ], 500);
-    }
-}
 
     public function editAmendment($contract, $amendment): View
     {

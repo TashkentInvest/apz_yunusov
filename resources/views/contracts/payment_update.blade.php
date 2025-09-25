@@ -1,6 +1,9 @@
 @extends('layouts.app')
 
-@section('title', 'Shartnoma to\'lov boshqaruvi - ' . ($paymentData['contract']['contract_number'] ?? 'Yangi
+@section('title',
+    'Shartnoma to\'lov boshqaruvi - ' .
+    ($paymentData['contract']['contract_number'] ??
+    'Yangi
     shartnoma'))
 
 @section('header-actions')
@@ -268,197 +271,203 @@
                     @endif
                 </h2>
             </div>
-<form method="POST"
-    action="{{ isset($paymentData['contract']) ? route('contracts.update', $paymentData['contract']['id']) : route('contracts.store') }}"
-    class="p-8 space-y-8">
-    @csrf
-    @if (isset($paymentData['contract']))
-        @method('PUT')
-        <input type="hidden" name="from_payment_update" value="1">
-    @endif
+            <form method="POST"
+                action="{{ isset($paymentData['contract']) ? route('contracts.update', $paymentData['contract']['id']) : route('contracts.store') }}"
+                class="p-8 space-y-8">
+                @csrf
 
-    <td class="px-6 py-4">
-        @if ($contract->subject->is_legal_entity)
-            <span class="inline-flex px-2 py-1 text-xs font-semibold rounded-full bg-blue-100 text-blue-800">
-                <i data-feather="briefcase" class="w-3 h-3 mr-1"></i>
-                Юр. лицо
-            </span>
-        @else
-            <span class="inline-flex px-2 py-1 text-xs font-semibold rounded-full bg-green-100 text-green-800">
-                <i data-feather="user" class="w-3 h-3 mr-1"></i>
-                Физ. лицо
-            </span>
-        @endif
-    </td>
-    <!-- Subject/Customer -->
-    <td class="px-6 py-4">
-        <div class="text-sm font-medium text-gray-900">
-            {{ $contract->subject->company_name ?? 'Кўрсатилмаган' }}
-        </div>
-        <div class="text-sm text-gray-500">
-            @if ($contract->subject->is_legal_entity)
-                СТИР: {{ $contract->subject->inn ?? 'Топилмади' }}
-            @else
-                @if ($contract->subject->document_series)
-                    Паспорт: {{ $contract->subject->document_series ?? 'Топилмади' }} <br> ЖШШИР:
-                    {{ $contract->subject->pinfl ?? 'Топилмади' }}
-                @else
-                    Топилмади
+<input type="hidden" name="initial_payment_amount" id="initial_payment_amount_hidden">
+                @if (isset($paymentData['contract']))
+                    @method('PUT')
+                    <input type="hidden" name="from_payment_update" value="1">
                 @endif
-            @endif
-        </div>
-    </td>
-    <div class="grid grid-cols-1 lg:grid-cols-3 gap-6">
-        <div>
-            <label class="block text-sm font-semibold text-gray-700 mb-3">Shartnoma raqami *</label>
-            <input type="text" name="contract_number" required
-                value="{{ old('contract_number', $paymentData['contract']['contract_number'] ?? '') }}"
-                class="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 @error('contract_number') border-red-300 @enderror">
-            @error('contract_number')
-                <p class="text-red-500 text-sm mt-1">{{ $message }}</p>
-            @enderror
-        </div>
 
-        <div>
-            <label class="block text-sm font-semibold text-gray-700 mb-3">Shartnoma sanasi *</label>
-            <input type="date" name="contract_date" required
-                value="{{ old('contract_date', $paymentData['contract']['contract_date'] ?? date('Y-m-d')) }}"
-                max="{{ date('Y-m-d') }}"
-                class="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 @error('contract_date') border-red-300 @enderror">
-            @error('contract_date')
-                <p class="text-red-500 text-sm mt-1">{{ $message }}</p>
-            @enderror
-        </div>
-
-        <div>
-            <label class="block text-sm font-semibold text-gray-700 mb-3">Yakunlash sanasi</label>
-            <input type="date" name="completion_date"
-                value="{{ old('completion_date', $paymentData['contract']['completion_date'] ?? '') }}"
-                class="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 @error('completion_date') border-red-300 @enderror">
-            @error('completion_date')
-                <p class="text-red-500 text-sm mt-1">{{ $message }}</p>
-            @enderror
-        </div>
-    </div>
-
-    <div class="bg-blue-50 rounded-xl p-6 border-l-4 border-blue-500">
-        <h3 class="text-xl font-bold text-blue-900 mb-6">Moliyaviy ma'lumotlar</h3>
-
-        <div class="grid grid-cols-1 lg:grid-cols-2 gap-6">
-            <div>
-                <label class="block text-sm font-semibold text-gray-700 mb-3">Jami shartnoma summasi (so'm) *</label>
-                <input type="number" id="total_amount" name="total_amount" required step="0.01" min="1"
-                    value="{{ old('total_amount', $paymentData['contract']['total_amount'] ?? '') }}"
-                    class="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 font-bold @error('total_amount') border-red-300 @enderror"
-                    oninput="calculateFromPercent()">
-                @error('total_amount')
-                    <p class="text-red-500 text-sm mt-1">{{ $message }}</p>
-                @enderror
-            </div>
-
-            <div>
-                <label class="block text-sm font-semibold text-gray-700 mb-3">To'lov turi *</label>
-                <select name="payment_type" required onchange="togglePaymentType(this)"
-                    class="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 @error('payment_type') border-red-300 @enderror">
-                    <option value="">To'lov turini tanlang</option>
-                    <option value="installment"
-                        {{ old('payment_type', $paymentData['contract']['payment_type'] ?? '') === 'installment' ? 'selected' : '' }}>
-                        Bo'lib to'lash</option>
-                    <option value="full"
-                        {{ old('payment_type', $paymentData['contract']['payment_type'] ?? '') === 'full' ? 'selected' : '' }}>
-                        To'liq to'lash</option>
-                </select>
-                @error('payment_type')
-                    <p class="text-red-500 text-sm mt-1">{{ $message }}</p>
-                @enderror
-            </div>
-        </div>
-
-        <div id="installmentSettings" class="space-y-6 mt-6"
-            style="{{ old('payment_type', $paymentData['contract']['payment_type'] ?? '') === 'full' ? 'display: none;' : '' }}">
-            <div class="grid grid-cols-1 lg:grid-cols-3 gap-6">
-                <div>
-                    <label class="block text-sm font-semibold text-gray-700 mb-3">Boshlang'ich to'lov</label>
-
-                    <!-- Percentage input -->
-                    <div class="mb-3">
-                        <label class="block text-xs text-gray-600 mb-1">Foizda (%)</label>
-                        <input type="number" name="initial_payment_percent" id="initial_payment_percent"
-                               min="0" max="100" step="1"
-                               value="{{ old('initial_payment_percent', $paymentData['contract']['initial_payment_percent'] ?? 20) }}"
-                               class="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500"
-                               oninput="calculateFromPercent()">
+                <td class="px-6 py-4">
+                    @if ($contract->subject->is_legal_entity)
+                        <span class="inline-flex px-2 py-1 text-xs font-semibold rounded-full bg-blue-100 text-blue-800">
+                            <i data-feather="briefcase" class="w-3 h-3 mr-1"></i>
+                            Юр. лицо
+                        </span>
+                    @else
+                        <span class="inline-flex px-2 py-1 text-xs font-semibold rounded-full bg-green-100 text-green-800">
+                            <i data-feather="user" class="w-3 h-3 mr-1"></i>
+                            Физ. лицо
+                        </span>
+                    @endif
+                </td>
+                <!-- Subject/Customer -->
+                <td class="px-6 py-4">
+                    <div class="text-sm font-medium text-gray-900">
+                        {{ $contract->subject->company_name ?? 'Кўрсатилмаган' }}
                     </div>
-
-                    <!-- Amount input -->
+                    <div class="text-sm text-gray-500">
+                        @if ($contract->subject->is_legal_entity)
+                            СТИР: {{ $contract->subject->inn ?? 'Топилмади' }}
+                        @else
+                            @if ($contract->subject->document_series)
+                                Паспорт: {{ $contract->subject->document_series ?? 'Топилмади' }} <br> ЖШШИР:
+                                {{ $contract->subject->pinfl ?? 'Топилмади' }}
+                            @else
+                                Топилмади
+                            @endif
+                        @endif
+                    </div>
+                </td>
+                <div class="grid grid-cols-1 lg:grid-cols-3 gap-6">
                     <div>
-                        <label class="block text-xs text-gray-600 mb-1">So'mda</label>
-                        <input type="number" id="initial_payment_amount" step="0.01" min="0"
-                               class="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500"
-                               placeholder="Boshlang'ich to'lov summasi"
-                               oninput="calculateFromAmount()">
+                        <label class="block text-sm font-semibold text-gray-700 mb-3">Shartnoma raqami *</label>
+                        <input type="text" name="contract_number" required
+                            value="{{ old('contract_number', $paymentData['contract']['contract_number'] ?? '') }}"
+                            class="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 @error('contract_number') border-red-300 @enderror">
+                        @error('contract_number')
+                            <p class="text-red-500 text-sm mt-1">{{ $message }}</p>
+                        @enderror
+                    </div>
+
+                    <div>
+                        <label class="block text-sm font-semibold text-gray-700 mb-3">Shartnoma sanasi *</label>
+                        <input type="date" name="contract_date" required
+                            value="{{ old('contract_date', $paymentData['contract']['contract_date'] ?? date('Y-m-d')) }}"
+                            max="{{ date('Y-m-d') }}"
+                            class="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 @error('contract_date') border-red-300 @enderror">
+                        @error('contract_date')
+                            <p class="text-red-500 text-sm mt-1">{{ $message }}</p>
+                        @enderror
+                    </div>
+
+                    <div>
+                        <label class="block text-sm font-semibold text-gray-700 mb-3">Yakunlash sanasi</label>
+                        <input type="date" name="completion_date"
+                            value="{{ old('completion_date', $paymentData['contract']['completion_date'] ?? '') }}"
+                            class="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 @error('completion_date') border-red-300 @enderror">
+                        @error('completion_date')
+                            <p class="text-red-500 text-sm mt-1">{{ $message }}</p>
+                        @enderror
                     </div>
                 </div>
 
-                <div>
-                    <label class="block text-sm font-semibold text-gray-700 mb-3">Qurulish muddati (yil)</label>
-                    <input type="number" name="construction_period_years" min="1" max="10" step="1"
-                        value="{{ old('construction_period_years', $paymentData['contract']['construction_period_years'] ?? 2) }}"
-                        class="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500">
-                </div>
+                <div class="bg-blue-50 rounded-xl p-6 border-l-4 border-blue-500">
+                    <h3 class="text-xl font-bold text-blue-900 mb-6">Moliyaviy ma'lumotlar</h3>
 
-                <div>
-                    <label class="block text-sm font-semibold text-gray-700 mb-3">Choraklar soni</label>
-                    <input type="number" name="quarters_count" min="1" max="20" step="1"
-                        value="{{ old('quarters_count', $paymentData['contract']['quarters_count'] ?? 8) }}"
-                        class="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500">
-                </div>
-            </div>
+                    <div class="grid grid-cols-1 lg:grid-cols-2 gap-6">
+                        <div>
+                            <label class="block text-sm font-semibold text-gray-700 mb-3">Jami shartnoma summasi (so'm)
+                                *</label>
+                            <input type="number" id="total_amount" name="total_amount" required step="0.01"
+                                min="1"
+                                value="{{ old('total_amount', $paymentData['contract']['total_amount'] ?? '') }}"
+                                class="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 font-bold @error('total_amount') border-red-300 @enderror"
+                                oninput="calculateFromPercent()">
+                            @error('total_amount')
+                                <p class="text-red-500 text-sm mt-1">{{ $message }}</p>
+                            @enderror
+                        </div>
 
-            @if (isset($paymentData['contract']))
-                <div class="bg-white rounded-xl p-6 border-2 border-blue-200">
-                    <h4 class="text-lg font-bold text-blue-900 mb-4">To'lov hisob-kitobi</h4>
-                    <div class="grid grid-cols-1 md:grid-cols-3 gap-4 text-center">
-                        <div class="success-gradient rounded-lg p-4">
-                            <p class="text-sm font-medium text-green-800">Boshlang'ich to'lov</p>
-                            <p class="text-2xl font-bold text-green-900">
-                                {{ $paymentData['contract']['initial_payment_formatted'] }}</p>
-                        </div>
-                        <div class="info-gradient rounded-lg p-4">
-                            <p class="text-sm font-medium text-blue-800">Qolgan summa</p>
-                            <p class="text-2xl font-bold text-blue-900">
-                                {{ $paymentData['contract']['remaining_amount_formatted'] }}</p>
-                        </div>
-                        <div class="warning-gradient rounded-lg p-4">
-                            <p class="text-sm font-medium text-indigo-800">Chorak to'lovi</p>
-                            <p class="text-2xl font-bold text-indigo-900">
-                                {{ $paymentData['contract']['quarterly_amount_formatted'] }}</p>
+                        <div>
+                            <label class="block text-sm font-semibold text-gray-700 mb-3">To'lov turi *</label>
+                            <select name="payment_type" required onchange="togglePaymentType(this)"
+                                class="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 @error('payment_type') border-red-300 @enderror">
+                                <option value="">To'lov turini tanlang</option>
+                                <option value="installment"
+                                    {{ old('payment_type', $paymentData['contract']['payment_type'] ?? '') === 'installment' ? 'selected' : '' }}>
+                                    Bo'lib to'lash</option>
+                                <option value="full"
+                                    {{ old('payment_type', $paymentData['contract']['payment_type'] ?? '') === 'full' ? 'selected' : '' }}>
+                                    To'liq to'lash</option>
+                            </select>
+                            @error('payment_type')
+                                <p class="text-red-500 text-sm mt-1">{{ $message }}</p>
+                            @enderror
                         </div>
                     </div>
+
+                    <div id="installmentSettings" class="space-y-6 mt-6"
+                        style="{{ old('payment_type', $paymentData['contract']['payment_type'] ?? '') === 'full' ? 'display: none;' : '' }}">
+                        <div class="grid grid-cols-1 lg:grid-cols-3 gap-6">
+                            <div>
+                                <label class="block text-sm font-semibold text-gray-700 mb-3">Boshlang'ich to'lov</label>
+
+                                <!-- Percentage input -->
+                                <div class="mb-3">
+                                    <label class="block text-xs text-gray-600 mb-1">Foizda (%)</label>
+                                  <input type="number" name="initial_payment_percent" id="initial_payment_percent"
+       min="0" max="100" step="any"
+       value="{{ old('initial_payment_percent', $paymentData['contract']['initial_payment_percent'] ?? 20) }}"
+       class="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500"
+       oninput="calculateFromPercent()">
+                                </div>
+
+                                <!-- Amount input -->
+                                <div>
+                                    <label class="block text-xs text-gray-600 mb-1">So'mda</label>
+                                    <input type="number" id="initial_payment_amount" step="0.01" min="0"
+                                        class="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500"
+                                        placeholder="Boshlang'ich to'lov summasi" oninput="calculateFromAmount()">
+                                </div>
+                            </div>
+
+                            <div>
+                                <label class="block text-sm font-semibold text-gray-700 mb-3">Qurulish muddati
+                                    (yil)</label>
+                                <input type="number" name="construction_period_years" min="1" max="10"
+                                    step="1"
+                                    value="{{ old('construction_period_years', $paymentData['contract']['construction_period_years'] ?? 2) }}"
+                                    class="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500">
+                            </div>
+
+                            <div>
+                                <label class="block text-sm font-semibold text-gray-700 mb-3">Choraklar soni</label>
+                                <input type="number" name="quarters_count" min="1" max="20"
+                                    step="1"
+                                    value="{{ old('quarters_count', $paymentData['contract']['quarters_count'] ?? 8) }}"
+                                    class="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500">
+                            </div>
+                        </div>
+
+                        @if (isset($paymentData['contract']))
+                            <div class="bg-white rounded-xl p-6 border-2 border-blue-200">
+                                <h4 class="text-lg font-bold text-blue-900 mb-4">To'lov hisob-kitobi</h4>
+                                <div class="grid grid-cols-1 md:grid-cols-3 gap-4 text-center">
+                                    <div class="success-gradient rounded-lg p-4">
+                                        <p class="text-sm font-medium text-green-800">Boshlang'ich to'lov</p>
+                                        <p class="text-2xl font-bold text-green-900">
+                                            {{ $paymentData['contract']['initial_payment_formatted'] }}</p>
+                                    </div>
+                                    <div class="info-gradient rounded-lg p-4">
+                                        <p class="text-sm font-medium text-blue-800">Qolgan summa</p>
+                                        <p class="text-2xl font-bold text-blue-900">
+                                            {{ $paymentData['contract']['remaining_amount_formatted'] }}</p>
+                                    </div>
+                                    <div class="warning-gradient rounded-lg p-4">
+                                        <p class="text-sm font-medium text-indigo-800">Chorak to'lovi</p>
+                                        <p class="text-2xl font-bold text-indigo-900">
+                                            {{ $paymentData['contract']['quarterly_amount_formatted'] }}</p>
+                                    </div>
+                                </div>
+                            </div>
+                        @endif
+                    </div>
                 </div>
-            @endif
-        </div>
-    </div>
 
-    <div class="flex justify-end space-x-4 pt-6 border-t border-gray-200">
-        <button type="button" onclick="clearFinancialFields()"
-            class="btn bg-gray-100 text-gray-700 hover:bg-gray-200">
-            <svg class="w-4 h-4 inline mr-1" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
-                    d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15" />
-            </svg>
-            Tozalash
-        </button>
-        <button type="submit" class="btn btn-primary">
-            <svg class="w-4 h-4 inline mr-1" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7" />
-            </svg>
-            {{ isset($paymentData['contract']) ? 'Yangilash' : 'Saqlash' }}
-        </button>
-    </div>
-</form>
+                <div class="flex justify-end space-x-4 pt-6 border-t border-gray-200">
+                    <button type="button" onclick="clearFinancialFields()"
+                        class="btn bg-gray-100 text-gray-700 hover:bg-gray-200">
+                        <svg class="w-4 h-4 inline mr-1" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                                d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15" />
+                        </svg>
+                        Tozalash
+                    </button>
+                    <button type="submit" class="btn btn-primary">
+                        <svg class="w-4 h-4 inline mr-1" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7" />
+                        </svg>
+                        {{ isset($paymentData['contract']) ? 'Yangilash' : 'Saqlash' }}
+                    </button>
+                </div>
+            </form>
 
-<script>
+           <script>
 function calculateFromPercent() {
     const totalAmount = document.getElementById('total_amount').value;
     const percent = document.getElementById('initial_payment_percent').value;
@@ -466,8 +475,10 @@ function calculateFromPercent() {
     if (totalAmount && percent) {
         const amount = (parseFloat(totalAmount) * parseFloat(percent)) / 100;
         document.getElementById('initial_payment_amount').value = amount.toFixed(2);
+        document.getElementById('initial_payment_amount_hidden').value = amount.toFixed(2); // Store for submission
     } else if (!percent) {
         document.getElementById('initial_payment_amount').value = '';
+        document.getElementById('initial_payment_amount_hidden').value = '';
     }
 }
 
@@ -477,9 +488,11 @@ function calculateFromAmount() {
 
     if (totalAmount && amount) {
         const percent = (parseFloat(amount) / parseFloat(totalAmount)) * 100;
-        document.getElementById('initial_payment_percent').value = percent.toFixed(1);
+        document.getElementById('initial_payment_percent').value = percent.toFixed(4); // Allow up to 4 decimals
+        document.getElementById('initial_payment_amount_hidden').value = amount; // Store for submission
     } else if (!amount) {
         document.getElementById('initial_payment_percent').value = '';
+        document.getElementById('initial_payment_amount_hidden').value = '';
     }
 }
 
@@ -496,6 +509,7 @@ function clearFinancialFields() {
     document.getElementById('total_amount').value = '';
     document.getElementById('initial_payment_percent').value = '20';
     document.getElementById('initial_payment_amount').value = '';
+    document.getElementById('initial_payment_amount_hidden').value = '';
     document.querySelector('[name="construction_period_years"]').value = '2';
     document.querySelector('[name="quarters_count"]').value = '8';
 }
@@ -514,7 +528,8 @@ document.addEventListener('DOMContentLoaded', function() {
 
                 if (isEditMode) {
                     alert(
-                        'Tahrirlash rejimida moliyaviy ma\'lumotlarni tozalab bo\'lmaydi. O\'zgartirishlar kiriting va saqlang.');
+                        'Tahrirlash rejimida moliyaviy ma\'lumotlarni tozalab bo\'lmaydi. O\'zgartirishlar kiriting va saqlang.'
+                        );
                     return; // Don't clear anything
                 }
 
@@ -1486,7 +1501,8 @@ $totalPaid = floatval(
                     if (data.success) {
                         // Display payment details in a modal or popup
                         alert(
-                            `To'lov tafsilotlari:\nSumma: ${data.payment.amount_formatted}\nSana: ${data.payment.payment_date}\nTuri: ${data.payment.quarter_info}`);
+                            `To'lov tafsilotlari:\nSumma: ${data.payment.amount_formatted}\nSana: ${data.payment.payment_date}\nTuri: ${data.payment.quarter_info}`
+                            );
                     } else {
                         showErrorMessage('To\'lov ma\'lumotlari topilmadi');
                     }
@@ -1663,7 +1679,7 @@ $totalPaid = floatval(
                                     console.log('Error response body:', text);
                                     throw new Error(
                                         `HTTP error! status: ${response.status}. Body: ${text}`
-                                        );
+                                    );
                                 });
                             }
                             return response.json();
@@ -1723,7 +1739,7 @@ $totalPaid = floatval(
 
             if (confirm(
                     `"${amendmentNumber}" raqamli qo'shimcha kelishuvni o'chirishni tasdiqlaysizmi?\n\nDiqqat: Bu amal qaytarilmaydi!`
-                    )) {
+                )) {
                 fetch(`/contracts/${contractId}/amendments/${amendmentId}`, {
                         method: 'DELETE',
                         headers: {
