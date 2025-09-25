@@ -454,7 +454,7 @@
 
                             <div>
                                 <label class="block text-sm font-semibold text-gray-700 mb-3">Choraklar soni</label>
-                                <input type="number" name="quarters_count" min="1" max="20"
+                                <input type="number" name="quarters_count" min="1" max="40"
                                     step="1"
                                     value="{{ old('quarters_count', $paymentData['contract']['quarters_count'] ?? 8) }}"
                                     class="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500">

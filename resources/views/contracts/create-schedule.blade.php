@@ -189,7 +189,7 @@
             <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
                 <div>
                     <label class="block text-sm font-medium text-gray-700 mb-2">Choraklar soni *</label>
-                    <input type="number" name="quarters_count" min="1" max="20" step="1"
+                    <input type="number" name="quarters_count" min="1" max="40" step="1"
                            value="{{ $quartersCount }}"
                            class="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500"
                            required onchange="updatePreview()">

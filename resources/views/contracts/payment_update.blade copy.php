@@ -416,7 +416,7 @@
 
                         <div>
                             <label class="block text-sm font-semibold text-gray-700 mb-3">Jami choraklar soni</label>
-                            <input type="number" name="quarters_count" min="1" max="20" step="1"
+                            <input type="number" name="quarters_count" min="1" max="40" step="1"
                                    value="{{ $contract->quarters_count ?? 8 }}"
                                    class="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 text-lg font-semibold"
                                    onchange="calculatePaymentBreakdown()">
@@ -628,7 +628,7 @@
 
     <div>
         <label class="block text-sm font-medium text-gray-700 mb-2">Choraklar soni</label>
-        <input type="number" name="quarters_count" min="1" max="20" step="1"
+        <input type="number" name="quarters_count" min="1" max="40" step="1"
                value="{{ isset($contract) ? ($contract->quarters_count ?? 8) : 4 }}"
                onchange="updateSchedulePreview()"
                class="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500"

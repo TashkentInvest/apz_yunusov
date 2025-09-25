@@ -176,7 +176,7 @@ class ContractController extends Controller
             'payment_type' => 'required|in:installment,full',
             'initial_payment_percent' => 'nullable|numeric|min:0|max:100',
             'construction_period_years' => 'nullable|numeric|min:1|max:10',
-            'quarters_count' => 'nullable|numeric|min:1|max:20'
+            'quarters_count' => 'nullable|numeric|min:1|max:40'
         ]);
 
         if ($validator->fails()) {
@@ -277,7 +277,7 @@ class ContractController extends Controller
             'initial_payment_percent' => 'nullable|numeric|min:0|max:100',
             'initial_payment_amount' => 'nullable|numeric|min:0', // NEW
             'construction_period_years' => 'nullable|numeric|min:1|max:10',
-            'quarters_count' => 'nullable|numeric|min:1|max:20'
+            'quarters_count' => 'nullable|numeric|min:1|max:40'
         ]);
 
         if ($validator->fails()) {
