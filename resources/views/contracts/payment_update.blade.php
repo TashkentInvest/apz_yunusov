@@ -155,75 +155,78 @@
                 <!-- Complete Working Status Selector -->
                 @if (isset($paymentData['contract']) && isset($statuses))
                     <div class="flex-1 px-8">
-<form id="status-update-form" method="POST"
-    action="{{ route('contracts.update-status', ['contract' => $contract->id]) }}"
-    class="space-y-4">
-    @csrf
-    @method('PATCH')
+                        <form id="status-update-form" method="POST"
+                            action="{{ route('contracts.update-status', ['contract' => $contract->id]) }}"
+                            class="space-y-4">
+                            @csrf
+                            @method('PATCH')
 
-    <!-- Status Selection -->
-    <div>
-        <label for="status_id" class="block text-sm font-medium text-gray-700 mb-2 text-white">
-            Shartnoma holati *
-        </label>
-        <select id="status_id" name="status_id"
-            class="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 text-gray-900 bg-white"
-            required>
-            @foreach ($statuses as $status)
-                <option value="{{ $status->id }}"
-                    {{ $contract->status_id == $status->id ? 'selected' : '' }}>
-                    {{ $status->name_uz }}
-                </option>
-            @endforeach
-        </select>
-    </div>
+                            <!-- Status Selection -->
+                            <div>
+                                <label for="status_id" class="block text-sm font-medium text-gray-700 mb-2 text-white">
+                                    Shartnoma holati *
+                                </label>
+                                <select id="status_id" name="status_id"
+                                    class="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 text-gray-900 bg-white"
+                                    required>
+                                    @foreach ($statuses as $status)
+                                        <option value="{{ $status->id }}"
+                                            {{ $contract->status_id == $status->id ? 'selected' : '' }}>
+                                            {{ $status->name_uz }}
+                                        </option>
+                                    @endforeach
+                                </select>
+                            </div>
 
-    <!-- District Selection -->
-<div>
-    <label for="district_id" class="block text-sm font-medium text-white mb-2">
-        Tuman
-    </label>
-    <select id="district_id" name="district_id"
-        class="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 text-gray-900 bg-white">
-        <option value="">Tanlash (ixtiyoriy)</option>
-        @foreach($districts ?? [] as $district)
-            @if(preg_match('/^[А-Яа-яЎўҚқҒғҲҳ]/u', $district->name_uz))
-                <option value="{{ $district->id }}"
-                    {{ $contract->object->district_id == $district->id ? 'selected' : '' }}>
-                </option>
-            @endif
-        @endforeach
-    </select>
-</div>
+                            <!-- District Selection -->
+                            <div>
+                                <label for="district_id" class="block text-sm font-medium text-white mb-2">
+                                    Tuman
+                                </label>
+                                <select id="district_id" name="district_id"
+                                    class="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 text-gray-900 bg-white">
+                                    <option value="">Tanlash (ixtiyoriy)</option>
+                                    @foreach ($districts ?? [] as $district)
+                                        @if (preg_match('/^[А-Яа-яЎўҚқҒғҲҳ]/u', $district->name_uz))
+                                            <option value="{{ $district->id }}"
+                                                {{ $contract->object->district_id == $district->id ? 'selected' : '' }}>
+                                                {{ $district->name_uz }}
 
-    <!-- Permit Type Selection -->
-    <div>
-        <label for="permit_type_id" class="block text-sm font-medium text-gray-700 mb-2 text-white">
-            Ruxsatnoma turi
-        </label>
-        <select id="permit_type_id" name="permit_type_id"
-            class="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 text-gray-900 bg-white">
-            <option value="">Tanlash (ixtiyoriy)</option>
-            @foreach($permitTypes ?? [] as $permitType)
-                <option value="{{ $permitType->id }}"
-                    {{ $contract->object->permit_type_id == $permitType->id ? 'selected' : '' }}>
-                    {{ $permitType->name_uz }} - {{ $permitType->name_ru }}
-                </option>
-            @endforeach
-        </select>
-    </div>
+                                            </option>
+                                        @endif
+                                    @endforeach
+                                </select>
+                            </div>
 
-    <!-- Submit Button -->
-    <div class="flex justify-end space-x-3 pt-4">
-        <button type="submit"
-            class="inline-flex items-center px-4 py-2 bg-blue-600 hover:bg-blue-700 text-white text-sm font-medium rounded-lg transition-colors">
-            <svg class="w-4 h-4 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7" />
-            </svg>
-            Saqlash
-        </button>
-    </div>
-</form>
+                            <!-- Permit Type Selection -->
+                            <div>
+                                <label for="permit_type_id" class="block text-sm font-medium text-gray-700 mb-2 text-white">
+                                    Ruxsatnoma turi
+                                </label>
+                                <select id="permit_type_id" name="permit_type_id"
+                                    class="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 text-gray-900 bg-white">
+                                    <option value="">Tanlash (ixtiyoriy)</option>
+                                    @foreach ($permitTypes ?? [] as $permitType)
+                                        <option value="{{ $permitType->id }}"
+                                            {{ $contract->object->permit_type_id == $permitType->id ? 'selected' : '' }}>
+                                            {{ $permitType->name_uz }} - {{ $permitType->name_ru }}
+                                        </option>
+                                    @endforeach
+                                </select>
+                            </div>
+
+                            <!-- Submit Button -->
+                            <div class="flex justify-end space-x-3 pt-4">
+                                <button type="submit"
+                                    class="inline-flex items-center px-4 py-2 bg-blue-600 hover:bg-blue-700 text-white text-sm font-medium rounded-lg transition-colors">
+                                    <svg class="w-4 h-4 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                                            d="M5 13l4 4L19 7" />
+                                    </svg>
+                                    Saqlash
+                                </button>
+                            </div>
+                        </form>
 
                     </div>
 
@@ -310,7 +313,7 @@
                 class="p-8 space-y-8">
                 @csrf
 
-<input type="hidden" name="initial_payment_amount" id="initial_payment_amount_hidden">
+                <input type="hidden" name="initial_payment_amount" id="initial_payment_amount_hidden">
                 @if (isset($paymentData['contract']))
                     @method('PUT')
                     <input type="hidden" name="from_payment_update" value="1">
@@ -424,11 +427,11 @@
                                 <!-- Percentage input -->
                                 <div class="mb-3">
                                     <label class="block text-xs text-gray-600 mb-1">Foizda (%)</label>
-                                  <input type="number" name="initial_payment_percent" id="initial_payment_percent"
-       min="0" max="100" step="any"
-       value="{{ old('initial_payment_percent', $paymentData['contract']['initial_payment_percent'] ?? 20) }}"
-       class="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500"
-       oninput="calculateFromPercent()">
+                                    <input type="number" name="initial_payment_percent" id="initial_payment_percent"
+                                        min="0" max="100" step="any"
+                                        value="{{ old('initial_payment_percent', $paymentData['contract']['initial_payment_percent'] ?? 20) }}"
+                                        class="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500"
+                                        oninput="calculateFromPercent()">
                                 </div>
 
                                 <!-- Amount input -->
@@ -501,58 +504,58 @@
                 </div>
             </form>
 
-           <script>
-function calculateFromPercent() {
-    const totalAmount = document.getElementById('total_amount').value;
-    const percent = document.getElementById('initial_payment_percent').value;
+            <script>
+                function calculateFromPercent() {
+                    const totalAmount = document.getElementById('total_amount').value;
+                    const percent = document.getElementById('initial_payment_percent').value;
 
-    if (totalAmount && percent) {
-        const amount = (parseFloat(totalAmount) * parseFloat(percent)) / 100;
-        document.getElementById('initial_payment_amount').value = amount.toFixed(2);
-        document.getElementById('initial_payment_amount_hidden').value = amount.toFixed(2); // Store for submission
-    } else if (!percent) {
-        document.getElementById('initial_payment_amount').value = '';
-        document.getElementById('initial_payment_amount_hidden').value = '';
-    }
-}
+                    if (totalAmount && percent) {
+                        const amount = (parseFloat(totalAmount) * parseFloat(percent)) / 100;
+                        document.getElementById('initial_payment_amount').value = amount.toFixed(2);
+                        document.getElementById('initial_payment_amount_hidden').value = amount.toFixed(2); // Store for submission
+                    } else if (!percent) {
+                        document.getElementById('initial_payment_amount').value = '';
+                        document.getElementById('initial_payment_amount_hidden').value = '';
+                    }
+                }
 
-function calculateFromAmount() {
-    const totalAmount = document.getElementById('total_amount').value;
-    const amount = document.getElementById('initial_payment_amount').value;
+                function calculateFromAmount() {
+                    const totalAmount = document.getElementById('total_amount').value;
+                    const amount = document.getElementById('initial_payment_amount').value;
 
-    if (totalAmount && amount) {
-        const percent = (parseFloat(amount) / parseFloat(totalAmount)) * 100;
-        document.getElementById('initial_payment_percent').value = percent.toFixed(4); // Allow up to 4 decimals
-        document.getElementById('initial_payment_amount_hidden').value = amount; // Store for submission
-    } else if (!amount) {
-        document.getElementById('initial_payment_percent').value = '';
-        document.getElementById('initial_payment_amount_hidden').value = '';
-    }
-}
+                    if (totalAmount && amount) {
+                        const percent = (parseFloat(amount) / parseFloat(totalAmount)) * 100;
+                        document.getElementById('initial_payment_percent').value = percent.toFixed(4); // Allow up to 4 decimals
+                        document.getElementById('initial_payment_amount_hidden').value = amount; // Store for submission
+                    } else if (!amount) {
+                        document.getElementById('initial_payment_percent').value = '';
+                        document.getElementById('initial_payment_amount_hidden').value = '';
+                    }
+                }
 
-function togglePaymentType(select) {
-    const installmentSettings = document.getElementById('installmentSettings');
-    if (select.value === 'full') {
-        installmentSettings.style.display = 'none';
-    } else {
-        installmentSettings.style.display = 'block';
-    }
-}
+                function togglePaymentType(select) {
+                    const installmentSettings = document.getElementById('installmentSettings');
+                    if (select.value === 'full') {
+                        installmentSettings.style.display = 'none';
+                    } else {
+                        installmentSettings.style.display = 'block';
+                    }
+                }
 
-function clearFinancialFields() {
-    document.getElementById('total_amount').value = '';
-    document.getElementById('initial_payment_percent').value = '20';
-    document.getElementById('initial_payment_amount').value = '';
-    document.getElementById('initial_payment_amount_hidden').value = '';
-    document.querySelector('[name="construction_period_years"]').value = '2';
-    document.querySelector('[name="quarters_count"]').value = '8';
-}
+                function clearFinancialFields() {
+                    document.getElementById('total_amount').value = '';
+                    document.getElementById('initial_payment_percent').value = '20';
+                    document.getElementById('initial_payment_amount').value = '';
+                    document.getElementById('initial_payment_amount_hidden').value = '';
+                    document.querySelector('[name="construction_period_years"]').value = '2';
+                    document.querySelector('[name="quarters_count"]').value = '8';
+                }
 
-// Initialize calculation on page load if values exist
-document.addEventListener('DOMContentLoaded', function() {
-    calculateFromPercent();
-});
-</script>
+                // Initialize calculation on page load if values exist
+                document.addEventListener('DOMContentLoaded', function() {
+                    calculateFromPercent();
+                });
+            </script>
         </div>
 
         <script>
@@ -563,7 +566,7 @@ document.addEventListener('DOMContentLoaded', function() {
                 if (isEditMode) {
                     alert(
                         'Tahrirlash rejimida moliyaviy ma\'lumotlarni tozalab bo\'lmaydi. O\'zgartirishlar kiriting va saqlang.'
-                        );
+                    );
                     return; // Don't clear anything
                 }
 
@@ -1536,7 +1539,7 @@ $totalPaid = floatval(
                         // Display payment details in a modal or popup
                         alert(
                             `To'lov tafsilotlari:\nSumma: ${data.payment.amount_formatted}\nSana: ${data.payment.payment_date}\nTuri: ${data.payment.quarter_info}`
-                            );
+                        );
                     } else {
                         showErrorMessage('To\'lov ma\'lumotlari topilmadi');
                     }
