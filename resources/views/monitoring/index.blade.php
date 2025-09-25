@@ -20,204 +20,244 @@
     <!-- Monitoring Table -->
     <div class="bg-white rounded-xl shadow-sm border border-gray-200 overflow-hidden">
         <div class="overflow-x-auto">
-            <table class="w-full border-collapse">
+            <table class="w-full border-collapse text-xs">
                 <thead class="bg-gray-50">
                     <tr>
-                        <th rowspan="2" class="border border-gray-300 px-4 py-3 text-xs font-semibold text-gray-700">Т/р</th>
-                        <th rowspan="2" class="border border-gray-300 px-4 py-3 text-xs font-semibold text-gray-700">Ҳудуд номи</th>
-                        <th colspan="2" class="border border-gray-300 px-4 py-3 text-xs font-semibold text-gray-700">Жами шартнома</th>
-                        <th colspan="5" class="border border-gray-300 px-4 py-3 text-xs font-semibold text-gray-700 bg-blue-50">Қурилиш жараёни ҳолати</th>
-                        <th colspan="4" class="border border-gray-300 px-4 py-3 text-xs font-semibold text-gray-700 bg-green-50">Шартнома ҳолати</th>
-                        <th rowspan="2" class="border border-gray-300 px-4 py-3 text-xs font-semibold text-gray-700">Жами тўлов</th>
-                        <th rowspan="2" class="border border-gray-300 px-4 py-3 text-xs font-semibold text-gray-700">25.09.2025 й холатига кўра қарздорлик</th>
-                        <th rowspan="2" class="border border-gray-300 px-4 py-3 text-xs font-semibold text-gray-700">2025 йил оҳирига қадар тўланадиган қарздорлик</th>
+                        <th rowspan="3" class="border border-gray-300 px-2 py-2 text-xs font-semibold text-gray-700">Т/р</th>
+                        <th rowspan="3" class="border border-gray-300 px-2 py-2 text-xs font-semibold text-gray-700 min-w-[120px]">Ҳудуд номи</th>
+
+                        <!-- Жами шартнома -->
+                        <th colspan="2" rowspan="2" class="border border-gray-300 px-2 py-2 text-xs font-semibold text-gray-700">Жами шартнома</th>
+
+                        <!-- шундан (First group) -->
+                        <th colspan="8" rowspan="1" class="border border-gray-300 px-2 py-2 text-xs font-semibold text-gray-700 bg-yellow-50">шундан,</th>
+
+                        <!-- Объект қурилиши бўйича ҳолати -->
+                        <th colspan="10" rowspan="1" class="border border-gray-300 px-2 py-2 text-xs font-semibold text-gray-700 bg-blue-50">Объект қурилиши бўйича ҳолати</th>
+
+                        <!-- шундан (Second group) -->
+                        <th colspan="2" rowspan="1" class="border border-gray-300 px-2 py-2 text-xs font-semibold text-gray-700 bg-orange-50">шундан,</th>
+
+                        <!-- Year quarters -->
+                        <th colspan="2" rowspan="2" class="border border-gray-300 px-2 py-2 text-xs font-semibold text-gray-700 bg-green-50">2025 йилнинг 3-чорак якунига қадар тўланадиганлар</th>
+
+                        <th colspan="2" rowspan="2" class="border border-gray-300 px-2 py-2 text-xs font-semibold text-gray-700 bg-teal-50">2025 йилнинг 4-чорак якунига қадар тўланадиганлар</th>
+
+                        <th colspan="2" rowspan="2" class="border border-gray-300 px-2 py-2 text-xs font-semibold text-gray-700 bg-purple-50">2026 йилда тўланадиганлар</th>
+
+                        <th colspan="2" rowspan="2" class="border border-gray-300 px-2 py-2 text-xs font-semibold text-gray-700 bg-indigo-50">2027 йилда тўланадиганлар</th>
                     </tr>
+
+                    <!-- Second header row -->
                     <tr>
-                        <th class="border border-gray-300 px-4 py-2 text-xs font-medium text-gray-600">Сони</th>
-                        <th class="border border-gray-300 px-4 py-2 text-xs font-medium text-gray-600">Қиймати</th>
+                        <!-- шундан subheaders -->
+                        <th colspan="2" class="border border-gray-300 px-2 py-1 text-xs font-medium text-gray-600 bg-yellow-50">Бекор қилинганлар</th>
+                        <th colspan="2" class="border border-gray-300 px-2 py-1 text-xs font-medium text-gray-600 bg-yellow-50">тўлиқ тўланганлар</th>
+                        <th colspan="2" class="border border-gray-300 px-2 py-1 text-xs font-medium text-gray-600 bg-yellow-50">тўлов суммалари қайтарилганлар</th>
+                        <th colspan="2" class="border border-gray-300 px-2 py-1 text-xs font-medium text-gray-600 bg-yellow-50">назоратдагилар</th>
 
-                        <th class="border border-gray-300 px-4 py-2 text-xs font-medium text-gray-600 bg-blue-50">
-                            <a href="{{ route('monitoring.permit-type', 1) }}"
-                               class="hover:text-blue-600 hover:underline">
-                                АПЗ
-                            </a>
-                        </th>
-                        <th class="border border-gray-300 px-4 py-2 text-xs font-medium text-gray-600 bg-blue-50">
-                            <a href="{{ route('monitoring.permit-type', 2) }}"
-                               class="hover:text-blue-600 hover:underline">
-                                ГАСН
-                            </a>
-                        </th>
-                        <th class="border border-gray-300 px-4 py-2 text-xs font-medium text-gray-600 bg-blue-50">
-                            <a href="{{ route('monitoring.permit-type', 3) }}"
-                               class="hover:text-blue-600 hover:underline">
-                                Кенгаш
-                            </a>
-                        </th>
-                        <th class="border border-gray-300 px-4 py-2 text-xs font-medium text-gray-600 bg-blue-50">
-                            <a href="{{ route('monitoring.permit-type', 4) }}"
-                               class="hover:text-blue-600 hover:underline">
-                                Рухсатнома
-                            </a>
-                        </th>
-                        <th class="border border-gray-300 px-4 py-2 text-xs font-medium text-gray-600 bg-blue-50">
-                            <a href="{{ route('monitoring.permit-type', 5) }}"
-                               class="hover:text-blue-600 hover:underline">
-                                Экспертиза
-                            </a>
-                        </th>
+                        <!-- Объект қурилиши subheaders -->
+                        <th colspan="2" class="border border-gray-300 px-2 py-1 text-xs font-medium text-gray-600 bg-blue-50">АПТ</th>
+                        <th colspan="2" class="border border-gray-300 px-2 py-1 text-xs font-medium text-gray-600 bg-blue-50">ГАСН</th>
+                        <th colspan="2" class="border border-gray-300 px-2 py-1 text-xs font-medium text-gray-600 bg-blue-50">Кенгаш</th>
+                        <th colspan="2" class="border border-gray-300 px-2 py-1 text-xs font-medium text-gray-600 bg-blue-50">Рухсатнома</th>
+                        <th colspan="2" class="border border-gray-300 px-2 py-1 text-xs font-medium text-gray-600 bg-blue-50">Экспертиза</th>
 
-                        <th class="border border-gray-300 px-4 py-2 text-xs font-medium text-gray-600 bg-green-50">Амалда</th>
-                        <th class="border border-gray-300 px-4 py-2 text-xs font-medium text-gray-600 bg-green-50">Бекор</th>
-                        <th class="border border-gray-300 px-4 py-2 text-xs font-medium text-gray-600 bg-green-50">Якун</th>
-                        <th class="border border-gray-300 px-4 py-2 text-xs font-medium text-gray-600 bg-green-50">Қайтар</th>
+                        <!-- шундан second group -->
+                        <th colspan="2" class="border border-gray-300 px-2 py-1 text-xs font-medium text-gray-600 bg-orange-50">графикдан ортда қолганлар</th>
+                    </tr>
+
+                    <!-- Third header row -->
+                    <tr>
+                        <th class="border border-gray-300 px-2 py-1 text-xs font-medium text-gray-600">сони</th>
+                        <th class="border border-gray-300 px-2 py-1 text-xs font-medium text-gray-600">қиймати<br>(млн сўм)</th>
+
+                        <th class="border border-gray-300 px-2 py-1 text-xs font-medium text-gray-600 bg-yellow-50">сони</th>
+                        <th class="border border-gray-300 px-2 py-1 text-xs font-medium text-gray-600 bg-yellow-50">қиймати<br>(млн сўм)</th>
+
+                        <th class="border border-gray-300 px-2 py-1 text-xs font-medium text-gray-600 bg-yellow-50">сони</th>
+                        <th class="border border-gray-300 px-2 py-1 text-xs font-medium text-gray-600 bg-yellow-50">қиймати<br>(млн сўм)</th>
+
+                        <th class="border border-gray-300 px-2 py-1 text-xs font-medium text-gray-600 bg-yellow-50">сони</th>
+                        <th class="border border-gray-300 px-2 py-1 text-xs font-medium text-gray-600 bg-yellow-50">қиймати<br>(млн сўм)</th>
+
+                        <th class="border border-gray-300 px-2 py-1 text-xs font-medium text-gray-600 bg-yellow-50">сони</th>
+                        <th class="border border-gray-300 px-2 py-1 text-xs font-medium text-gray-600 bg-yellow-50">қиймати<br>(млн сўм)</th>
+
+                        <th class="border border-gray-300 px-2 py-1 text-xs font-medium text-gray-600 bg-blue-50">сони</th>
+                        <th class="border border-gray-300 px-2 py-1 text-xs font-medium text-gray-600 bg-blue-50">қиймати<br>(млн сўм)</th>
+
+                        <th class="border border-gray-300 px-2 py-1 text-xs font-medium text-gray-600 bg-blue-50">сони</th>
+                        <th class="border border-gray-300 px-2 py-1 text-xs font-medium text-gray-600 bg-blue-50">қиймати<br>(млн сўм)</th>
+
+                        <th class="border border-gray-300 px-2 py-1 text-xs font-medium text-gray-600 bg-blue-50">сони</th>
+                        <th class="border border-gray-300 px-2 py-1 text-xs font-medium text-gray-600 bg-blue-50">қиймати<br>(млн сўм)</th>
+
+                        <th class="border border-gray-300 px-2 py-1 text-xs font-medium text-gray-600 bg-blue-50">сони</th>
+                        <th class="border border-gray-300 px-2 py-1 text-xs font-medium text-gray-600 bg-blue-50">қиймати<br>(млн сўм)</th>
+
+                        <th class="border border-gray-300 px-2 py-1 text-xs font-medium text-gray-600 bg-blue-50">сони</th>
+                        <th class="border border-gray-300 px-2 py-1 text-xs font-medium text-gray-600 bg-blue-50">қиймати<br>(млн сўм)</th>
+
+                        <th class="border border-gray-300 px-2 py-1 text-xs font-medium text-gray-600 bg-orange-50">сони</th>
+                        <th class="border border-gray-300 px-2 py-1 text-xs font-medium text-gray-600 bg-orange-50">қиймати<br>(млн сўм)</th>
+
+                        <th class="border border-gray-300 px-2 py-1 text-xs font-medium text-gray-600 bg-green-50">сони</th>
+                        <th class="border border-gray-300 px-2 py-1 text-xs font-medium text-gray-600 bg-green-50">қиймати<br>(млн сўм)</th>
+
+                        <th class="border border-gray-300 px-2 py-1 text-xs font-medium text-gray-600 bg-teal-50">сони</th>
+                        <th class="border border-gray-300 px-2 py-1 text-xs font-medium text-gray-600 bg-teal-50">қиймати<br>(млн сўм)</th>
+
+                        <th class="border border-gray-300 px-2 py-1 text-xs font-medium text-gray-600 bg-purple-50">сони</th>
+                        <th class="border border-gray-300 px-2 py-1 text-xs font-medium text-gray-600 bg-purple-50">қиймати<br>(млн сўм)</th>
+
+                        <th class="border border-gray-300 px-2 py-1 text-xs font-medium text-gray-600 bg-indigo-50">сони</th>
+                        <th class="border border-gray-300 px-2 py-1 text-xs font-medium text-gray-600 bg-indigo-50">қиймати<br>(млн сўм)</th>
                     </tr>
                 </thead>
                 <tbody>
                     <!-- City Total Row -->
-                    <tr class="bg-yellow-50 font-semibold hover:bg-yellow-100 transition-colors">
-                        <td class="border border-gray-300 px-4 py-3 text-sm"></td>
-                        <td class="border border-gray-300 px-4 py-3 text-sm">
-                            <a href="#!"
-                               class="flex items-center justify-between text-gray-900 hover:text-blue-600 transition-colors group">
-                                <span>Тошкент шаҳри</span>
-                                <svg class="w-5 h-5 transform group-hover:translate-x-1 transition-transform"
-                                     fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
-                                          d="M13 7l5 5m0 0l-5 5m5-5H6" />
-                                </svg>
-                            </a>
-                        </td>
-                        <td class="border border-gray-300 px-4 py-3 text-sm text-center">{{ $cityTotals['total_contracts'] }}</td>
-                        <td class="border border-gray-300 px-4 py-3 text-sm text-right">{{ number_format($cityTotals['total_amount']) }}</td>
+                    <tr class="bg-yellow-100 font-semibold">
+                        <td class="border border-gray-300 px-2 py-2"></td>
+                        <td class="border border-gray-300 px-2 py-2">Тошкент шаҳри</td>
+                        <td class="border border-gray-300 px-2 py-2 text-center">{{ $cityTotals['total_contracts'] }}</td>
+                        <td class="border border-gray-300 px-2 py-2 text-right">{{ number_format($cityTotals['total_amount'] / 1000000, 1) }}</td>
 
-                        <!-- Clickable Permit Type Columns -->
-                        <td class="border border-gray-300 px-4 py-3 text-sm text-center bg-blue-50">
-                            <a href="{{ route('monitoring.permit-type', 1) }}"
-                               class="text-gray-900 hover:text-blue-600 hover:underline">
-                                {{ $cityTotals['apz_count'] }}
-                            </a>
+                        <!-- Cancelled -->
+                        <td class="border border-gray-300 px-2 py-2 text-center bg-yellow-50">
+                            <a href="{{ route('monitoring.status', 'cancelled') }}" class="hover:underline">{{ $cityTotals['cancelled_count'] }}</a>
                         </td>
-                        <td class="border border-gray-300 px-4 py-3 text-sm text-center bg-blue-50">
-                            <a href="{{ route('monitoring.permit-type', 2) }}"
-                               class="text-gray-900 hover:text-blue-600 hover:underline">
-                                {{ $cityTotals['gasn_count'] }}
-                            </a>
-                        </td>
-                        <td class="border border-gray-300 px-4 py-3 text-sm text-center bg-blue-50">
-                            <a href="{{ route('monitoring.permit-type', 3) }}"
-                               class="text-gray-900 hover:text-blue-600 hover:underline">
-                                {{ $cityTotals['kengash_count'] }}
-                            </a>
-                        </td>
-                        <td class="border border-gray-300 px-4 py-3 text-sm text-center bg-blue-50">
-                            <a href="{{ route('monitoring.permit-type', 4) }}"
-                               class="text-gray-900 hover:text-blue-600 hover:underline">
-                                {{ $cityTotals['permit_count'] }}
-                            </a>
-                        </td>
-                        <td class="border border-gray-300 px-4 py-3 text-sm text-center bg-blue-50">
-                            <a href="{{ route('monitoring.permit-type', 5) }}"
-                               class="text-gray-900 hover:text-blue-600 hover:underline">
-                                {{ $cityTotals['expertise_count'] }}
-                            </a>
-                        </td>
+                        <td class="border border-gray-300 px-2 py-2 text-right bg-yellow-50">{{ number_format(($cityTotals['cancelled_amount'] ?? 0) / 1000000, 1) }}</td>
 
-                        <!-- Clickable Status Columns -->
-                        <td class="border border-gray-300 px-4 py-3 text-sm text-center bg-green-50">
-                            <a href="{{ route('monitoring.status', 'active') }}"
-                               class="text-gray-900 hover:text-green-600 hover:underline">
-                                {{ $cityTotals['active_count'] }}
-                            </a>
+                        <!-- Fully paid -->
+                        <td class="border border-gray-300 px-2 py-2 text-center bg-yellow-50">
+                            <a href="{{ route('monitoring.status', 'completed') }}" class="hover:underline">{{ $cityTotals['completed_count'] }}</a>
                         </td>
-                        <td class="border border-gray-300 px-4 py-3 text-sm text-center bg-green-50">
-                            <a href="{{ route('monitoring.status', 'cancelled') }}"
-                               class="text-gray-900 hover:text-red-600 hover:underline">
-                                {{ $cityTotals['cancelled_count'] }}
-                            </a>
-                        </td>
-                        <td class="border border-gray-300 px-4 py-3 text-sm text-center bg-green-50">
-                            <a href="{{ route('monitoring.status', 'completed') }}"
-                               class="text-gray-900 hover:text-blue-600 hover:underline">
-                                {{ $cityTotals['completed_count'] }}
-                            </a>
-                        </td>
-                        <td class="border border-gray-300 px-4 py-3 text-sm text-right bg-green-50">{{ number_format($cityTotals['returned_amount']) }}</td>
+                        <td class="border border-gray-300 px-2 py-2 text-right bg-yellow-50">{{ number_format(($cityTotals['completed_amount'] ?? 0) / 1000000, 1) }}</td>
 
-                        <td class="border border-gray-300 px-4 py-3 text-sm text-right">{{ number_format($cityTotals['total_paid']) }}</td>
-                        <td class="border border-gray-300 px-4 py-3 text-sm text-right">{{ number_format($cityTotals['total_debt']) }}</td>
-                        <td class="border border-gray-300 px-4 py-3 text-sm text-right">{{ number_format($cityTotals['debt_2025']) }}</td>
+                        <!-- Returned -->
+                        <td class="border border-gray-300 px-2 py-2 text-center bg-yellow-50">-</td>
+                        <td class="border border-gray-300 px-2 py-2 text-right bg-yellow-50">{{ number_format($cityTotals['returned_amount'] / 1000000, 1) }}</td>
+
+                        <!-- Under supervision -->
+                        <td class="border border-gray-300 px-2 py-2 text-center bg-yellow-50">
+                            <a href="{{ route('monitoring.status', 'active') }}" class="hover:underline">{{ $cityTotals['active_count'] }}</a>
+                        </td>
+                        <td class="border border-gray-300 px-2 py-2 text-right bg-yellow-50">{{ number_format(($cityTotals['active_amount'] ?? 0) / 1000000, 1) }}</td>
+
+                        <!-- Permit types -->
+                        <td class="border border-gray-300 px-2 py-2 text-center bg-blue-50">
+                            <a href="{{ route('monitoring.permit-type', 1) }}" class="hover:underline">{{ $cityTotals['apz_count'] }}</a>
+                        </td>
+                        <td class="border border-gray-300 px-2 py-2 text-right bg-blue-50">-</td>
+
+                        <td class="border border-gray-300 px-2 py-2 text-center bg-blue-50">
+                            <a href="{{ route('monitoring.permit-type', 2) }}" class="hover:underline">{{ $cityTotals['gasn_count'] }}</a>
+                        </td>
+                        <td class="border border-gray-300 px-2 py-2 text-right bg-blue-50">-</td>
+
+                        <td class="border border-gray-300 px-2 py-2 text-center bg-blue-50">
+                            <a href="{{ route('monitoring.permit-type', 3) }}" class="hover:underline">{{ $cityTotals['kengash_count'] }}</a>
+                        </td>
+                        <td class="border border-gray-300 px-2 py-2 text-right bg-blue-50">-</td>
+
+                        <td class="border border-gray-300 px-2 py-2 text-center bg-blue-50">
+                            <a href="{{ route('monitoring.permit-type', 4) }}" class="hover:underline">{{ $cityTotals['permit_count'] }}</a>
+                        </td>
+                        <td class="border border-gray-300 px-2 py-2 text-right bg-blue-50">-</td>
+
+                        <td class="border border-gray-300 px-2 py-2 text-center bg-blue-50">
+                            <a href="{{ route('monitoring.permit-type', 5) }}" class="hover:underline">{{ $cityTotals['expertise_count'] }}</a>
+                        </td>
+                        <td class="border border-gray-300 px-2 py-2 text-right bg-blue-50">-</td>
+
+                        <!-- Behind schedule -->
+                        <td class="border border-gray-300 px-2 py-2 text-center bg-orange-50">-</td>
+                        <td class="border border-gray-300 px-2 py-2 text-right bg-orange-50">-</td>
+
+                        <!-- Quarterly data -->
+                        <td class="border border-gray-300 px-2 py-2 text-center bg-green-50">-</td>
+                        <td class="border border-gray-300 px-2 py-2 text-right bg-green-50">-</td>
+
+                        <td class="border border-gray-300 px-2 py-2 text-center bg-teal-50">-</td>
+                        <td class="border border-gray-300 px-2 py-2 text-right bg-teal-50">{{ number_format($cityTotals['debt_2025'] / 1000000, 1) }}</td>
+
+                        <td class="border border-gray-300 px-2 py-2 text-center bg-purple-50">-</td>
+                        <td class="border border-gray-300 px-2 py-2 text-right bg-purple-50">-</td>
+
+                        <td class="border border-gray-300 px-2 py-2 text-center bg-indigo-50">-</td>
+                        <td class="border border-gray-300 px-2 py-2 text-right bg-indigo-50">-</td>
                     </tr>
 
                     <!-- District Rows -->
                     @foreach($monitoringData as $index => $data)
                     <tr class="hover:bg-gray-50">
-                        <td class="border border-gray-300 px-4 py-3 text-sm text-center">{{ $index + 1 }}</td>
-                        <td class="border border-gray-300 px-4 py-3 text-sm">
-                            <a href="{{ route('monitoring.district', $data['district']) }}"
-                               class="text-blue-600 hover:text-blue-800 hover:underline">
+                        <td class="border border-gray-300 px-2 py-2 text-center">{{ $index + 1 }}</td>
+                        <td class="border border-gray-300 px-2 py-2">
+                            <a href="{{ route('monitoring.district', $data['district']) }}" class="text-blue-600 hover:underline">
                                 {{ $data['district']->name_uz }}
                             </a>
                         </td>
-                        <td class="border border-gray-300 px-4 py-3 text-sm text-center">{{ $data['total_contracts'] }}</td>
-                        <td class="border border-gray-300 px-4 py-3 text-sm text-right">{{ number_format($data['total_amount']) }}</td>
+                        <td class="border border-gray-300 px-2 py-2 text-center">{{ $data['total_contracts'] }}</td>
+                        <td class="border border-gray-300 px-2 py-2 text-right">{{ number_format($data['total_amount'] / 1000000, 1) }}</td>
 
-                        <!-- Clickable Permit Type Columns -->
-                        <td class="border border-gray-300 px-4 py-3 text-sm text-center bg-blue-50">
-                            <a href="{{ route('monitoring.permit-type', 1) }}?district={{ $data['district']->id }}"
-                               class="text-gray-900 hover:text-blue-600 hover:underline">
-                                {{ $data['apz_count'] }}
-                            </a>
+                        <td class="border border-gray-300 px-2 py-2 text-center bg-yellow-50">
+                            <a href="{{ route('monitoring.status', 'cancelled') }}?district={{ $data['district']->id }}" class="hover:underline">{{ $data['cancelled_count'] }}</a>
                         </td>
-                        <td class="border border-gray-300 px-4 py-3 text-sm text-center bg-blue-50">
-                            <a href="{{ route('monitoring.permit-type', 2) }}?district={{ $data['district']->id }}"
-                               class="text-gray-900 hover:text-blue-600 hover:underline">
-                                {{ $data['gasn_count'] }}
-                            </a>
-                        </td>
-                        <td class="border border-gray-300 px-4 py-3 text-sm text-center bg-blue-50">
-                            <a href="{{ route('monitoring.permit-type', 3) }}?district={{ $data['district']->id }}"
-                               class="text-gray-900 hover:text-blue-600 hover:underline">
-                                {{ $data['kengash_count'] }}
-                            </a>
-                        </td>
-                        <td class="border border-gray-300 px-4 py-3 text-sm text-center bg-blue-50">
-                            <a href="{{ route('monitoring.permit-type', 4) }}?district={{ $data['district']->id }}"
-                               class="text-gray-900 hover:text-blue-600 hover:underline">
-                                {{ $data['permit_count'] }}
-                            </a>
-                        </td>
-                        <td class="border border-gray-300 px-4 py-3 text-sm text-center bg-blue-50">
-                            <a href="{{ route('monitoring.permit-type', 5) }}?district={{ $data['district']->id }}"
-                               class="text-gray-900 hover:text-blue-600 hover:underline">
-                                {{ $data['expertise_count'] }}
-                            </a>
-                        </td>
+                        <td class="border border-gray-300 px-2 py-2 text-right bg-yellow-50">{{ number_format(($data['cancelled_amount'] ?? 0) / 1000000, 1) }}</td>
 
-                        <!-- Clickable Status Columns -->
-                        <td class="border border-gray-300 px-4 py-3 text-sm text-center bg-green-50">
-                            <a href="{{ route('monitoring.status', 'active') }}?district={{ $data['district']->id }}"
-                               class="text-gray-900 hover:text-green-600 hover:underline">
-                                {{ $data['active_count'] }}
-                            </a>
+                        <td class="border border-gray-300 px-2 py-2 text-center bg-yellow-50">
+                            <a href="{{ route('monitoring.status', 'completed') }}?district={{ $data['district']->id }}" class="hover:underline">{{ $data['completed_count'] }}</a>
                         </td>
-                        <td class="border border-gray-300 px-4 py-3 text-sm text-center bg-green-50">
-                            <a href="{{ route('monitoring.status', 'cancelled') }}?district={{ $data['district']->id }}"
-                               class="text-gray-900 hover:text-red-600 hover:underline">
-                                {{ $data['cancelled_count'] }}
-                            </a>
-                        </td>
-                        <td class="border border-gray-300 px-4 py-3 text-sm text-center bg-green-50">
-                            <a href="{{ route('monitoring.status', 'completed') }}?district={{ $data['district']->id }}"
-                               class="text-gray-900 hover:text-blue-600 hover:underline">
-                                {{ $data['completed_count'] }}
-                            </a>
-                        </td>
-                        <td class="border border-gray-300 px-4 py-3 text-sm text-right bg-green-50">{{ number_format($data['returned_amount']) }}</td>
+                        <td class="border border-gray-300 px-2 py-2 text-right bg-yellow-50">{{ number_format(($data['completed_amount'] ?? 0) / 1000000, 1) }}</td>
 
-                        <td class="border border-gray-300 px-4 py-3 text-sm text-right">{{ number_format($data['total_paid']) }}</td>
-                        <td class="border border-gray-300 px-4 py-3 text-sm text-right">{{ number_format($data['total_debt']) }}</td>
-                        <td class="border border-gray-300 px-4 py-3 text-sm text-right">{{ number_format($data['debt_2025']) }}</td>
+                        <td class="border border-gray-300 px-2 py-2 text-center bg-yellow-50">-</td>
+                        <td class="border border-gray-300 px-2 py-2 text-right bg-yellow-50">{{ number_format($data['returned_amount'] / 1000000, 1) }}</td>
+
+                        <td class="border border-gray-300 px-2 py-2 text-center bg-yellow-50">
+                            <a href="{{ route('monitoring.status', 'active') }}?district={{ $data['district']->id }}" class="hover:underline">{{ $data['active_count'] }}</a>
+                        </td>
+                        <td class="border border-gray-300 px-2 py-2 text-right bg-yellow-50">{{ number_format(($data['active_amount'] ?? 0) / 1000000, 1) }}</td>
+
+                        <td class="border border-gray-300 px-2 py-2 text-center bg-blue-50">
+                            <a href="{{ route('monitoring.permit-type', 1) }}?district={{ $data['district']->id }}" class="hover:underline">{{ $data['apz_count'] }}</a>
+                        </td>
+                        <td class="border border-gray-300 px-2 py-2 text-right bg-blue-50">-</td>
+
+                        <td class="border border-gray-300 px-2 py-2 text-center bg-blue-50">
+                            <a href="{{ route('monitoring.permit-type', 2) }}?district={{ $data['district']->id }}" class="hover:underline">{{ $data['gasn_count'] }}</a>
+                        </td>
+                        <td class="border border-gray-300 px-2 py-2 text-right bg-blue-50">-</td>
+
+                        <td class="border border-gray-300 px-2 py-2 text-center bg-blue-50">
+                            <a href="{{ route('monitoring.permit-type', 3) }}?district={{ $data['district']->id }}" class="hover:underline">{{ $data['kengash_count'] }}</a>
+                        </td>
+                        <td class="border border-gray-300 px-2 py-2 text-right bg-blue-50">-</td>
+
+                        <td class="border border-gray-300 px-2 py-2 text-center bg-blue-50">
+                            <a href="{{ route('monitoring.permit-type', 4) }}?district={{ $data['district']->id }}" class="hover:underline">{{ $data['permit_count'] }}</a>
+                        </td>
+                        <td class="border border-gray-300 px-2 py-2 text-right bg-blue-50">-</td>
+
+                        <td class="border border-gray-300 px-2 py-2 text-center bg-blue-50">
+                            <a href="{{ route('monitoring.permit-type', 5) }}?district={{ $data['district']->id }}" class="hover:underline">{{ $data['expertise_count'] }}</a>
+                        </td>
+                        <td class="border border-gray-300 px-2 py-2 text-right bg-blue-50">-</td>
+
+                        <td class="border border-gray-300 px-2 py-2 text-center bg-orange-50">-</td>
+                        <td class="border border-gray-300 px-2 py-2 text-right bg-orange-50">-</td>
+
+                        <td class="border border-gray-300 px-2 py-2 text-center bg-green-50">-</td>
+                        <td class="border border-gray-300 px-2 py-2 text-right bg-green-50">-</td>
+
+                        <td class="border border-gray-300 px-2 py-2 text-center bg-teal-50">-</td>
+                        <td class="border border-gray-300 px-2 py-2 text-right bg-teal-50">{{ number_format($data['debt_2025'] / 1000000, 1) }}</td>
+
+                        <td class="border border-gray-300 px-2 py-2 text-center bg-purple-50">-</td>
+                        <td class="border border-gray-300 px-2 py-2 text-right bg-purple-50">-</td>
+
+                        <td class="border border-gray-300 px-2 py-2 text-center bg-indigo-50">-</td>
+                        <td class="border border-gray-300 px-2 py-2 text-right bg-indigo-50">-</td>
                     </tr>
                     @endforeach
                 </tbody>
