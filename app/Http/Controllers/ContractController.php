@@ -245,9 +245,12 @@ class ContractController extends Controller
     {
         $contract->load(['subject', 'object.district', 'status', 'baseAmount', 'amendments']);
         $paymentData = $this->paymentService->getContractPaymentData($contract);
-        return view('contracts.show', compact('contract', 'paymentData'));
-    }
 
+        // Extract penalties from paymentData or pass it separately
+        $penalties = $paymentData['penalties'] ?? ['penalties' => [], 'total_penalty' => 0];
+
+        return view('contracts.show', compact('contract', 'paymentData', 'penalties'));
+    }
     /**
      * Show the form for editing the contract
      */

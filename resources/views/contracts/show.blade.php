@@ -574,30 +574,7 @@ document.getElementById('addPaymentForm').addEventListener('submit', async funct
 
     toggleLoading(submitButton, true);
 
-    try {
-        const response = await fetch('{{ route("contracts.payments.store") }}', {
-            method: 'POST',
-            headers: {
-                'X-CSRF-TOKEN': document.querySelector('meta[name="csrf-token"]').content
-            },
-            body: formData
-        });
 
-        const result = await response.json();
-
-        if (result.success) {
-            closeModal('addPaymentModal');
-            showSuccessMessage(result.message);
-            setTimeout(() => location.reload(), 1000);
-        } else {
-            throw new Error(result.message || 'Ошибка при добавлении платежа');
-        }
-    } catch (error) {
-        console.error('Error:', error);
-        handleAjaxError({ responseJSON: { message: error.message } });
-    } finally {
-        toggleLoading(submitButton, false);
-    }
 });
 
 document.getElementById('createAmendmentForm').addEventListener('submit', async function(e) {

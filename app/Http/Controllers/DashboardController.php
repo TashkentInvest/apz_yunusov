@@ -755,16 +755,26 @@ public function allDistricts(Request $request)
 public function contractsByPermitType(Request $request, $permitTypeId)
 {
     $permitType = \App\Models\PermitType::findOrFail($permitTypeId);
+    $districtId = $request->query('district');
 
-    $contracts = Contract::whereHas('object', function($q) use ($permitTypeId) {
+    $query = Contract::whereHas('object', function($q) use ($permitTypeId, $districtId) {
         $q->where('permit_type_id', $permitTypeId);
+
+        // Add district filter if provided
+        if ($districtId) {
+            $q->where('district_id', $districtId);
+        }
     })
     ->with(['subject', 'object.district', 'status', 'actualPayments'])
     ->where('is_active', true)
     ->whereHas('status', function($q) {
         $q->where('name_uz', '!=', 'Бекор қилинган');
-    })
-    ->paginate(50);
+    });
+
+    $contracts = $query->paginate(50);
+
+    // Get district name if filtering by district
+    $district = $districtId ? \App\Models\District::find($districtId) : null;
 
     // Calculate statistics
     $totalAmount = $contracts->sum('total_amount');
@@ -773,13 +783,22 @@ public function contractsByPermitType(Request $request, $permitTypeId)
     });
     $totalDebt = $totalAmount - $totalPaid;
 
-    return view('monitoring.permit-type', compact('contracts', 'permitType', 'totalAmount', 'totalPaid', 'totalDebt'));
+    return view('monitoring.permit-type', compact('contracts', 'permitType', 'district', 'totalAmount', 'totalPaid', 'totalDebt'));
 }
 
 public function contractsByStatus(Request $request, $statusType)
 {
+    $districtId = $request->query('district');
+
     $query = Contract::with(['subject', 'object.district', 'status', 'actualPayments'])
         ->where('is_active', true);
+
+    // Add district filter if provided
+    if ($districtId) {
+        $query->whereHas('object', function($q) use ($districtId) {
+            $q->where('district_id', $districtId);
+        });
+    }
 
     // Determine status based on type
     $statusName = '';
@@ -806,6 +825,9 @@ public function contractsByStatus(Request $request, $statusType)
 
     $contracts = $query->paginate(50);
 
+    // Get district name if filtering by district
+    $district = $districtId ? \App\Models\District::find($districtId) : null;
+
     // Calculate statistics
     $totalAmount = $contracts->sum('total_amount');
     $totalPaid = $contracts->sum(function($contract) {
@@ -813,6 +835,6 @@ public function contractsByStatus(Request $request, $statusType)
     });
     $totalDebt = $totalAmount - $totalPaid;
 
-    return view('monitoring.status', compact('contracts', 'statusName', 'statusType', 'totalAmount', 'totalPaid', 'totalDebt'));
+    return view('monitoring.status', compact('contracts', 'statusName', 'statusType', 'district', 'totalAmount', 'totalPaid', 'totalDebt'));
 }
 }
