@@ -32,40 +32,124 @@
                         <th rowspan="2" class="border border-gray-300 px-4 py-3 text-xs font-semibold text-gray-700">25.09.2025 й холатига кўра қарздорлик</th>
                         <th rowspan="2" class="border border-gray-300 px-4 py-3 text-xs font-semibold text-gray-700">2025 йил оҳирига қадар тўланадиган қарздорлик</th>
                     </tr>
-                    <tr>
-                        <th class="border border-gray-300 px-4 py-2 text-xs font-medium text-gray-600">сони</th>
-                        <th class="border border-gray-300 px-4 py-2 text-xs font-medium text-gray-600">қиймати (млн сўм)</th>
-                        <th class="border border-gray-300 px-4 py-2 text-xs font-medium text-gray-600 bg-blue-50">АПЗ</th>
-                        <th class="border border-gray-300 px-4 py-2 text-xs font-medium text-gray-600 bg-blue-50">ГАСН</th>
-                        <th class="border border-gray-300 px-4 py-2 text-xs font-medium text-gray-600 bg-blue-50">Кенгаш</th>
-                        <th class="border border-gray-300 px-4 py-2 text-xs font-medium text-gray-600 bg-blue-50">Рухсатнома</th>
-                        <th class="border border-gray-300 px-4 py-2 text-xs font-medium text-gray-600 bg-blue-50">Экспертиза</th>
-                        <th class="border border-gray-300 px-4 py-2 text-xs font-medium text-gray-600 bg-green-50">Амалда</th>
-                        <th class="border border-gray-300 px-4 py-2 text-xs font-medium text-gray-600 bg-green-50">Бекор қилинган</th>
-                        <th class="border border-gray-300 px-4 py-2 text-xs font-medium text-gray-600 bg-green-50">Якунланган</th>
-                        <th class="border border-gray-300 px-4 py-2 text-xs font-medium text-gray-600 bg-green-50">Қайтарилган маблағ</th>
-                    </tr>
+                   <tr>
+    <th class="border border-gray-300 px-4 py-2 text-xs font-medium text-gray-600">Сони</th>
+    <th class="border border-gray-300 px-4 py-2 text-xs font-medium text-gray-600">Қиймати</th>
+
+    <th class="border border-gray-300 px-4 py-2 text-xs font-medium text-gray-600 bg-blue-50">
+        <a href="{{ route('monitoring.permit-type', 1) }}"
+           class="hover:text-blue-600 hover:underline">
+            АПЗ
+        </a>
+    </th>
+    <th class="border border-gray-300 px-4 py-2 text-xs font-medium text-gray-600 bg-blue-50">
+        <a href="{{ route('monitoring.permit-type', 2) }}"
+           class="hover:text-blue-600 hover:underline">
+            ГАСН
+        </a>
+    </th>
+    <th class="border border-gray-300 px-4 py-2 text-xs font-medium text-gray-600 bg-blue-50">
+        <a href="{{ route('monitoring.permit-type', 3) }}"
+           class="hover:text-blue-600 hover:underline">
+            Кенгаш
+        </a>
+    </th>
+    <th class="border border-gray-300 px-4 py-2 text-xs font-medium text-gray-600 bg-blue-50">
+        <a href="{{ route('monitoring.permit-type', 4) }}"
+           class="hover:text-blue-600 hover:underline">
+            Рухсатнома
+        </a>
+    </th>
+    <th class="border border-gray-300 px-4 py-2 text-xs font-medium text-gray-600 bg-blue-50">
+        <a href="{{ route('monitoring.permit-type', 5) }}"
+           class="hover:text-blue-600 hover:underline">
+            Экспертиза
+        </a>
+    </th>
+
+    <th class="border border-gray-300 px-4 py-2 text-xs font-medium text-gray-600 bg-green-50">Амалда</th>
+    <th class="border border-gray-300 px-4 py-2 text-xs font-medium text-gray-600 bg-green-50">Бекор</th>
+    <th class="border border-gray-300 px-4 py-2 text-xs font-medium text-gray-600 bg-green-50">Якун</th>
+    <th class="border border-gray-300 px-4 py-2 text-xs font-medium text-gray-600 bg-green-50">Қайтар</th>
+</tr>
                 </thead>
                 <tbody>
                     <!-- City Total Row -->
-                    <tr class="bg-yellow-50 font-semibold">
-                        <td class="border border-gray-300 px-4 py-3 text-sm"></td>
-                        <td class="border border-gray-300 px-4 py-3 text-sm">Тошкент шаҳри</td>
-                        <td class="border border-gray-300 px-4 py-3 text-sm text-center">{{ $cityTotals['total_contracts'] }}</td>
-                        <td class="border border-gray-300 px-4 py-3 text-sm text-right">{{ number_format($cityTotals['total_amount'] / 1000000, 1) }}</td>
-                        <td class="border border-gray-300 px-4 py-3 text-sm text-center bg-blue-50">{{ $cityTotals['apz_count'] }}</td>
-                        <td class="border border-gray-300 px-4 py-3 text-sm text-center bg-blue-50">{{ $cityTotals['gasn_count'] }}</td>
-                        <td class="border border-gray-300 px-4 py-3 text-sm text-center bg-blue-50">{{ $cityTotals['kengash_count'] }}</td>
-                        <td class="border border-gray-300 px-4 py-3 text-sm text-center bg-blue-50">{{ $cityTotals['permit_count'] }}</td>
-                        <td class="border border-gray-300 px-4 py-3 text-sm text-center bg-blue-50">{{ $cityTotals['expertise_count'] }}</td>
-                        <td class="border border-gray-300 px-4 py-3 text-sm text-center bg-green-50">{{ $cityTotals['active_count'] }}</td>
-                        <td class="border border-gray-300 px-4 py-3 text-sm text-center bg-green-50">{{ $cityTotals['cancelled_count'] }}</td>
-                        <td class="border border-gray-300 px-4 py-3 text-sm text-center bg-green-50">{{ $cityTotals['completed_count'] }}</td>
-                        <td class="border border-gray-300 px-4 py-3 text-sm text-right bg-green-50">{{ number_format($cityTotals['returned_amount'] / 1000000, 1) }}</td>
-                        <td class="border border-gray-300 px-4 py-3 text-sm text-right">{{ number_format($cityTotals['total_paid'] / 1000000, 1) }}</td>
-                        <td class="border border-gray-300 px-4 py-3 text-sm text-right">{{ number_format($cityTotals['total_debt'] / 1000000, 1) }}</td>
-                        <td class="border border-gray-300 px-4 py-3 text-sm text-right">{{ number_format($cityTotals['debt_2025'] / 1000000, 1) }}</td>
-                    </tr>
+  <!-- City Total Row - With clickable columns -->
+<tr class="bg-yellow-50 font-semibold hover:bg-yellow-100 transition-colors">
+    <td class="border border-gray-300 px-4 py-3 text-sm"></td>
+    <td class="border border-gray-300 px-4 py-3 text-sm">
+        <a href="#!"
+           class="flex items-center justify-between text-gray-900 hover:text-blue-600 transition-colors group">
+            <span>Тошкент шаҳри</span>
+            <svg class="w-5 h-5 transform group-hover:translate-x-1 transition-transform"
+                 fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                      d="M13 7l5 5m0 0l-5 5m5-5H6" />
+            </svg>
+        </a>
+    </td>
+    <td class="border border-gray-300 px-4 py-3 text-sm text-center">{{ $cityTotals['total_contracts'] }}</td>
+    <td class="border border-gray-300 px-4 py-3 text-sm text-right">{{ number_format($cityTotals['total_amount']) }}</td>
+
+    <!-- Clickable Permit Type Columns -->
+    <td class="border border-gray-300 px-4 py-3 text-sm text-center bg-blue-50">
+        <a href="{{ route('monitoring.permit-type', 1) }}"
+           class="text-gray-900 hover:text-blue-600 hover:underline">
+            {{ $cityTotals['apz_count'] }}
+        </a>
+    </td>
+    <td class="border border-gray-300 px-4 py-3 text-sm text-center bg-blue-50">
+        <a href="{{ route('monitoring.permit-type', 2) }}"
+           class="text-gray-900 hover:text-blue-600 hover:underline">
+            {{ $cityTotals['gasn_count'] }}
+        </a>
+    </td>
+    <td class="border border-gray-300 px-4 py-3 text-sm text-center bg-blue-50">
+        <a href="{{ route('monitoring.permit-type', 3) }}"
+           class="text-gray-900 hover:text-blue-600 hover:underline">
+            {{ $cityTotals['kengash_count'] }}
+        </a>
+    </td>
+    <td class="border border-gray-300 px-4 py-3 text-sm text-center bg-blue-50">
+        <a href="{{ route('monitoring.permit-type', 4) }}"
+           class="text-gray-900 hover:text-blue-600 hover:underline">
+            {{ $cityTotals['permit_count'] }}
+        </a>
+    </td>
+    <td class="border border-gray-300 px-4 py-3 text-sm text-center bg-blue-50">
+        <a href="{{ route('monitoring.permit-type', 5) }}"
+           class="text-gray-900 hover:text-blue-600 hover:underline">
+            {{ $cityTotals['expertise_count'] }}
+        </a>
+    </td>
+
+    <!-- Clickable Status Columns -->
+    <td class="border border-gray-300 px-4 py-3 text-sm text-center bg-green-50">
+        <a href="{{ route('monitoring.status', 'active') }}"
+           class="text-gray-900 hover:text-green-600 hover:underline">
+            {{ $cityTotals['active_count'] }}
+        </a>
+    </td>
+    <td class="border border-gray-300 px-4 py-3 text-sm text-center bg-green-50">
+        <a href="{{ route('monitoring.status', 'cancelled') }}"
+           class="text-gray-900 hover:text-red-600 hover:underline">
+            {{ $cityTotals['cancelled_count'] }}
+        </a>
+    </td>
+    <td class="border border-gray-300 px-4 py-3 text-sm text-center bg-green-50">
+        <a href="{{ route('monitoring.status', 'completed') }}"
+           class="text-gray-900 hover:text-blue-600 hover:underline">
+            {{ $cityTotals['completed_count'] }}
+        </a>
+    </td>
+    <td class="border border-gray-300 px-4 py-3 text-sm text-right bg-green-50">{{ number_format($cityTotals['returned_amount']) }}</td>
+
+    <td class="border border-gray-300 px-4 py-3 text-sm text-right">{{ number_format($cityTotals['total_paid']) }}</td>
+    <td class="border border-gray-300 px-4 py-3 text-sm text-right">{{ number_format($cityTotals['total_debt']) }}</td>
+    <td class="border border-gray-300 px-4 py-3 text-sm text-right">{{ number_format($cityTotals['debt_2025']) }}</td>
+</tr>
+
 
                     <!-- District Rows -->
                     @foreach($monitoringData as $index => $data)
@@ -78,7 +162,7 @@
                             </a>
                         </td>
                         <td class="border border-gray-300 px-4 py-3 text-sm text-center">{{ $data['total_contracts'] }}</td>
-                        <td class="border border-gray-300 px-4 py-3 text-sm text-right">{{ number_format($data['total_amount'] / 1000000, 1) }}</td>
+                        <td class="border border-gray-300 px-4 py-3 text-sm text-right">{{ number_format($data['total_amount']) }}</td>
                         <td class="border border-gray-300 px-4 py-3 text-sm text-center bg-blue-50">{{ $data['apz_count'] }}</td>
                         <td class="border border-gray-300 px-4 py-3 text-sm text-center bg-blue-50">{{ $data['gasn_count'] }}</td>
                         <td class="border border-gray-300 px-4 py-3 text-sm text-center bg-blue-50">{{ $data['kengash_count'] }}</td>
@@ -87,10 +171,10 @@
                         <td class="border border-gray-300 px-4 py-3 text-sm text-center bg-green-50">{{ $data['active_count'] }}</td>
                         <td class="border border-gray-300 px-4 py-3 text-sm text-center bg-green-50">{{ $data['cancelled_count'] }}</td>
                         <td class="border border-gray-300 px-4 py-3 text-sm text-center bg-green-50">{{ $data['completed_count'] }}</td>
-                        <td class="border border-gray-300 px-4 py-3 text-sm text-right bg-green-50">{{ number_format($data['returned_amount'] / 1000000, 1) }}</td>
-                        <td class="border border-gray-300 px-4 py-3 text-sm text-right">{{ number_format($data['total_paid'] / 1000000, 1) }}</td>
-                        <td class="border border-gray-300 px-4 py-3 text-sm text-right">{{ number_format($data['total_debt'] / 1000000, 1) }}</td>
-                        <td class="border border-gray-300 px-4 py-3 text-sm text-right">{{ number_format($data['debt_2025'] / 1000000, 1) }}</td>
+                        <td class="border border-gray-300 px-4 py-3 text-sm text-right bg-green-50">{{ number_format($data['returned_amount']) }}</td>
+                        <td class="border border-gray-300 px-4 py-3 text-sm text-right">{{ number_format($data['total_paid']) }}</td>
+                        <td class="border border-gray-300 px-4 py-3 text-sm text-right">{{ number_format($data['total_debt']) }}</td>
+                        <td class="border border-gray-300 px-4 py-3 text-sm text-right">{{ number_format($data['debt_2025']) }}</td>
                     </tr>
                     @endforeach
                 </tbody>

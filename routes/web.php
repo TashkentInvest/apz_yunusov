@@ -21,7 +21,7 @@ Route::post('/logout', [AuthController::class, 'logout'])->name('logout');
 
 Route::middleware(['auth'])->group(function () {
 
- Route::prefix('users')->name('users.')->group(function () {
+    Route::prefix('users')->name('users.')->group(function () {
         Route::get('/', [UserController::class, 'index'])->name('index');
         Route::get('/create', [UserController::class, 'create'])->name('create');
         Route::post('/', [UserController::class, 'store'])->name('store');
@@ -37,9 +37,14 @@ Route::middleware(['auth'])->group(function () {
     Route::get('/dashboard/export', [DashboardController::class, 'export'])->name('dashboard.export');
     Route::get('/dashboard/contracts/{status}', [DashboardController::class, 'contractsByStatus'])->name('dashboard.contracts.status');
     Route::get('/dashboard/district/{district}/contracts', [DashboardController::class, 'districtContracts'])->name('dashboard.district.contracts');
-// In web.php, add to the authenticated group:
+    // In web.php, add to the authenticated group:
     Route::get('/monitoring', [DashboardController::class, 'monitoring'])->name('monitoring');
     Route::get('/monitoring/district/{district}', [DashboardController::class, 'monitoringDistrict'])->name('monitoring.district');
+    // Add this route
+    Route::get('/monitoring/districts', [DashboardController::class, 'allDistricts'])->name('monitoring.districts');
+    // Add this route for filtered contracts by permit type
+    Route::get('/monitoring/permit-type/{permitTypeId}', [DashboardController::class, 'contractsByPermitType'])->name('monitoring.permit-type');
+    Route::get('/monitoring/status/{statusType}', [DashboardController::class, 'contractsByStatus'])->name('monitoring.status');
 
     // Contracts Management
     Route::prefix('contracts')->name('contracts.')->group(function () {
@@ -292,17 +297,17 @@ Route::middleware(['auth'])->group(function () {
             // Your existing export logic
             $query = \App\Models\Contract::with(['subject', 'object.district', 'status']);
             // ... rest of the code
-            return response()->stream($callback ?? function() {}, 200, $headers ?? []);
+            return response()->stream($callback ?? function () {}, 200, $headers ?? []);
         })->name('contracts');
 
         Route::get('/payments', function (\Illuminate\Http\Request $request) {
             // Your existing export logic
-            return response()->stream($callback ?? function() {}, 200, $headers ?? []);
+            return response()->stream($callback ?? function () {}, 200, $headers ?? []);
         })->name('payments');
 
         Route::get('/debtors', function (\Illuminate\Http\Request $request) {
             // Your existing export logic
-            return response()->stream($callback ?? function() {}, 200, $headers ?? []);
+            return response()->stream($callback ?? function () {}, 200, $headers ?? []);
         })->name('debtors');
     });
 
