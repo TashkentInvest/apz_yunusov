@@ -37,7 +37,7 @@
 
                     <!-- Second row -->
                     <tr>
-                        <th colspan="2" class="border border-gray-300 px-2 py-1 text-xs font-medium text-gray-600 bg-yellow-50">Бекор қилинганлар (soni)</th>
+                        <th colspan="2" class="border border-gray-300 px-2 py-1 text-xs font-medium text-gray-600 bg-yellow-50">Бекор қилинганлар</th>
                         <th colspan="2" class="border border-gray-300 px-2 py-1 text-xs font-medium text-gray-600 bg-yellow-50">тўлиқ тўланганлар (yakunlangan)</th>
                         <th colspan="2" class="border border-gray-300 px-2 py-1 text-xs font-medium text-gray-600 bg-yellow-50">тўлов суммалари қайтарилganлар (toxtaligan)</th>
                         <th colspan="2" class="border border-gray-300 px-2 py-1 text-xs font-medium text-gray-600 bg-yellow-50">назоратдагилар (amaldagi)</th>
@@ -97,36 +97,36 @@
                         <td class="border border-gray-300 px-2 py-2 text-center">{{ $cityTotals['total_contracts'] }}</td>
                         <td class="border border-gray-300 px-2 py-2 text-right">{{ number_format($cityTotals['total_amount'] / 1000000, 1) }}</td>
                         <td class="border border-gray-300 px-2 py-2 text-center bg-yellow-50"><a href="{{ route('monitoring.status', 'cancelled') }}" class="hover:underline">{{ $cityTotals['cancelled_count'] }}</a></td>
-                        <td class="border border-gray-300 px-2 py-2 text-right bg-yellow-50">{{ number_format(($cityTotals['cancelled_amount'] ?? 0) / 1000000, 1) }}</td>
+                        <td class="border border-gray-300 px-2 py-2 text-right bg-yellow-50">{{ number_format($cityTotals['cancelled_amount'] / 1000000, 1) }}</td>
                         <td class="border border-gray-300 px-2 py-2 text-center bg-yellow-50"><a href="{{ route('monitoring.status', 'completed') }}" class="hover:underline">{{ $cityTotals['completed_count'] }}</a></td>
-                        <td class="border border-gray-300 px-2 py-2 text-right bg-yellow-50">{{ number_format(($cityTotals['completed_amount'] ?? 0) / 1000000, 1) }}</td>
-                        <td class="border border-gray-300 px-2 py-2 text-center bg-yellow-50">-</td>
-                        <td class="border border-gray-300 px-2 py-2 text-right bg-yellow-50">0.0</td>
+                        <td class="border border-gray-300 px-2 py-2 text-right bg-yellow-50">{{ number_format($cityTotals['completed_amount'] / 1000000, 1) }}</td>
+                        <td class="border border-gray-300 px-2 py-2 text-center bg-yellow-50">{{ $cityTotals['returned_count'] }}</td>
+                        <td class="border border-gray-300 px-2 py-2 text-right bg-yellow-50">{{ number_format($cityTotals['returned_amount'] / 1000000, 1) }}</td>
                         <td class="border border-gray-300 px-2 py-2 text-center bg-yellow-50"><a href="{{ route('monitoring.status', 'active') }}" class="hover:underline">{{ $cityTotals['active_count'] }}</a></td>
-                        <td class="border border-gray-300 px-2 py-2 text-right bg-yellow-50">{{ number_format($cityTotals['total_paid'] / 1000000, 1) }}</td>
-                        <td class="border border-gray-300 px-2 py-2 text-center bg-yellow-50">-</td>
-                        <td class="border border-gray-300 px-2 py-2 text-right bg-yellow-50">-</td>
-                        <td class="border border-gray-300 px-2 py-2 text-center bg-blue-50"><a href="{{ route('monitoring.permit-type', 1) }}" class="hover:underline">0</a></td>
-                        <td class="border border-gray-300 px-2 py-2 text-center bg-blue-50"><a href="{{ route('monitoring.permit-type', 2) }}" class="hover:underline">0</a></td>
-                        <td class="border border-gray-300 px-2 py-2 text-center bg-blue-50"><a href="{{ route('monitoring.permit-type', 3) }}" class="hover:underline">1</a></td>
-                        <td class="border border-gray-300 px-2 py-2 text-center bg-blue-50"><a href="{{ route('monitoring.permit-type', 4) }}" class="hover:underline">0</a></td>
-                        <td class="border border-gray-300 px-2 py-2 text-center bg-blue-50"><a href="{{ route('monitoring.permit-type', 5) }}" class="hover:underline">0</a></td>
-                        <td class="border border-gray-300 px-2 py-2 text-center bg-green-50">-</td>
-                        <td class="border border-gray-300 px-2 py-2 text-right bg-green-50">-</td>
-                        <td class="border border-gray-300 px-2 py-2 text-center bg-green-50">-</td>
-                        <td class="border border-gray-300 px-2 py-2 text-right bg-green-50">{{ number_format(65890.6, 1) }}</td>
-                        <td class="border border-gray-300 px-2 py-2 text-center bg-teal-50">-</td>
-                        <td class="border border-gray-300 px-2 py-2 text-right bg-teal-50">-</td>
-                        <td class="border border-gray-300 px-2 py-2 text-center bg-teal-50">-</td>
-                        <td class="border border-gray-300 px-2 py-2 text-right bg-teal-50">-</td>
-                        <td class="border border-gray-300 px-2 py-2 text-center bg-purple-50">-</td>
-                        <td class="border border-gray-300 px-2 py-2 text-right bg-purple-50">-</td>
-                        <td class="border border-gray-300 px-2 py-2 text-center bg-purple-50">-</td>
-                        <td class="border border-gray-300 px-2 py-2 text-right bg-purple-50">-</td>
-                        <td class="border border-gray-300 px-2 py-2 text-center bg-indigo-50">-</td>
-                        <td class="border border-gray-300 px-2 py-2 text-right bg-indigo-50">-</td>
-                        <td class="border border-gray-300 px-2 py-2 text-center bg-indigo-50">-</td>
-                        <td class="border border-gray-300 px-2 py-2 text-right bg-indigo-50">-</td>
+                        <td class="border border-gray-300 px-2 py-2 text-right bg-yellow-50">{{ number_format($cityTotals['active_amount'] / 1000000, 1) }}</td>
+                        <td class="border border-gray-300 px-2 py-2 text-center bg-yellow-50">{{ $cityTotals['overdue_count'] }}</td>
+                        <td class="border border-gray-300 px-2 py-2 text-right bg-yellow-50">{{ number_format($cityTotals['overdue_amount'] / 1000000, 1) }}</td>
+                        <td class="border border-gray-300 px-2 py-2 text-center bg-blue-50"><a href="{{ route('monitoring.permit-type', 1) }}" class="hover:underline">{{ $cityTotals['apz_count'] }}</a></td>
+                        <td class="border border-gray-300 px-2 py-2 text-center bg-blue-50"><a href="{{ route('monitoring.permit-type', 2) }}" class="hover:underline">{{ $cityTotals['gasn_count'] }}</a></td>
+                        <td class="border border-gray-300 px-2 py-2 text-center bg-blue-50"><a href="{{ route('monitoring.permit-type', 3) }}" class="hover:underline">{{ $cityTotals['kengash_count'] }}</a></td>
+                        <td class="border border-gray-300 px-2 py-2 text-center bg-blue-50"><a href="{{ route('monitoring.permit-type', 4) }}" class="hover:underline">{{ $cityTotals['permit_count'] }}</a></td>
+                        <td class="border border-gray-300 px-2 py-2 text-center bg-blue-50"><a href="{{ route('monitoring.permit-type', 5) }}" class="hover:underline">{{ $cityTotals['expertise_count'] }}</a></td>
+                        <td class="border border-gray-300 px-2 py-2 text-center bg-green-50">{{ $cityTotals['q3_2025_plan_count'] }}</td>
+                        <td class="border border-gray-300 px-2 py-2 text-right bg-green-50">{{ number_format($cityTotals['q3_2025_plan_amount'] / 1000000, 1) }}</td>
+                        <td class="border border-gray-300 px-2 py-2 text-center bg-green-50">{{ $cityTotals['q3_2025_fact_count'] }}</td>
+                        <td class="border border-gray-300 px-2 py-2 text-right bg-green-50">{{ number_format($cityTotals['q3_2025_fact_amount'] / 1000000, 1) }}</td>
+                        <td class="border border-gray-300 px-2 py-2 text-center bg-teal-50">{{ $cityTotals['q4_2025_plan_count'] }}</td>
+                        <td class="border border-gray-300 px-2 py-2 text-right bg-teal-50">{{ number_format($cityTotals['q4_2025_plan_amount'] / 1000000, 1) }}</td>
+                        <td class="border border-gray-300 px-2 py-2 text-center bg-teal-50">{{ $cityTotals['q4_2025_fact_count'] }}</td>
+                        <td class="border border-gray-300 px-2 py-2 text-right bg-teal-50">{{ number_format($cityTotals['q4_2025_fact_amount'] / 1000000, 1) }}</td>
+                        <td class="border border-gray-300 px-2 py-2 text-center bg-purple-50">{{ $cityTotals['y2026_plan_count'] }}</td>
+                        <td class="border border-gray-300 px-2 py-2 text-right bg-purple-50">{{ number_format($cityTotals['y2026_plan_amount'] / 1000000, 1) }}</td>
+                        <td class="border border-gray-300 px-2 py-2 text-center bg-purple-50">{{ $cityTotals['y2026_fact_count'] }}</td>
+                        <td class="border border-gray-300 px-2 py-2 text-right bg-purple-50">{{ number_format($cityTotals['y2026_fact_amount'] / 1000000, 1) }}</td>
+                        <td class="border border-gray-300 px-2 py-2 text-center bg-indigo-50">{{ $cityTotals['y2027_plan_count'] }}</td>
+                        <td class="border border-gray-300 px-2 py-2 text-right bg-indigo-50">{{ number_format($cityTotals['y2027_plan_amount'] / 1000000, 1) }}</td>
+                        <td class="border border-gray-300 px-2 py-2 text-center bg-indigo-50">{{ $cityTotals['y2027_fact_count'] }}</td>
+                        <td class="border border-gray-300 px-2 py-2 text-right bg-indigo-50">{{ number_format($cityTotals['y2027_fact_amount'] / 1000000, 1) }}</td>
                     </tr>
 
                     <!-- Districts -->
@@ -137,36 +137,36 @@
                         <td class="border border-gray-300 px-2 py-2 text-center">{{ $data['total_contracts'] }}</td>
                         <td class="border border-gray-300 px-2 py-2 text-right">{{ number_format($data['total_amount'] / 1000000, 1) }}</td>
                         <td class="border border-gray-300 px-2 py-2 text-center bg-yellow-50"><a href="{{ route('monitoring.status', 'cancelled') }}?district={{ $data['district']->id }}" class="hover:underline">{{ $data['cancelled_count'] }}</a></td>
-                        <td class="border border-gray-300 px-2 py-2 text-right bg-yellow-50">{{ number_format(($data['cancelled_amount'] ?? 0) / 1000000, 1) }}</td>
+                        <td class="border border-gray-300 px-2 py-2 text-right bg-yellow-50">{{ number_format($data['cancelled_amount'] / 1000000, 1) }}</td>
                         <td class="border border-gray-300 px-2 py-2 text-center bg-yellow-50"><a href="{{ route('monitoring.status', 'completed') }}?district={{ $data['district']->id }}" class="hover:underline">{{ $data['completed_count'] }}</a></td>
-                        <td class="border border-gray-300 px-2 py-2 text-right bg-yellow-50">{{ number_format(($data['completed_amount'] ?? 0) / 1000000, 1) }}</td>
-                        <td class="border border-gray-300 px-2 py-2 text-center bg-yellow-50">-</td>
-                        <td class="border border-gray-300 px-2 py-2 text-right bg-yellow-50">0.0</td>
+                        <td class="border border-gray-300 px-2 py-2 text-right bg-yellow-50">{{ number_format($data['completed_amount'] / 1000000, 1) }}</td>
+                        <td class="border border-gray-300 px-2 py-2 text-center bg-yellow-50">{{ $data['returned_count'] }}</td>
+                        <td class="border border-gray-300 px-2 py-2 text-right bg-yellow-50">{{ number_format($data['returned_amount'] / 1000000, 1) }}</td>
                         <td class="border border-gray-300 px-2 py-2 text-center bg-yellow-50"><a href="{{ route('monitoring.status', 'active') }}?district={{ $data['district']->id }}" class="hover:underline">{{ $data['active_count'] }}</a></td>
-                        <td class="border border-gray-300 px-2 py-2 text-right bg-yellow-50">{{ number_format($data['total_paid'] / 1000000, 1) }}</td>
-                        <td class="border border-gray-300 px-2 py-2 text-center bg-yellow-50">-</td>
-                        <td class="border border-gray-300 px-2 py-2 text-right bg-yellow-50">-</td>
+                        <td class="border border-gray-300 px-2 py-2 text-right bg-yellow-50">{{ number_format($data['active_amount'] / 1000000, 1) }}</td>
+                        <td class="border border-gray-300 px-2 py-2 text-center bg-yellow-50">{{ $data['overdue_count'] }}</td>
+                        <td class="border border-gray-300 px-2 py-2 text-right bg-yellow-50">{{ number_format($data['overdue_amount'] / 1000000, 1) }}</td>
                         <td class="border border-gray-300 px-2 py-2 text-center bg-blue-50"><a href="{{ route('monitoring.permit-type', 1) }}?district={{ $data['district']->id }}" class="hover:underline">{{ $data['apz_count'] }}</a></td>
                         <td class="border border-gray-300 px-2 py-2 text-center bg-blue-50"><a href="{{ route('monitoring.permit-type', 2) }}?district={{ $data['district']->id }}" class="hover:underline">{{ $data['gasn_count'] }}</a></td>
                         <td class="border border-gray-300 px-2 py-2 text-center bg-blue-50"><a href="{{ route('monitoring.permit-type', 3) }}?district={{ $data['district']->id }}" class="hover:underline">{{ $data['kengash_count'] }}</a></td>
                         <td class="border border-gray-300 px-2 py-2 text-center bg-blue-50"><a href="{{ route('monitoring.permit-type', 4) }}?district={{ $data['district']->id }}" class="hover:underline">{{ $data['permit_count'] }}</a></td>
                         <td class="border border-gray-300 px-2 py-2 text-center bg-blue-50"><a href="{{ route('monitoring.permit-type', 5) }}?district={{ $data['district']->id }}" class="hover:underline">{{ $data['expertise_count'] }}</a></td>
-                        <td class="border border-gray-300 px-2 py-2 text-center bg-green-50">-</td>
-                        <td class="border border-gray-300 px-2 py-2 text-right bg-green-50">-</td>
-                        <td class="border border-gray-300 px-2 py-2 text-center bg-green-50">-</td>
-                        <td class="border border-gray-300 px-2 py-2 text-right bg-green-50">{{ number_format(($data['debt_q3_2025'] ?? 0) / 1000000, 1) }}</td>
-                        <td class="border border-gray-300 px-2 py-2 text-center bg-teal-50">-</td>
-                        <td class="border border-gray-300 px-2 py-2 text-right bg-teal-50">-</td>
-                        <td class="border border-gray-300 px-2 py-2 text-center bg-teal-50">-</td>
-                        <td class="border border-gray-300 px-2 py-2 text-right bg-teal-50">-</td>
-                        <td class="border border-gray-300 px-2 py-2 text-center bg-purple-50">-</td>
-                        <td class="border border-gray-300 px-2 py-2 text-right bg-purple-50">-</td>
-                        <td class="border border-gray-300 px-2 py-2 text-center bg-purple-50">-</td>
-                        <td class="border border-gray-300 px-2 py-2 text-right bg-purple-50">-</td>
-                        <td class="border border-gray-300 px-2 py-2 text-center bg-indigo-50">-</td>
-                        <td class="border border-gray-300 px-2 py-2 text-right bg-indigo-50">-</td>
-                        <td class="border border-gray-300 px-2 py-2 text-center bg-indigo-50">-</td>
-                        <td class="border border-gray-300 px-2 py-2 text-right bg-indigo-50">-</td>
+                        <td class="border border-gray-300 px-2 py-2 text-center bg-green-50">{{ $data['q3_2025_plan_count'] }}</td>
+                        <td class="border border-gray-300 px-2 py-2 text-right bg-green-50">{{ number_format($data['q3_2025_plan_amount'] / 1000000, 1) }}</td>
+                        <td class="border border-gray-300 px-2 py-2 text-center bg-green-50">{{ $data['q3_2025_fact_count'] }}</td>
+                        <td class="border border-gray-300 px-2 py-2 text-right bg-green-50">{{ number_format($data['q3_2025_fact_amount'] / 1000000, 1) }}</td>
+                        <td class="border border-gray-300 px-2 py-2 text-center bg-teal-50">{{ $data['q4_2025_plan_count'] }}</td>
+                        <td class="border border-gray-300 px-2 py-2 text-right bg-teal-50">{{ number_format($data['q4_2025_plan_amount'] / 1000000, 1) }}</td>
+                        <td class="border border-gray-300 px-2 py-2 text-center bg-teal-50">{{ $data['q4_2025_fact_count'] }}</td>
+                        <td class="border border-gray-300 px-2 py-2 text-right bg-teal-50">{{ number_format($data['q4_2025_fact_amount'] / 1000000, 1) }}</td>
+                        <td class="border border-gray-300 px-2 py-2 text-center bg-purple-50">{{ $data['y2026_plan_count'] }}</td>
+                        <td class="border border-gray-300 px-2 py-2 text-right bg-purple-50">{{ number_format($data['y2026_plan_amount'] / 1000000, 1) }}</td>
+                        <td class="border border-gray-300 px-2 py-2 text-center bg-purple-50">{{ $data['y2026_fact_count'] }}</td>
+                        <td class="border border-gray-300 px-2 py-2 text-right bg-purple-50">{{ number_format($data['y2026_fact_amount'] / 1000000, 1) }}</td>
+                        <td class="border border-gray-300 px-2 py-2 text-center bg-indigo-50">{{ $data['y2027_plan_count'] }}</td>
+                        <td class="border border-gray-300 px-2 py-2 text-right bg-indigo-50">{{ number_format($data['y2027_plan_amount'] / 1000000, 1) }}</td>
+                        <td class="border border-gray-300 px-2 py-2 text-center bg-indigo-50">{{ $data['y2027_fact_count'] }}</td>
+                        <td class="border border-gray-300 px-2 py-2 text-right bg-indigo-50">{{ number_format($data['y2027_fact_amount'] / 1000000, 1) }}</td>
                     </tr>
                     @endforeach
                 </tbody>

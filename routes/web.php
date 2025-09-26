@@ -45,6 +45,9 @@ Route::middleware(['auth'])->group(function () {
     // Add this route for filtered contracts by permit type
     Route::get('/monitoring/permit-type/{permitTypeId}', [DashboardController::class, 'contractsByPermitType'])->name('monitoring.permit-type');
     Route::get('/monitoring/status/{statusType}', [DashboardController::class, 'contractsByStatus'])->name('monitoring.status');
+Route::get('/monitoring/quarter/{year}/{quarter}/{type}', [DashboardController::class, 'quarterPayments'])->name('monitoring.quarter');
+Route::get('/monitoring/year/{year}/{type}', [DashboardController::class, 'yearPayments'])->name('monitoring.year');
+
 
     // Contracts Management
     Route::prefix('contracts')->name('contracts.')->group(function () {
