@@ -779,8 +779,7 @@ public function contractsByPermitType(Request $request, $permitTypeId)
         if ($districtId) {
             $q->where('district_id', $districtId);
         }
-    })
-->with(['subject', 'object.district', 'status', 'actualPayments']);
+    })->with(['subject', 'object.district', 'status', 'actualPayments']);
 
     $contracts = $query->paginate(50);
 
