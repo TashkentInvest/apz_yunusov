@@ -99,6 +99,18 @@
     </select>
 </div>
 
+        <div>
+        <label class="block text-sm font-medium text-gray-700 mb-1">Рухсатнома тури</label>
+        <select name="permit_type_id" class="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500">
+            <option value="">Барча турлар</option>
+            @foreach($permitTypes ?? [] as $permitType)
+                <option value="{{ $permitType->id }}" {{ request('permit_type_id') == $permitType->id ? 'selected' : '' }}>
+                    {{ $permitType->name_uz }}
+                </option>
+            @endforeach
+        </select>
+    </div>
+
             <div class="flex items-end space-x-2">
                 <button type="submit"
                         class="px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors">

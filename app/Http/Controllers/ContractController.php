@@ -34,98 +34,109 @@ class ContractController extends Controller
     /**
      * Display a listing of contracts
      */
-    public function index(Request $request): View
-    {
-        $query = Contract::with(['subject', 'object.district', 'status', 'updatedBy'])
-            ->where('is_active', true);
+public function index(Request $request): View
+{
+    $query = Contract::with(['subject', 'object.district', 'status', 'updatedBy'])
+        ->where('is_active', true);
 
-        // Existing filters...
-        if ($request->contract_number) {
-            $query->where('contract_number', 'like', "%{$request->contract_number}%");
-        }
-
-        if ($request->search) {
-            $search = $request->search;
-            $query->where(function ($q) use ($search) {
-                $q->where('contract_number', 'like', "%{$search}%")
-                    ->orWhereHas('subject', function ($sq) use ($search) {
-                        $sq->where('company_name', 'like', "%{$search}%")
-                            ->orWhere('inn', 'like', "%{$search}%");
-                    });
-            });
-        }
-
-        if ($request->status_id) {
-            $query->where('status_id', $request->status_id);
-        }
-
-        if ($request->district_id) {
-            $query->whereHas('object', function ($q) use ($request) {
-                $q->where('district_id', $request->district_id);
-            });
-        }
-
-        // Completion year filter
-        if ($request->completion_year) {
-            $query->whereYear('completion_date', $request->completion_year);
-        }
-
-
-        if ($request->contract_number) {
-            $query->where('contract_number', 'like', "%{$request->contract_number}%");
-        }
-
-        // NEW: Amendment filter
-        if ($request->has_amendments !== null && $request->has_amendments !== '') {
-            if ($request->has_amendments == '1') {
-                $query->whereHas('amendments');
-            } else {
-                $query->whereDoesntHave('amendments');
-            }
-        }
-
-        // Calculate total amount
-        $totalAmount = (clone $query)
-            ->whereHas('status', function ($q) {
-                $q->where('name_uz', '!=', 'Бекор қилинган');
-            })
-            ->sum('total_amount');
-
-        $activeCount = (clone $query)->whereHas('status', function ($q) {
-            $q->where('code', 'ACTIVE');
-        })->count();
-
-        // Calculate quarterly amounts if year is selected
-        $quarterlyAmounts = null;
-        if ($request->completion_year) {
-            $quarterlyAmounts = [];
-            for ($quarter = 1; $quarter <= 4; $quarter++) {
-                $startMonth = ($quarter - 1) * 3 + 1;
-                $endMonth = $quarter * 3;
-
-                $amount = (clone $query)
-                    ->whereHas('status', function ($q) {
-                        $q->where('name_uz', '!=', 'Бекор қилинган');
-                    })
-                    ->whereBetween('completion_date', [
-                        "{$request->completion_year}-{$startMonth}-01",
-                        date('Y-m-t', strtotime("{$request->completion_year}-{$endMonth}-01"))
-                    ])
-                    ->sum('total_amount');
-
-                $quarterlyAmounts[$quarter] = $amount;
-            }
-        }
-
-        $contracts = $query->paginate(20)->appends($request->query());
-
-        $statuses = \App\Models\ContractStatus::where('is_active', true)->get();
-        $districts = \App\Models\District::where('is_active', true)
-            ->where('name_uz', 'REGEXP', '^[А-Яа-яЎўҚқҒғҲҳ]')
-            ->get();
-
-        return view('contracts.index', compact('contracts', 'statuses', 'districts', 'totalAmount', 'activeCount', 'quarterlyAmounts'));
+    // Contract number filter
+    if ($request->contract_number) {
+        $query->where('contract_number', 'like', "%{$request->contract_number}%");
     }
+
+    // Search filter
+    if ($request->search) {
+        $search = $request->search;
+        $query->where(function ($q) use ($search) {
+            $q->where('contract_number', 'like', "%{$search}%")
+                ->orWhereHas('subject', function ($sq) use ($search) {
+                    $sq->where('company_name', 'like', "%{$search}%")
+                        ->orWhere('inn', 'like', "%{$search}%");
+                });
+        });
+    }
+
+    // Status filter
+    if ($request->status_id) {
+        $query->where('status_id', $request->status_id);
+    }
+
+    // District filter
+    if ($request->district_id) {
+        $query->whereHas('object', function ($q) use ($request) {
+            $q->where('district_id', $request->district_id);
+        });
+    }
+
+    // Completion year filter
+    if ($request->completion_year) {
+        $query->whereYear('completion_date', $request->completion_year);
+    }
+
+    // Completion month filter
+    if ($request->completion_month) {
+        $query->whereMonth('completion_date', $request->completion_month);
+    }
+
+    // Amendment filter
+    if ($request->has_amendments !== null && $request->has_amendments !== '') {
+        if ($request->has_amendments == '1') {
+            $query->whereHas('amendments');
+        } else {
+            $query->whereDoesntHave('amendments');
+        }
+    }
+
+    // NEW: Permit type filter (through object relationship)
+    if ($request->permit_type_id) {
+        $query->whereHas('object', function ($q) use ($request) {
+            $q->where('permit_type_id', $request->permit_type_id);
+        });
+    }
+
+    // Calculate total amount
+    $totalAmount = (clone $query)
+        ->whereHas('status', function ($q) {
+            $q->where('name_uz', '!=', 'Бекор қилинган');
+        })
+        ->sum('total_amount');
+
+    $activeCount = (clone $query)->whereHas('status', function ($q) {
+        $q->where('code', 'ACTIVE');
+    })->count();
+
+    // Calculate quarterly amounts if year is selected
+    $quarterlyAmounts = null;
+    if ($request->completion_year) {
+        $quarterlyAmounts = [];
+        for ($quarter = 1; $quarter <= 4; $quarter++) {
+            $startMonth = ($quarter - 1) * 3 + 1;
+            $endMonth = $quarter * 3;
+
+            $amount = (clone $query)
+                ->whereHas('status', function ($q) {
+                    $q->where('name_uz', '!=', 'Бекор қилинган');
+                })
+                ->whereBetween('completion_date', [
+                    "{$request->completion_year}-{$startMonth}-01",
+                    date('Y-m-t', strtotime("{$request->completion_year}-{$endMonth}-01"))
+                ])
+                ->sum('total_amount');
+
+            $quarterlyAmounts[$quarter] = $amount;
+        }
+    }
+
+    $contracts = $query->paginate(20)->appends($request->query());
+
+    $statuses = \App\Models\ContractStatus::where('is_active', true)->get();
+    $districts = \App\Models\District::where('is_active', true)
+        ->where('name_uz', 'REGEXP', '^[А-Яа-яЎўҚқҒғҲҳ]')
+        ->get();
+    $permitTypes = \App\Models\PermitType::where('is_active', true)->orderBy('name_uz')->get();
+
+    return view('contracts.index', compact('contracts', 'statuses', 'districts', 'totalAmount', 'activeCount', 'quarterlyAmounts', 'permitTypes'));
+}
     /**
      * Show the form for creating a new contract
      */
@@ -360,17 +371,17 @@ class ContractController extends Controller
     /**
      * Display contract payment management page
      */
-public function payment_update(Contract $contract): View
-{
-    $contract->load(['subject', 'object.district', 'status', 'payments', 'schedules']);
-    $paymentData = $this->paymentService->getContractPaymentData($contract);
+    public function payment_update(Contract $contract): View
+    {
+        $contract->load(['subject', 'object.district', 'status', 'payments', 'schedules']);
+        $paymentData = $this->paymentService->getContractPaymentData($contract);
 
-    $statuses = \App\Models\ContractStatus::where('is_active', true)->orderBy('id')->get();
-    $districts = \App\Models\District::where('is_active', true)->orderBy('name_uz')->get();
-    $permitTypes = \App\Models\PermitType::where('is_active', true)->orderBy('name_uz')->get();
+        $statuses = \App\Models\ContractStatus::where('is_active', true)->orderBy('id')->get();
+        $districts = \App\Models\District::where('is_active', true)->orderBy('name_uz')->get();
+        $permitTypes = \App\Models\PermitType::where('is_active', true)->orderBy('name_uz')->get();
 
-    return view('contracts.payment_update', compact('paymentData', 'statuses', 'districts', 'permitTypes', 'contract'));
-}
+        return view('contracts.payment_update', compact('paymentData', 'statuses', 'districts', 'permitTypes', 'contract'));
+    }
 
 
     /**

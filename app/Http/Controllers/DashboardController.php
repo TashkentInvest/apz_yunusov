@@ -641,11 +641,13 @@ public function monitoring(Request $request)
 }
 public function monitoringDistrict(District $district)
 {
+
+// dd('dasvf');
     $contracts = Contract::whereHas('object', function($q) use ($district) {
         $q->where('district_id', $district->id);
     })
     ->with(['subject', 'status', 'object.permitType', 'actualPayments'])
-    ->where('is_active', true)
+    // ->where('is_active', operator: true)
     ->paginate(50);
 
     return view('monitoring.district', compact('district', 'contracts'));
@@ -778,11 +780,7 @@ public function contractsByPermitType(Request $request, $permitTypeId)
             $q->where('district_id', $districtId);
         }
     })
-    ->with(['subject', 'object.district', 'status', 'actualPayments'])
-    ->where('is_active', true)
-    ->whereHas('status', function($q) {
-        $q->where('name_uz', '!=', 'Бекор қилинган');
-    });
+->with(['subject', 'object.district', 'status', 'actualPayments']);
 
     $contracts = $query->paginate(50);
 

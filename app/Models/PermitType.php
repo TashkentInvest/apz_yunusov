@@ -17,4 +17,9 @@ class PermitType extends Model
     {
         return $this->hasMany(Objectt::class);
     }
+
+    public function contract()
+    {
+        return $this->hasOne(Contract::class);
+    }
 }
