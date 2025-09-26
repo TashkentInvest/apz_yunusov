@@ -729,19 +729,40 @@ class DashboardController extends Controller
         return view('monitoring.index', compact('monitoringData', 'cityTotals'));
     }
 
-    public function monitoringDistrict(District $district)
-    {
 
-        // dd('dasvf');
-        $contracts = Contract::whereHas('object', function ($q) use ($district) {
-            $q->where('district_id', $district->id);
-        })
-            ->with(['subject', 'status', 'object.permitType', 'actualPayments'])
-            // ->where('is_active', operator: true)
-            ->paginate(50);
+public function monitoringDistrict(District $district)
+{
+    $contracts = Contract::whereHas('object', function ($q) use ($district) {
+        $q->where('district_id', $district->id);
+    })
+        ->with(['subject', 'status', 'object.permitType', 'actualPayments', 'paymentSchedules'])
+        ->where('is_active', true)
+        ->paginate(50);
 
-        return view('monitoring.district', compact('district', 'contracts'));
+    // Calculate totals
+    $totals = [
+        'total_contracts' => $contracts->total(),
+        'total_amount' => 0,
+        'total_paid' => 0,
+        'total_debt' => 0,
+        'total_plan' => 0,
+        'total_fact' => 0,
+    ];
+
+    foreach ($contracts as $contract) {
+        $totals['total_amount'] += $contract->total_amount;
+        $paid = $contract->actualPayments->sum('amount');
+        $totals['total_paid'] += $paid;
+        $totals['total_debt'] += ($contract->total_amount - $paid);
+
+        // Calculate planned vs actual
+        $plan = $contract->paymentSchedules->where('is_active', true)->sum('quarter_amount');
+        $totals['total_plan'] += $plan;
+        $totals['total_fact'] += $paid;
     }
+
+    return view('monitoring.district', compact('district', 'contracts', 'totals'));
+}
 
 public function quarterPayments(Request $request, $year, $quarter, $type)
 {
@@ -1006,55 +1027,79 @@ public function yearPayments(Request $request, $year, $type)
         return view('monitoring.permit-type', compact('contracts', 'permitType', 'district', 'totalAmount', 'totalPaid', 'totalDebt'));
     }
 
-    public function contractsByStatus(Request $request, $statusType)
-    {
-        $districtId = $request->query('district');
 
-        $query = Contract::with(['subject', 'object.district', 'status', 'actualPayments'])
-            ->where('is_active', true);
+public function contractsByStatus(Request $request, $statusType)
+{
+    $districtId = $request->query('district');
 
-        // Add district filter if provided
-        if ($districtId) {
-            $query->whereHas('object', function ($q) use ($districtId) {
-                $q->where('district_id', $districtId);
-            });
+    $query = Contract::with([
+        'subject',
+        'object.district',
+        'object.permitType',
+        'status',
+        'actualPayments',
+        'paymentSchedules' => function($q) {
+            $q->where('is_active', true);
         }
+    ]);
 
-        // Determine status based on type
-        $statusName = '';
-        switch ($statusType) {
-            case 'active':
-                $query->whereHas('status', function ($q) {
-                    $q->where('code', 'ACTIVE');
-                });
-                $statusName = 'Амалда';
-                break;
-            case 'cancelled':
-                $query->whereHas('status', function ($q) {
-                    $q->where('name_uz', 'Бекор қилинган');
-                });
-                $statusName = 'Бекор қилинган';
-                break;
-            case 'completed':
-                $query->whereHas('status', function ($q) {
-                    $q->where('code', 'COMPLETED');
-                });
-                $statusName = 'Якунланган';
-                break;
-        }
-
-        $contracts = $query->paginate(50);
-
-        // Get district name if filtering by district
-        $district = $districtId ? \App\Models\District::find($districtId) : null;
-
-        // Calculate statistics
-        $totalAmount = $contracts->sum('total_amount');
-        $totalPaid = $contracts->sum(function ($contract) {
-            return $contract->actualPayments->sum('amount');
+    // Add district filter if provided
+    if ($districtId) {
+        $query->whereHas('object', function ($q) use ($districtId) {
+            $q->where('district_id', $districtId);
         });
-        $totalDebt = $totalAmount - $totalPaid;
-
-        return view('monitoring.status', compact('contracts', 'statusName', 'statusType', 'district', 'totalAmount', 'totalPaid', 'totalDebt'));
     }
+
+    // Determine status based on type
+    $statusName = '';
+    switch ($statusType) {
+        case 'active':
+            $query->whereHas('status', function ($q) {
+                $q->where('code', 'ACTIVE');
+            });
+            $statusName = 'Амалда';
+            break;
+        case 'cancelled':
+            $query->whereHas('status', function ($q) {
+                $q->where('name_uz', 'Бекор қилинган');
+            });
+            $statusName = 'Бекор қилинган';
+            break;
+        case 'completed':
+            $query->whereHas('status', function ($q) {
+                $q->where('code', 'COMPLETED');
+            });
+            $statusName = 'Якунланган';
+            break;
+    }
+
+    $contracts = $query->paginate(50);
+
+    // Get district name if filtering by district
+    $district = $districtId ? \App\Models\District::find($districtId) : null;
+
+    // Calculate totals
+    $totals = [
+        'total_contracts' => $contracts->total(),
+        'total_amount' => 0,
+        'total_paid' => 0,
+        'total_debt' => 0,
+        'total_plan' => 0,
+        'total_fact' => 0,
+    ];
+
+    foreach ($contracts as $contract) {
+        $totals['total_amount'] += $contract->total_amount;
+        $paid = $contract->actualPayments->sum('amount');
+        $totals['total_paid'] += $paid;
+        $totals['total_debt'] += ($contract->total_amount - $paid);
+
+        // Calculate planned vs actual
+        $plan = $contract->paymentSchedules->sum('quarter_amount');
+        $totals['total_plan'] += $plan;
+        $totals['total_fact'] += $paid;
+    }
+
+    return view('monitoring.status', compact('contracts', 'statusName', 'statusType', 'district', 'totals'));
+}
 }
