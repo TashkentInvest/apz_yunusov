@@ -30,7 +30,7 @@
                                 class="border border-gray-300 px-2 py-2 text-xs font-semibold text-gray-700 min-w-[120px] sticky left-0 bg-gray-50 z-10">
                                 Ҳудуд номи</th>
                             <th colspan="2" rowspan="2"
-                                class="border border-gray-300 px-2 py-2 text-xs font-semibold text-gray-700">Жами шартнома
+                                class="border border-gray-300 px-2 py-2 text-xs font-semibold text-gray-700">АРТ бўйича жами тузилган шартномалар
                             </th>
                             <th colspan="10"
                                 class="border border-gray-300 px-2 py-2 text-xs font-semibold text-gray-700 bg-yellow-50">
@@ -59,16 +59,16 @@
                                 Бекор қилинганлар</th>
                             <th colspan="2"
                                 class="border border-gray-300 px-2 py-1 text-xs font-medium text-gray-600 bg-yellow-50">
-                                тўлиқ тўланганлар (yakunlangan)</th>
+                                тўлиқ тўланганлар </th>
                             <th colspan="2"
                                 class="border border-gray-300 px-2 py-1 text-xs font-medium text-gray-600 bg-yellow-50">
-                                тўлов суммалари қайтарилganлар (toxtaligan)</th>
+                                тўлов суммалари қайтарилganлар </th>
                             <th colspan="2"
                                 class="border border-gray-300 px-2 py-1 text-xs font-medium text-gray-600 bg-yellow-50">
-                                назоратдагилар (amaldagi)</th>
+                                назоратдагилар </th>
                             <th colspan="2"
                                 class="border border-gray-300 px-2 py-1 text-xs font-medium text-gray-600 bg-yellow-50">
-                                графикдан ортда қолганлар (muddati otgan)</th>
+                                графикдан ортда қолганлар</th>
                             <th colspan="2"
                                 class="border border-gray-300 px-2 py-1 text-xs font-medium text-gray-600 bg-green-50">Режа
                             </th>
@@ -120,7 +120,7 @@
                             </th>
                             <th class="border border-gray-300 px-1 py-1 text-xs font-medium text-gray-600 bg-yellow-50">
                                 қиймати (млн сўм)</th>
-                            <th class="border border-gray-300 px-1 py-1 text-xs font-medium text-gray-600 bg-blue-50">АПТ
+                            <th class="border border-gray-300 px-1 py-1 text-xs font-medium text-gray-600 bg-blue-50">АРТ
                             </th>
                             <th class="border border-gray-300 px-1 py-1 text-xs font-medium text-gray-600 bg-blue-50">ГАСН
                             </th>
