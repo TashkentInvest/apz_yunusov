@@ -42,14 +42,14 @@
                         <th colspan="2" class="border border-gray-300 px-2 py-1 text-xs font-medium text-gray-600 bg-yellow-50">тўлов суммалари қайтарилganлар (toxtaligan)</th>
                         <th colspan="2" class="border border-gray-300 px-2 py-1 text-xs font-medium text-gray-600 bg-yellow-50">назоратдагилар (amaldagi)</th>
                         <th colspan="2" class="border border-gray-300 px-2 py-1 text-xs font-medium text-gray-600 bg-yellow-50">графикдан ортда қолганлар (muddati otgan)</th>
-                        <th colspan="2" class="border border-gray-300 px-2 py-1 text-xs font-medium text-gray-600 bg-green-50">reja</th>
-                        <th colspan="2" class="border border-gray-300 px-2 py-1 text-xs font-medium text-gray-600 bg-green-50">fakt</th>
-                        <th colspan="2" class="border border-gray-300 px-2 py-1 text-xs font-medium text-gray-600 bg-teal-50">reja</th>
-                        <th colspan="2" class="border border-gray-300 px-2 py-1 text-xs font-medium text-gray-600 bg-teal-50">fakt</th>
-                        <th colspan="2" class="border border-gray-300 px-2 py-1 text-xs font-medium text-gray-600 bg-purple-50">reja</th>
-                        <th colspan="2" class="border border-gray-300 px-2 py-1 text-xs font-medium text-gray-600 bg-purple-50">fakt</th>
-                        <th colspan="2" class="border border-gray-300 px-2 py-1 text-xs font-medium text-gray-600 bg-indigo-50">reja</th>
-                        <th colspan="2" class="border border-gray-300 px-2 py-1 text-xs font-medium text-gray-600 bg-indigo-50">fakt</th>
+                        <th colspan="2" class="border border-gray-300 px-2 py-1 text-xs font-medium text-gray-600 bg-green-50">Режа</th>
+                        <th colspan="2" class="border border-gray-300 px-2 py-1 text-xs font-medium text-gray-600 bg-green-50">Факт</th>
+                        <th colspan="2" class="border border-gray-300 px-2 py-1 text-xs font-medium text-gray-600 bg-teal-50">Режа</th>
+                        <th colspan="2" class="border border-gray-300 px-2 py-1 text-xs font-medium text-gray-600 bg-teal-50">Факт</th>
+                        <th colspan="2" class="border border-gray-300 px-2 py-1 text-xs font-medium text-gray-600 bg-purple-50">Режа</th>
+                        <th colspan="2" class="border border-gray-300 px-2 py-1 text-xs font-medium text-gray-600 bg-purple-50">Факт</th>
+                        <th colspan="2" class="border border-gray-300 px-2 py-1 text-xs font-medium text-gray-600 bg-indigo-50">Режа</th>
+                        <th colspan="2" class="border border-gray-300 px-2 py-1 text-xs font-medium text-gray-600 bg-indigo-50">Факт</th>
                     </tr>
 
                     <!-- Third row -->
