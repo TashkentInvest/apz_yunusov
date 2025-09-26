@@ -563,7 +563,7 @@ class DashboardController extends Controller
             // Status-based categorization
             $cancelledContracts = $allContracts->filter(fn($c) => $c->status && $c->status->name_uz === 'Бекор қилинган');
             $completedContracts = $allContracts->filter(fn($c) => $c->status && $c->status->code === 'COMPLETED');
-            $returnedContracts = $allContracts->filter(fn($c) => $c->status && $c->status->name_uz === 'Тўлов суммалари қайтарилган');
+            $returnedContracts = $allContracts->filter(fn($c) => $c->status && $c->status->id == 4);
             $activeContracts = $allContracts->filter(fn($c) => $c->status && $c->status->code === 'ACTIVE');
 
             // Overdue contracts (active but past completion date)
