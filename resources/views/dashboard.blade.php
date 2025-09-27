@@ -12,17 +12,19 @@
                 class="bg-white rounded-xl shadow-sm border border-gray-200 p-6 hover:shadow-lg transition-all transform hover:-translate-y-1">
                 <div class="flex items-center justify-between">
                     <div>
-@php
-    $debugCount = \App\Models\Contract::where('is_active', true)
-        ->whereHas('status', function ($q) {
-            $q->where('code', '!=', 'pending');
-        })
-        ->count();
-@endphp
 
 
                         <p class="text-sm font-medium text-gray-600">Жами шартномалар</p>
-                        <p class="text-3xl font-bold text-gray-900 mt-2">{{ number_format($stats['total_contracts']) }}</p>
+                        <p class="text-3xl font-bold text-red-900 mt-2">{{ number_format($stats['total_contracts']) }} <span class=" text-blue-900 mt-2">та</span></p>
+
+       <div class="flex-1">
+                        <p class="text-2xl font-bold text-red-900 mt-2">
+                            {{ number_format($stats['total_amount'] / 1000000000, 1 ) }} <span class=" text-blue-900 mt-2">млрд сўм</span></p>
+                        {{-- <p class="text-xm text-gray-500 mt-2 italic leading-relaxed">
+                            {{ ucfirst(app(\App\Services\NumberToTextService::class)->convert($stats['total_amount'])) }}
+                            сўм
+                        </p> --}}
+                    </div>
                     <p class="text-xs text-gray-500 mt-1">Юридик: {{ $stats['legal_entities'] }} | Жисмоний: {{ $stats['individuals'] }}</p>
 
                         {{-- <p class="text-sm text-green-600 mt-1">
@@ -33,44 +35,6 @@
                     <div class="w-12 h-12 bg-blue-50 rounded-lg flex items-center justify-center">
                         <i data-feather="file-text" class="w-6 h-6 text-blue-600"></i>
                     </div>
-                </div>
-            </a>
-
-            <!-- Total Amount -->
-            <a href="{{ route('contracts.index') }}"
-                class="bg-white rounded-xl shadow-sm border border-gray-200 p-6 hover:shadow-lg transition-all transform hover:-translate-y-1">
-                <div class="flex items-center justify-between">
-                    <div class="flex-1">
-                        <p class="text-sm font-medium text-gray-600">Режа учун умумий сумма</p>
-                        <p class="text-3xl font-bold text-gray-900 mt-2">
-                            {{ number_format($stats['total_amount'] / 1000000000, 1 ) }} млрд сўм</p>
-                        {{-- <p class="text-xm text-gray-500 mt-2 italic leading-relaxed">
-                            {{ ucfirst(app(\App\Services\NumberToTextService::class)->convert($stats['total_amount'])) }}
-                            сўм
-                        </p> --}}
-                    </div>
-                    {{-- <div class="w-12 h-12 bg-green-50 rounded-lg flex items-center justify-center flex-shrink-0 ml-2">
-                        <i data-feather="dollar-sign" class="w-6 h-6 text-green-600"></i>
-                    </div> --}}
-                </div>
-            </a>
-
-            <!-- Total Paid -->
-            <a href="{{ route('dashboard.contracts.status', 'paid') }}"
-                class="bg-white rounded-xl shadow-sm border border-gray-200 p-6 hover:shadow-lg transition-all transform hover:-translate-y-1">
-                <div class="flex items-center justify-between">
-                    <div>
-                        <p class="text-sm font-medium text-gray-600">Тўланган</p>
-                        <p class="text-3xl font-bold text-gray-900 mt-2">
-                            {{ number_format($stats['total_paid'] / 1000000000, 1 ) }} млрд сўм</p>
-                        {{-- <p class="text-sm text-blue-600 mt-1">
-                            {{ $stats['total_amount'] > 0 ? number_format(($stats['total_paid'] / $stats['total_amount']) * 100, 1) : 0 }}%
-                            бажарилди
-                        </p> --}}
-                    </div>
-                    {{-- <div class="w-12 h-12 bg-blue-50 rounded-lg flex itesm-center justify-center">
-                        <i data-feather="check-circle" class="w-6 h-6 text-blue-600"></i>
-                    </div> --}}
                 </div>
             </a>
 
