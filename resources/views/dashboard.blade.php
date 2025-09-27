@@ -16,10 +16,10 @@
                         <p class="text-3xl font-bold text-gray-900 mt-2">{{ number_format($stats['total_contracts']) }}</p>
                     <p class="text-xs text-gray-500 mt-1">Юридик: {{ $stats['legal_entities'] }} | Жисмоний: {{ $stats['individuals'] }}</p>
 
-                        <p class="text-sm text-green-600 mt-1">
+                        {{-- <p class="text-sm text-green-600 mt-1">
                             <i data-feather="trending-up" class="w-4 h-4 inline mr-1"></i>
                             +{{ $stats['active_contracts'] }} фаол
-                        </p>
+                        </p> --}}
                     </div>
                     <div class="w-12 h-12 bg-blue-50 rounded-lg flex items-center justify-center">
                         <i data-feather="file-text" class="w-6 h-6 text-blue-600"></i>
@@ -66,7 +66,8 @@
             </a>
 
             <!-- Debtors -->
-            <a href="{{ route('dashboard.contracts.status', 'debtors') }}"
+
+            {{-- <a href="{{ route('dashboard.contracts.status', 'debtors') }}"
                 class="bg-white rounded-xl shadow-sm border border-gray-200 p-6 hover:shadow-lg transition-all transform hover:-translate-y-1">
                 <div class="flex items-center justify-between">
                     <div>
@@ -81,7 +82,7 @@
                         <i data-feather="alert-triangle" class="w-6 h-6 text-red-600"></i>
                     </div>
                 </div>
-            </a>
+            </a> --}}
         </div>
 
         <!-- Charts Row -->

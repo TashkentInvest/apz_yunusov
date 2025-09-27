@@ -135,6 +135,104 @@ public function index(Request $request): View
 
     return view('contracts.index', compact('contracts', 'statuses', 'districts', 'totalAmount', 'activeCount', 'quarterlyAmounts', 'permitTypes'));
 }
+
+public function yangi_shartnoma(Request $request): View
+{
+    $query = Contract::with(['subject', 'object.district', 'status', 'updatedBy'])
+        ->where('is_active', true)
+        ->whereHas('status', function ($q) {
+            $q->where('code', 'pending');
+        });
+
+    // Contract number filter
+    if ($request->contract_number) {
+        $query->where('contract_number', 'like', "%{$request->contract_number}%");
+    }
+
+    // Search filter
+    if ($request->search) {
+        $search = $request->search;
+        $query->where(function ($q) use ($search) {
+            $q->where('contract_number', 'like', "%{$search}%")
+                ->orWhereHas('subject', function ($sq) use ($search) {
+                    $sq->where('company_name', 'like', "%{$search}%")
+                        ->orWhere('inn', 'like', "%{$search}%");
+                });
+        });
+    }
+
+    // Status filter - REMOVE OR COMMENT OUT since we only want pending
+    // if ($request->status_id) {
+    //     $query->where('status_id', $request->status_id);
+    // }
+
+    // District filter
+    if ($request->district_id) {
+        $query->whereHas('object', function ($q) use ($request) {
+            $q->where('district_id', $request->district_id);
+        });
+    }
+
+    // Completion year filter
+    if ($request->completion_year) {
+        $query->whereYear('completion_date', $request->completion_year);
+    }
+
+    // Completion month filter
+    if ($request->completion_month) {
+        $query->whereMonth('completion_date', $request->completion_month);
+    }
+
+    // Amendment filter
+    if ($request->has_amendments !== null && $request->has_amendments !== '') {
+        if ($request->has_amendments == '1') {
+            $query->whereHas('amendments');
+        } else {
+            $query->whereDoesntHave('amendments');
+        }
+    }
+
+    // NEW: Permit type filter (through object relationship)
+    if ($request->permit_type_id) {
+        $query->whereHas('object', function ($q) use ($request) {
+            $q->where('permit_type_id', $request->permit_type_id);
+        });
+    }
+
+    // Calculate total amount
+    $totalAmount = (clone $query)->sum('total_amount');
+
+    $activeCount = (clone $query)->count(); // This will count pending contracts
+
+    // Calculate quarterly amounts if year is selected
+    $quarterlyAmounts = null;
+    if ($request->completion_year) {
+        $quarterlyAmounts = [];
+        for ($quarter = 1; $quarter <= 4; $quarter++) {
+            $startMonth = ($quarter - 1) * 3 + 1;
+            $endMonth = $quarter * 3;
+
+            $amount = (clone $query)
+                ->whereBetween('completion_date', [
+                    "{$request->completion_year}-{$startMonth}-01",
+                    date('Y-m-t', strtotime("{$request->completion_year}-{$endMonth}-01"))
+                ])
+                ->sum('total_amount');
+
+            $quarterlyAmounts[$quarter] = $amount;
+        }
+    }
+
+    $contracts = $query->paginate(20)->appends($request->query());
+
+    $statuses = \App\Models\ContractStatus::where('is_active', true)->get();
+    $districts = \App\Models\District::where('is_active', true)
+        ->where('name_uz', 'REGEXP', '^[А-Яа-яЎўҚқҒғҲҳ]')
+        ->get();
+    $permitTypes = \App\Models\PermitType::where('is_active', true)->orderBy('name_uz')->get();
+
+    return view('contracts.yangi_shartnoma', compact('contracts', 'statuses', 'districts', 'totalAmount', 'activeCount', 'quarterlyAmounts', 'permitTypes'));
+}
     /**
      * Show the form for creating a new contract
      */

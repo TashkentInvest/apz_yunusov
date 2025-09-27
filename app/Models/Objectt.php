@@ -33,7 +33,8 @@ class Objectt extends Model
         'location_type',
         'additional_info',
         'geolocation',
-        'is_active'
+        'is_active',
+        'object_name'
     ];
 
     protected $casts = [
@@ -91,7 +92,7 @@ class Objectt extends Model
     public function getCalculatedVolumeAttribute(): float
     {
         return ($this->construction_volume + $this->above_permit_volume) -
-               ($this->parking_volume + $this->technical_rooms_volume + $this->common_area_volume);
+            ($this->parking_volume + $this->technical_rooms_volume + $this->common_area_volume);
     }
 
     // Get coordinates as array

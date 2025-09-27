@@ -148,6 +148,7 @@ Route::get('/monitoring/debug', [DashboardController::class, 'monitoringDebug'])
 
         // Index route must be last
         Route::get('/', [ContractController::class, 'index'])->name('index');
+        Route::get('/yangi_shartnoma', [ContractController::class, 'yangi_shartnoma'])->name('yangi_shartnoma');
     });
 
     // Payment operations (global)
