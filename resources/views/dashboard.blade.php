@@ -12,6 +12,15 @@
                 class="bg-white rounded-xl shadow-sm border border-gray-200 p-6 hover:shadow-lg transition-all transform hover:-translate-y-1">
                 <div class="flex items-center justify-between">
                     <div>
+@php
+    $debugCount = \App\Models\Contract::where('is_active', true)
+        ->whereHas('status', function ($q) {
+            $q->where('code', '!=', 'pending');
+        })
+        ->count();
+@endphp
+
+
                         <p class="text-sm font-medium text-gray-600">Жами шартномалар</p>
                         <p class="text-3xl font-bold text-gray-900 mt-2">{{ number_format($stats['total_contracts']) }}</p>
                     <p class="text-xs text-gray-500 mt-1">Юридик: {{ $stats['legal_entities'] }} | Жисмоний: {{ $stats['individuals'] }}</p>
@@ -59,7 +68,7 @@
                             бажарилди
                         </p> --}}
                     </div>
-                    {{-- <div class="w-12 h-12 bg-blue-50 rounded-lg flex items-center justify-center">
+                    {{-- <div class="w-12 h-12 bg-blue-50 rounded-lg flex itesm-center justify-center">
                         <i data-feather="check-circle" class="w-6 h-6 text-blue-600"></i>
                     </div> --}}
                 </div>

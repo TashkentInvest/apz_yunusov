@@ -37,7 +37,15 @@ class ContractController extends Controller
 public function index(Request $request): View
 {
     $query = Contract::with(['subject', 'object.district', 'status', 'updatedBy'])
-        ->where('is_active', true);
+        ->where('is_active', true)
+        ->whereHas('status', function ($q) {
+            $q->where('code', '!=', 'pending');
+        })
+        ->whereHas('object', function ($q) {
+            $q->whereHas('district', function($dq) {
+                $dq->where('code', '!=', 'NOT_FOUND');
+            });
+        });
 
     // Contract number filter
     if ($request->contract_number) {
@@ -87,7 +95,7 @@ public function index(Request $request): View
         }
     }
 
-    // NEW: Permit type filter (through object relationship)
+    // Permit type filter
     if ($request->permit_type_id) {
         $query->whereHas('object', function ($q) use ($request) {
             $q->where('permit_type_id', $request->permit_type_id);
@@ -95,9 +103,7 @@ public function index(Request $request): View
     }
 
     // Calculate total amount
-    $totalAmount = (clone $query)
-
-        ->sum('total_amount');
+    $totalAmount = (clone $query)->sum('total_amount');
 
     $activeCount = (clone $query)->whereHas('status', function ($q) {
         $q->where('code', 'ACTIVE');
@@ -130,18 +136,23 @@ public function index(Request $request): View
     $statuses = \App\Models\ContractStatus::where('is_active', true)->get();
     $districts = \App\Models\District::where('is_active', true)
         ->where('name_uz', 'REGEXP', '^[А-Яа-яЎўҚқҒғҲҳ]')
+        ->where('code', '!=', 'NOT_FOUND')
         ->get();
     $permitTypes = \App\Models\PermitType::where('is_active', true)->orderBy('name_uz')->get();
 
     return view('contracts.index', compact('contracts', 'statuses', 'districts', 'totalAmount', 'activeCount', 'quarterlyAmounts', 'permitTypes'));
 }
-
 public function yangi_shartnoma(Request $request): View
 {
     $query = Contract::with(['subject', 'object.district', 'status', 'updatedBy'])
         ->where('is_active', true)
         ->whereHas('status', function ($q) {
-            $q->where('code', 'pending');
+            $q->where('code', 'PENDING');
+        })
+        ->whereHas('object', function ($q) {
+            $q->whereHas('district', function($dq) {
+                $dq->where('code', '!=', 'NOT_FOUND');
+            });
         });
 
     // Contract number filter
@@ -160,11 +171,6 @@ public function yangi_shartnoma(Request $request): View
                 });
         });
     }
-
-    // Status filter - REMOVE OR COMMENT OUT since we only want pending
-    // if ($request->status_id) {
-    //     $query->where('status_id', $request->status_id);
-    // }
 
     // District filter
     if ($request->district_id) {
@@ -192,7 +198,7 @@ public function yangi_shartnoma(Request $request): View
         }
     }
 
-    // NEW: Permit type filter (through object relationship)
+    // Permit type filter
     if ($request->permit_type_id) {
         $query->whereHas('object', function ($q) use ($request) {
             $q->where('permit_type_id', $request->permit_type_id);
@@ -202,7 +208,7 @@ public function yangi_shartnoma(Request $request): View
     // Calculate total amount
     $totalAmount = (clone $query)->sum('total_amount');
 
-    $activeCount = (clone $query)->count(); // This will count pending contracts
+    $activeCount = (clone $query)->count();
 
     // Calculate quarterly amounts if year is selected
     $quarterlyAmounts = null;
@@ -228,6 +234,7 @@ public function yangi_shartnoma(Request $request): View
     $statuses = \App\Models\ContractStatus::where('is_active', true)->get();
     $districts = \App\Models\District::where('is_active', true)
         ->where('name_uz', 'REGEXP', '^[А-Яа-яЎўҚқҒғҲҳ]')
+        ->where('code', '!=', 'NOT_FOUND')
         ->get();
     $permitTypes = \App\Models\PermitType::where('is_active', true)->orderBy('name_uz')->get();
 
