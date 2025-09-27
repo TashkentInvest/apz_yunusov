@@ -30,7 +30,7 @@
                                 class="border border-gray-400 px-3 py-3 text-xs font-bold text-gray-800 min-w-[140px] sticky left-0 bg-gray-100 z-10">
                                 Ҳудуд</th>
                             <th colspan="2" class="border border-gray-400 px-3 py-3 text-xs font-bold text-gray-800">Жами АРТ(АПЗ) бўйича тузилган шартномалар</th>
-                            <th colspan="4" class="border border-gray-400 px-3 py-3 text-xs font-bold text-gray-800">
+                            <th colspan="6" class="border border-gray-400 px-3 py-3 text-xs font-bold text-gray-800">
 шундан
                             </th>
                             <th colspan="9" class="border border-gray-400 px-3 py-3 text-xs font-bold text-gray-800">
@@ -58,9 +58,9 @@
                             <th colspan="2" class="border border-gray-400 px-2 py-2 text-xs font-semibold text-gray-700">
                                Тўлиқ тўланган</th>
                             <th colspan="2" class="border border-gray-400 px-2 py-2 text-xs font-semibold text-gray-700">
-                                Режа</th>
+                                Амалдаги шартномалар</th>
                             <th colspan="2" class="border border-gray-400 px-2 py-2 text-xs font-semibold text-gray-700">
-                                Факт</th>
+                                Жами</th>
                             <th colspan="5" class="border border-gray-400 px-2 py-2 text-xs font-semibold text-gray-700">
                                 Ҳолати</th>
                             <th colspan="2" class="border border-gray-400 px-2 py-2 text-xs font-semibold text-gray-700">
@@ -68,25 +68,25 @@
                             <th colspan="2" class="border border-gray-400 px-2 py-2 text-xs font-semibold text-gray-700">
                                 Режа</th>
                             <th colspan="2" class="border border-gray-400 px-2 py-2 text-xs font-semibold text-gray-700">
-                                Фақт</th>
+                                Факт</th>
                             <th colspan="2" class="border border-gray-400 px-2 py-2 text-xs font-semibold text-gray-700">
                                 Фарқ</th>
                             <th colspan="2" class="border border-gray-400 px-2 py-2 text-xs font-semibold text-gray-700">
                                 Режа</th>
                             <th colspan="2" class="border border-gray-400 px-2 py-2 text-xs font-semibold text-gray-700">
-                                Фақт</th>
+                                Факт</th>
                             <th colspan="2" class="border border-gray-400 px-2 py-2 text-xs font-semibold text-gray-700">
                                 Фарқ</th>
                             <th colspan="2" class="border border-gray-400 px-2 py-2 text-xs font-semibold text-gray-700">
                                 Режа</th>
                             <th colspan="2" class="border border-gray-400 px-2 py-2 text-xs font-semibold text-gray-700">
-                                Фақт</th>
+                                Факт</th>
                             <th colspan="2" class="border border-gray-400 px-2 py-2 text-xs font-semibold text-gray-700">
                                 Фарқ</th>
                             <th colspan="2" class="border border-gray-400 px-2 py-2 text-xs font-semibold text-gray-700">
                                 Режа</th>
                             <th colspan="2" class="border border-gray-400 px-2 py-2 text-xs font-semibold text-gray-700">
-                                Фақт</th>
+                                Факт</th>
                             <th colspan="2" class="border border-gray-400 px-2 py-2 text-xs font-semibold text-gray-700">
                                 Фарқ</th>
 
@@ -101,13 +101,13 @@
                             <th class="border border-gray-400 px-2 py-2 text-xs font-semibold text-gray-700">сони</th>
                             <th class="border border-gray-400 px-2 py-2 text-xs font-semibold text-gray-700">млрд сўм</th>
                             <th class="border border-gray-400 px-2 py-2 text-xs font-semibold text-gray-700">сони</th>
-                            <th class="border border-gray-400 px-2 py-2 text-xs font-semibold text-gray-700">млрд сўм</th>
+                            <th class="border border-gray-400 px-2 py-2 text-xs font-semibold text-gray-700">Тўланган сумма (млрд)</th>
                             <th class="border border-gray-400 px-2 py-2 text-xs font-semibold text-gray-700">Кенгаш</th>
                             <th class="border border-gray-400 px-2 py-2 text-xs font-semibold text-gray-700">ГАСН</th>
                             <th class="border border-gray-400 px-2 py-2 text-xs font-semibold text-gray-700">АПЗ</th>
                             <th class="border border-gray-400 px-2 py-2 text-xs font-semibold text-gray-700">Рухсатнома</th>
                             <th class="border border-gray-400 px-2 py-2 text-xs font-semibold text-gray-700">Экспертиза</th>
-                            <th class="border border-gray-400 px-2 py-2 text-xs font-semibold text-gray-700">млрд сўм</th>
+                            <th class="border border-gray-400 px-2 py-2 text-xs font-semibold text-gray-700">млрд сўм </th>
                             <th class="border border-gray-400 px-2 py-2 text-xs font-semibold text-gray-700">сони</th>
                             <th class="border border-gray-400 px-2 py-2 text-xs font-semibold text-gray-700">сони</th>
                             <th class="border border-gray-400 px-2 py-2 text-xs font-semibold text-gray-700">млрд сўм</th>
