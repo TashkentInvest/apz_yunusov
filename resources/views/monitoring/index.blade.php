@@ -31,6 +31,7 @@
                                 Ҳудуд</th>
                             <th colspan="2" class="border border-gray-400 px-3 py-3 text-xs font-bold text-gray-800">Жами АРТ(АПЗ) бўйича тузилган шартномалар</th>
                             <th colspan="3" class="border border-gray-400 px-3 py-3 text-xs font-bold text-gray-800">
+шундан
                             </th>
                             <th colspan="9" class="border border-gray-400 px-3 py-3 text-xs font-bold text-gray-800">
                                 Амалдаги шартномалар</th>
@@ -53,9 +54,9 @@
                             <th rowspan="2" class="border border-gray-400 px-2 py-2 text-xs font-semibold text-gray-700">
                                 млрд сўм</th>
                             <th colspan="1" class="border border-gray-400 px-2 py-2 text-xs font-semibold text-gray-700">
-                                Бекор бўлганлар</th>
+                                Бекор қилинган</th>
                             <th colspan="2" class="border border-gray-400 px-2 py-2 text-xs font-semibold text-gray-700">
-                                Тўланган</th>
+                               Тўлиқ тўланган</th>
                             <th colspan="2" class="border border-gray-400 px-2 py-2 text-xs font-semibold text-gray-700">
                                 Режа</th>
                             <th colspan="2" class="border border-gray-400 px-2 py-2 text-xs font-semibold text-gray-700">
