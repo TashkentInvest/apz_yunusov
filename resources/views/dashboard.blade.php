@@ -5,62 +5,94 @@
 
 @section('content')
     <div class="space-y-6">
-        <!-- Statistics Cards - Clickable -->
-        <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
-            <!-- Total Contracts -->
-            <a href="{{ route('dashboard.contracts.status', 'total') }}"
-                class="bg-white rounded-xl shadow-sm border border-gray-200 p-6 hover:shadow-lg transition-all transform hover:-translate-y-1">
-                <div class="flex items-center justify-between">
-                    <div>
+    <!-- Statistics Cards - Clickable -->
+<div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
+    <!-- Total Contracts -->
+    <a href="{{ route('dashboard.contracts.status', 'total') }}"
+        class="bg-white rounded-xl shadow-sm border border-gray-200 p-6 hover:shadow-lg transition-all transform hover:-translate-y-1">
+        <div class="flex items-center justify-between">
+            <div>
+                <p class="text-sm font-medium text-gray-600">Жами шартномалар</p>
+                <p class="text-3xl font-bold text-red-900 mt-2">{{ number_format($stats['total_contracts']) }} <span
+                        class=" text-blue-900 mt-2">та</span></p>
 
-
-                        <p class="text-sm font-medium text-gray-600">Жами шартномалар</p>
-                        <p class="text-3xl font-bold text-red-900 mt-2">{{ number_format($stats['total_contracts']) }} <span
-                                class=" text-blue-900 mt-2">та</span></p>
-
-                        <div class="flex-1">
-                            <p class="text-2xl font-bold text-red-900 mt-2">
-                                {{ number_format($stats['total_amount'] / 1000000000, 1) }} <span
-                                    class=" text-blue-900 mt-2">млрд сўм</span></p>
-                            {{-- <p class="text-xm text-gray-500 mt-2 italic leading-relaxed">
-                            {{ ucfirst(app(\App\Services\NumberToTextService::class)->convert($stats['total_amount'])) }}
-                            сўм
-                        </p> --}}
-                        </div>
-                        <p class="text-xs text-gray-500 mt-1">Юридик: {{ $stats['legal_entities'] }} | Жисмоний:
-                            {{ $stats['individuals'] }}</p>
-
-                        {{-- <p class="text-sm text-green-600 mt-1">
-                            <i data-feather="trending-up" class="w-4 h-4 inline mr-1"></i>
-                            +{{ $stats['active_contracts'] }} фаол
-                        </p> --}}
-                    </div>
-                    <div class="w-12 h-12 bg-blue-50 rounded-lg flex items-center justify-center">
-                        <i data-feather="file-text" class="w-6 h-6 text-blue-600"></i>
-                    </div>
+                <div class="flex-1">
+                    <p class="text-2xl font-bold text-red-900 mt-2">
+                        {{ number_format($stats['total_amount'] / 1000000000, 1) }} <span
+                            class=" text-blue-900 mt-2">млрд сўм</span></p>
                 </div>
-            </a>
-
-
-            <!-- Debtors -->
-
-            {{-- <a href="{{ route('dashboard.contracts.status', 'debtors') }}"
-                class="bg-white rounded-xl shadow-sm border border-gray-200 p-6 hover:shadow-lg transition-all transform hover:-translate-y-1">
-                <div class="flex items-center justify-between">
-                    <div>
-                        <p class="text-sm font-medium text-gray-600">Қолдиқ</p>
-                        <p class="text-3xl font-bold text-gray-900 mt-2">{{ number_format($stats['debtors_count']) }}</p>
-                        <p class="text-sm text-red-600 mt-1">
-                            <i data-feather="alert-triangle" class="w-4 h-4 inline mr-1"></i>
-                            {{ number_format($stats['total_debt'] / 1000000000, 1 ) }} млрд сўм
-                        </p>
-                    </div>
-                    <div class="w-12 h-12 bg-red-50 rounded-lg flex items-center justify-center">
-                        <i data-feather="alert-triangle" class="w-6 h-6 text-red-600"></i>
-                    </div>
-                </div>
-            </a> --}}
+                <p class="text-xs text-gray-500 mt-1">Юридик: {{ $stats['legal_entities'] }} | Жисмоний:
+                    {{ $stats['individuals'] }}</p>
+            </div>
+            <div class="w-12 h-12 bg-blue-50 rounded-lg flex items-center justify-center">
+                <i data-feather="file-text" class="w-6 h-6 text-blue-600"></i>
+            </div>
         </div>
+    </a>
+
+    <!-- Active Contracts -->
+    <a href="{{ route('monitoring.status', 'active') }}"
+        class="bg-white rounded-xl shadow-sm border border-gray-200 p-6 hover:shadow-lg transition-all transform hover:-translate-y-1">
+        <div class="flex items-center justify-between">
+            <div>
+                <p class="text-sm font-medium text-gray-600">Амалдаги шартномалар</p>
+                <p class="text-3xl font-bold text-green-900 mt-2">{{ number_format($stats['active_contracts']) }} <span
+                        class="text-blue-900 mt-2">та</span></p>
+
+                <div class="flex-1">
+                    <p class="text-2xl font-bold text-green-900 mt-2">
+                        {{ number_format($stats['active_amount'] / 1000000000, 1) }} <span
+                            class="text-blue-900 mt-2">млрд сўм</span></p>
+                </div>
+            </div>
+            <div class="w-12 h-12 bg-green-50 rounded-lg flex items-center justify-center">
+                <i data-feather="check-circle" class="w-6 h-6 text-green-600"></i>
+            </div>
+        </div>
+    </a>
+
+    <!-- Paid Amount -->
+    <a href="{{ route('contracts.index') }}"
+        class="bg-white rounded-xl shadow-sm border border-gray-200 p-6 hover:shadow-lg transition-all transform hover:-translate-y-1">
+        <div class="flex items-center justify-between">
+            <div>
+                <p class="text-sm font-medium text-gray-600">Тўланган сумма</p>
+                <p class="text-3xl font-bold text-purple-900 mt-2">{{ number_format($stats['paid_contracts_count']) }} <span
+                        class="text-blue-900 mt-2">та</span></p>
+
+                <div class="flex-1">
+                    <p class="text-2xl font-bold text-purple-900 mt-2">
+                        {{ number_format($stats['total_paid'] / 1000000000, 1) }} <span
+                            class="text-blue-900 mt-2">млрд сўм</span></p>
+                </div>
+            </div>
+            <div class="w-12 h-12 bg-purple-50 rounded-lg flex items-center justify-center">
+                <i data-feather="credit-card" class="w-6 h-6 text-purple-600"></i>
+            </div>
+        </div>
+    </a>
+
+    <!-- Remaining Debt -->
+    <a href="{{ route('dashboard.contracts.status', 'debtors') }}"
+        class="bg-white rounded-xl shadow-sm border border-gray-200 p-6 hover:shadow-lg transition-all transform hover:-translate-y-1">
+        <div class="flex items-center justify-between">
+            <div>
+                <p class="text-sm font-medium text-gray-600">Қолдиқ</p>
+                <p class="text-3xl font-bold text-red-900 mt-2">{{ number_format($stats['debtors_count']) }} <span
+                        class="text-blue-900 mt-2">та</span></p>
+
+                <div class="flex-1">
+                    <p class="text-2xl font-bold text-red-900 mt-2">
+                        {{ number_format($stats['total_debt'] / 1000000000, 1) }} <span
+                            class="text-blue-900 mt-2">млрд сўм</span></p>
+                </div>
+            </div>
+            <div class="w-12 h-12 bg-red-50 rounded-lg flex items-center justify-center">
+                <i data-feather="alert-triangle" class="w-6 h-6 text-red-600"></i>
+            </div>
+        </div>
+    </a>
+</div>
 
         <!-- Charts Row -->
         <div class="grid grid-cols-1 lg:grid-cols-3 gap-6">

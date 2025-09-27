@@ -30,56 +30,7 @@ public function index(Request $request)
         return response()->json($chartData);
     }
 
-    // Calculate stats excluding cancelled, pending AND NOT_FOUND districts
-    $totalContracts = Contract::where('is_active', true)
-        ->whereHas('status', function ($q) {
-            $q->where('code', '!=', 'pending');
-        })
-        ->whereHas('object', function ($q) {
-            $q->whereHas('district', function($dq) {
-                $dq->where('code', '!=', 'NOT_FOUND');
-            });
-        })
-        ->count();
-
-    $activeContracts = Contract::whereHas('status', function ($q) {
-        $q->where('name_uz', '!=', 'Бекор қилинган')
-          ->where('code', '!=', 'pending');
-    })
-    ->whereHas('object', function ($q) {
-        $q->whereHas('district', function($dq) {
-            $dq->where('code', '!=', 'NOT_FOUND');
-        });
-    })
-    ->where('is_active', true)
-    ->count();
-
-    $totalAmount = Contract::where('is_active', true)
-        ->whereHas('status', function ($q) {
-            $q->where('code', '!=', 'pending');
-        })
-        ->whereHas('object', function ($q) {
-            $q->whereHas('district', function($dq) {
-                $dq->where('code', '!=', 'NOT_FOUND');
-            });
-        })
-        ->sum('total_amount');
-
-    $totalPaid = ActualPayment::whereHas('contract', function ($q) {
-        $q->where('is_active', true)
-            ->whereHas('status', function ($sq) {
-                $sq->where('name_uz', '!=', 'Бекор қилинган')
-                   ->where('code', '!=', 'pending');
-            })
-            ->whereHas('object', function ($oq) {
-                $oq->whereHas('district', function($dq) {
-                    $dq->where('code', '!=', 'NOT_FOUND');
-                });
-            });
-    })->sum('amount');
-
-    $debtorsCount = $this->getDebtorsCount();
-
+    // Get contract IDs excluding NOT_FOUND districts and pending status
     $contractIds = Contract::whereHas('object', function ($q) {
         $q->whereHas('district', function($dq) {
             $dq->where('code', '!=', 'NOT_FOUND');
@@ -91,6 +42,46 @@ public function index(Request $request)
     ->where('is_active', true)
     ->pluck('id');
 
+    // Total contracts (excluding cancelled, pending and NOT_FOUND)
+    $totalContracts = Contract::whereIn('id', $contractIds)
+        ->whereHas('status', function ($q) {
+            $q->where('name_uz', '!=', 'Бекор қилинган');
+        })
+        ->count();
+
+    // Active contracts count and amount
+  $activeContracts = Contract::whereIn('id', $contractIds)
+    ->whereHas('status', function ($q) {
+        $q->where(function($query) {
+            $query->where('code', 'ACTIVE')
+                  ->orWhere('code', 'COMPLETED');
+        });
+    })
+    ->get();
+
+    $activeContractsCount = $activeContracts->count();
+    $activeAmount = $activeContracts->sum('total_amount');
+
+    // Total amount (excluding cancelled)
+    $totalAmount = Contract::whereIn('id', $contractIds)
+        ->whereHas('status', function ($q) {
+            $q->where('name_uz', '!=', 'Бекор қилинган');
+        })
+        ->sum('total_amount');
+
+    // Total paid amount
+    $totalPaid = ActualPayment::whereIn('contract_id', $contractIds)->sum('amount');
+
+    // Count contracts that have payments
+    $paidContractsCount = Contract::whereIn('id', $contractIds)
+        ->whereHas('actualPayments')
+        ->distinct()
+        ->count();
+
+    // Debtors count and total debt
+    $debtorsCount = $this->getDebtorsCount();
+    $totalDebt = $totalAmount - $totalPaid;
+
     $stats = [
         'total_contracts' => $totalContracts,
         'legal_entities' => Contract::whereIn('id', $contractIds)
@@ -101,11 +92,13 @@ public function index(Request $request)
             ->whereHas('subject', function ($q) {
                 $q->where('is_legal_entity', false);
             })->count(),
-        'active_contracts' => $activeContracts,
+        'active_contracts' => $activeContractsCount,
+        'active_amount' => $activeAmount,
         'total_amount' => $totalAmount,
         'total_paid' => $totalPaid,
+        'paid_contracts_count' => $paidContractsCount,
         'debtors_count' => $debtorsCount,
-        'total_debt' => $totalAmount - $totalPaid
+        'total_debt' => $totalDebt
     ];
 
     $chartData = $this->buildChartData($period);
@@ -159,6 +152,7 @@ public function index(Request $request)
         'districts'
     ));
 }
+
     public function districtContracts(Request $request, District $district)
     {
         $period = $request->get('period', 'month');
