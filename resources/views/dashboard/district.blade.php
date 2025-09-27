@@ -27,7 +27,7 @@
                 </div>
             </div>
 
-            <div class="bg-white rounded-xl shadow-sm border border-gray-200 p-6">
+   <div class="bg-white rounded-xl shadow-sm border border-gray-200 p-6">
                 <div class="flex items-center justify-between">
                     <div>
                         <p class="text-sm font-medium text-gray-600">Режа учун умумий сумма</p>

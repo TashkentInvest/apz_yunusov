@@ -33,16 +33,16 @@
                 <div class="flex items-center justify-between">
                     <div class="flex-1">
                         <p class="text-sm font-medium text-gray-600">Режа учун умумий сумма</p>
-                        <p class="text-2xl font-bold text-gray-900 mt-2">
-                            {{ number_format($stats['total_amount'] ) }} сўм</p>
-                        <p class="text-xm text-gray-500 mt-2 italic leading-relaxed">
+                        <p class="text-3xl font-bold text-gray-900 mt-2">
+                            {{ number_format($stats['total_amount'] / 1000000000, 1 ) }} млрд сўм</p>
+                        {{-- <p class="text-xm text-gray-500 mt-2 italic leading-relaxed">
                             {{ ucfirst(app(\App\Services\NumberToTextService::class)->convert($stats['total_amount'])) }}
                             сўм
-                        </p>
+                        </p> --}}
                     </div>
-                    <div class="w-12 h-12 bg-green-50 rounded-lg flex items-center justify-center flex-shrink-0 ml-2">
+                    {{-- <div class="w-12 h-12 bg-green-50 rounded-lg flex items-center justify-center flex-shrink-0 ml-2">
                         <i data-feather="dollar-sign" class="w-6 h-6 text-green-600"></i>
-                    </div>
+                    </div> --}}
                 </div>
             </a>
 
@@ -53,15 +53,15 @@
                     <div>
                         <p class="text-sm font-medium text-gray-600">Тўланган</p>
                         <p class="text-3xl font-bold text-gray-900 mt-2">
-                            {{ number_format($stats['total_paid'] ) }} сўм</p>
-                        <p class="text-sm text-blue-600 mt-1">
+                            {{ number_format($stats['total_paid'] / 1000000000, 1 ) }} млрд сўм</p>
+                        {{-- <p class="text-sm text-blue-600 mt-1">
                             {{ $stats['total_amount'] > 0 ? number_format(($stats['total_paid'] / $stats['total_amount']) * 100, 1) : 0 }}%
                             бажарилди
-                        </p>
+                        </p> --}}
                     </div>
-                    <div class="w-12 h-12 bg-blue-50 rounded-lg flex items-center justify-center">
+                    {{-- <div class="w-12 h-12 bg-blue-50 rounded-lg flex items-center justify-center">
                         <i data-feather="check-circle" class="w-6 h-6 text-blue-600"></i>
-                    </div>
+                    </div> --}}
                 </div>
             </a>
 
@@ -70,11 +70,11 @@
                 class="bg-white rounded-xl shadow-sm border border-gray-200 p-6 hover:shadow-lg transition-all transform hover:-translate-y-1">
                 <div class="flex items-center justify-between">
                     <div>
-                        <p class="text-sm font-medium text-gray-600">Қарздорлар</p>
+                        <p class="text-sm font-medium text-gray-600">Қолдиқ</p>
                         <p class="text-3xl font-bold text-gray-900 mt-2">{{ number_format($stats['debtors_count']) }}</p>
                         <p class="text-sm text-red-600 mt-1">
                             <i data-feather="alert-triangle" class="w-4 h-4 inline mr-1"></i>
-                            {{ number_format($stats['total_debt']) }} сўм
+                            {{ number_format($stats['total_debt'] / 1000000000, 1 ) }} млрд сўм
                         </p>
                     </div>
                     <div class="w-12 h-12 bg-red-50 rounded-lg flex items-center justify-center">

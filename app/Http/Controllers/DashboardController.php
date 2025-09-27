@@ -39,7 +39,7 @@ class DashboardController extends Controller
 
         $totalAmount = Contract::where('is_active', true)
             ->whereHas('status', function ($q) {
-                $q->where('name_uz', '!=', 'Бекор қилинган');
+                // $q->where('name_uz', '!=', 'Бекор қилинган');
             })
             ->sum('total_amount');
 
