@@ -31,7 +31,7 @@ Route::middleware(['auth'])->group(function () {
         Route::patch('/{user}/toggle-status', [UserController::class, 'toggleStatus'])->name('toggle-status');
     });
 
-    // Dashboard routes
+    // Dashboard routes------------------------------------------
     Route::get('/dashboard', [DashboardController::class, 'index'])->name('dashboard');
     Route::get('/dashboard/chart-data', [DashboardController::class, 'getChartData'])->name('dashboard.chart-data');
     Route::get('/dashboard/export', [DashboardController::class, 'export'])->name('dashboard.export');
@@ -45,8 +45,9 @@ Route::middleware(['auth'])->group(function () {
     // Add this route for filtered contracts by permit type
     Route::get('/monitoring/permit-type/{permitTypeId}', [DashboardController::class, 'contractsByPermitType'])->name('monitoring.permit-type');
     Route::get('/monitoring/status/{statusType}', [DashboardController::class, 'contractsByStatus'])->name('monitoring.status');
-Route::get('/monitoring/quarter/{year}/{quarter}/{type}', [DashboardController::class, 'quarterPayments'])->name('monitoring.quarter');
-Route::get('/monitoring/year/{year}/{type}', [DashboardController::class, 'yearPayments'])->name('monitoring.year');
+    Route::get('/monitoring/quarter/{year}/{quarter}/{type}', [DashboardController::class, 'quarterPayments'])->name('monitoring.quarter');
+    Route::get('/monitoring/year/{year}/{type}', [DashboardController::class, 'yearPayments'])->name('monitoring.year');
+    // Dashboard routes end------------------------------------------
 
 
     // Contracts Management
