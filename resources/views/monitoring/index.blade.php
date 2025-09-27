@@ -47,16 +47,16 @@
                             <th colspan="5" class="border border-gray-400 px-2 py-2 text-xs font-semibold text-gray-700">Ҳолати</th>
                             <th colspan="2" class="border border-gray-400 px-2 py-2 text-xs font-semibold text-gray-700">Режа</th>
                             <th colspan="2" class="border border-gray-400 px-2 py-2 text-xs font-semibold text-gray-700">Факт</th>
-                            <th colspan="2" class="border border-gray-400 px-2 py-2 text-xs font-semibold text-gray-700">Фарқ</th>
+                            <th colspan="2" class="border border-gray-400 px-2 py-2 text-xs font-semibold text-gray-700">Қарздорлик</th>
                             <th colspan="2" class="border border-gray-400 px-2 py-2 text-xs font-semibold text-gray-700">Режа</th>
                             <th colspan="2" class="border border-gray-400 px-2 py-2 text-xs font-semibold text-gray-700">Факт</th>
-                            <th colspan="2" class="border border-gray-400 px-2 py-2 text-xs font-semibold text-gray-700">Фарқ</th>
+                            <th colspan="2" class="border border-gray-400 px-2 py-2 text-xs font-semibold text-gray-700">Қарздорлик</th>
                             <th colspan="2" class="border border-gray-400 px-2 py-2 text-xs font-semibold text-gray-700">Режа</th>
                             <th colspan="2" class="border border-gray-400 px-2 py-2 text-xs font-semibold text-gray-700">Факт</th>
-                            <th colspan="2" class="border border-gray-400 px-2 py-2 text-xs font-semibold text-gray-700">Фарқ</th>
+                            <th colspan="2" class="border border-gray-400 px-2 py-2 text-xs font-semibold text-gray-700">Қарздорлик</th>
                             <th colspan="2" class="border border-gray-400 px-2 py-2 text-xs font-semibold text-gray-700">Режа</th>
                             <th colspan="2" class="border border-gray-400 px-2 py-2 text-xs font-semibold text-gray-700">Факт</th>
-                            <th colspan="2" class="border border-gray-400 px-2 py-2 text-xs font-semibold text-gray-700">Фарқ</th>
+                            <th colspan="2" class="border border-gray-400 px-2 py-2 text-xs font-semibold text-gray-700">Қарздорлик</th>
                         </tr>
 
                         <!-- Third row - Field Names -->
