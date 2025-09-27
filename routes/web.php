@@ -49,6 +49,9 @@ Route::middleware(['auth'])->group(function () {
     Route::get('/monitoring/year/{year}/{type}', [DashboardController::class, 'yearPayments'])->name('monitoring.year');
     // Dashboard routes end------------------------------------------
 
+Route::get('/monitoring/debug', [DashboardController::class, 'monitoringDebug'])->name('monitoring.debug');
+
+
 
     // Contracts Management
     Route::prefix('contracts')->name('contracts.')->group(function () {

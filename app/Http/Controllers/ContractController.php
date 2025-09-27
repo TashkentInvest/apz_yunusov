@@ -96,9 +96,7 @@ public function index(Request $request): View
 
     // Calculate total amount
     $totalAmount = (clone $query)
-        ->whereHas('status', function ($q) {
-            $q->where('name_uz', '!=', 'Бекор қилинган');
-        })
+
         ->sum('total_amount');
 
     $activeCount = (clone $query)->whereHas('status', function ($q) {
