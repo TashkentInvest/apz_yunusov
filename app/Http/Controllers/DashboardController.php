@@ -510,6 +510,7 @@ class DashboardController extends Controller
     //monitoring
     public function monitoring(Request $request)
     {
+
         $districts = District::where('is_active', true)
             ->where('name_uz', 'REGEXP', '^[А-Яа-яЎўҚқҒғҲҳ]')
             ->orderBy('name_uz')
