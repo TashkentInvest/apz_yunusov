@@ -510,8 +510,8 @@ class DashboardController extends Controller
     //monitoring
     public function monitoring(Request $request)
     {
-        $districts = District::where('is_active', true)->where('code', '!=', 'NOT_FOUND')
-            ->where('name_uz', 'REGEXP', '^[А-Яа-яЎўҚқҒғҲҳ]')
+//
+        $districts = District::where('name_uz', 'REGEXP', '^[А-Яа-яЎўҚқҒғҲҳ]')->where('code', '!=', 'NOT_FOUND')
             ->orderBy('name_uz')
             ->get();
 
@@ -682,8 +682,8 @@ class DashboardController extends Controller
                 'district' => $district,
                 'total_contracts' => $allContracts->count(),
                 'total_amount' => $totalAmount,
-                'cancelled_count' => $cancelledContracts->count(),
-                'cancelled_amount' => $cancelledContracts->sum('total_amount'),
+                'cancelled_count' => $cancelledContracts->count() + $returnedContracts->count(),
+                'cancelled_amount' => $cancelledContracts->sum('total_amount') + $returnedContracts->sum('total_amount'),
                 'completed_count' => $completedContracts->count(),
                 'completed_amount' => $completedContracts->sum('total_amount'),
                 'returned_count' => $returnedContracts->count(),
