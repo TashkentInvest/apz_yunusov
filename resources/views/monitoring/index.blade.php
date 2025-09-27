@@ -30,7 +30,7 @@
                                 class="border border-gray-400 px-3 py-3 text-xs font-bold text-gray-800 min-w-[140px] sticky left-0 bg-gray-100 z-10">
                                 Ҳудуд</th>
                             <th colspan="2" class="border border-gray-400 px-3 py-3 text-xs font-bold text-gray-800">Жами АРТ(АПЗ) бўйича тузилган шартномалар</th>
-                            <th colspan="3" class="border border-gray-400 px-3 py-3 text-xs font-bold text-gray-800">
+                            <th colspan="4" class="border border-gray-400 px-3 py-3 text-xs font-bold text-gray-800">
 шундан
                             </th>
                             <th colspan="9" class="border border-gray-400 px-3 py-3 text-xs font-bold text-gray-800">
@@ -53,7 +53,7 @@
                                 сони</th>
                             <th rowspan="2" class="border border-gray-400 px-2 py-2 text-xs font-semibold text-gray-700">
                                 млрд сўм</th>
-                            <th colspan="1" class="border border-gray-400 px-2 py-2 text-xs font-semibold text-gray-700">
+                            <th colspan="2" class="border border-gray-400 px-2 py-2 text-xs font-semibold text-gray-700">
                                 Бекор қилинган</th>
                             <th colspan="2" class="border border-gray-400 px-2 py-2 text-xs font-semibold text-gray-700">
                                Тўлиқ тўланган</th>
@@ -95,6 +95,7 @@
                         <!-- Third row - Field Names -->
                         <tr class="bg-gray-200">
                             <th class="border border-gray-400 px-2 py-2 text-xs font-semibold text-gray-700">сони</th>
+                            <th class="border border-gray-400 px-2 py-2 text-xs font-semibold text-gray-700">сумма</th>
                             <th class="border border-gray-400 px-2 py-2 text-xs font-semibold text-gray-700">сони</th>
                             <th class="border border-gray-400 px-2 py-2 text-xs font-semibold text-gray-700">млрд сўм</th>
                             <th class="border border-gray-400 px-2 py-2 text-xs font-semibold text-gray-700">сони</th>
@@ -146,9 +147,12 @@
                             <td class="border border-gray-400 px-3 py-3 text-right">
                                 {{ number_format($cityTotals['total_amount'] / 1000000000, 1) }}</td>
                             <!-- Бекор бўлганлар -->
-                            <td class="border border-gray-400 px-3 py-3 text-center"><a
+    <td class="border border-gray-400 px-3 py-3 text-center"><a
                                     href="{{ route('monitoring.status', 'cancelled') }}"
                                     class="text-blue-700 hover:underline">{{ $cityTotals['cancelled_count'] }}</a></td>
+
+ <td class="border border-gray-400 px-3 py-3 text-right">
+                                {{ number_format($cityTotals['cancelled_amount'] / 1000000000, 1) }}</td>
                             <!-- Тўланган -->
                             <td class="border border-gray-400 px-3 py-3 text-center"><a
                                     href="{{ route('monitoring.status', 'completed') }}"
@@ -270,6 +274,9 @@
                                 <td class="border border-gray-300 px-3 py-2 text-center"><a
                                         href="{{ route('monitoring.status', 'cancelled') }}?district={{ $data['district']->id }}"
                                         class="text-blue-700 hover:underline">{{ $data['cancelled_count'] }}</a></td>
+
+   <td class="border border-gray-300 px-3 py-2 text-right text-gray-700">
+                                    {{ number_format($data['cancelled_amount'] / 1000000000, 1) }}</td>
                                 <!-- Тўланган -->
                                 <td class="border border-gray-300 px-3 py-2 text-center"><a
                                         href="{{ route('monitoring.status', 'completed') }}?district={{ $data['district']->id }}"
