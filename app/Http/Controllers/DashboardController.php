@@ -510,7 +510,7 @@ class DashboardController extends Controller
     //monitoring
     public function monitoring(Request $request)
     {
-        $districts = District::where('is_active', true)
+        $districts = District::where('is_active', true)->where('code', '!=', 'NOT_FOUND')
             ->where('name_uz', 'REGEXP', '^[А-Яа-яЎўҚқҒғҲҳ]')
             ->orderBy('name_uz')
             ->get();
@@ -519,23 +519,21 @@ class DashboardController extends Controller
         $cityTotals = [
             'total_contracts' => 0,
             'total_amount' => 0,
-            'cancelled_returned_count' => 0,
-            'cancelled_returned_amount' => 0,
+            'cancelled_count' => 0,
+            'cancelled_amount' => 0,
             'completed_count' => 0,
             'completed_amount' => 0,
+            'returned_count' => 0,
+            'returned_amount' => 0,
             'active_count' => 0,
             'active_amount' => 0,
-            'active_plan_count' => 0,
-            'active_plan_amount' => 0,
-            'active_fact_count' => 0,
-            'active_fact_amount' => 0,
-            'active_apz_count' => 0,
-            'active_gasn_count' => 0,
-            'active_kengash_count' => 0,
-            'active_permit_count' => 0,
-            'active_expertise_count' => 0,
             'overdue_count' => 0,
             'overdue_amount' => 0,
+            'apz_count' => 0,
+            'gasn_count' => 0,
+            'kengash_count' => 0,
+            'permit_count' => 0,
+            'expertise_count' => 0,
             'total_paid' => 0,
             'q3_2025_plan_count' => 0,
             'q3_2025_plan_amount' => 0,
@@ -564,13 +562,9 @@ class DashboardController extends Controller
 
             // Status-based categorization
             $cancelledContracts = $allContracts->filter(fn($c) => $c->status && $c->status->name_uz === 'Бекор қилинган');
-            $returnedContracts = $allContracts->filter(fn($c) => $c->status && $c->status->id == 4);
             $completedContracts = $allContracts->filter(fn($c) => $c->status && $c->status->code === 'COMPLETED');
+            $returnedContracts = $allContracts->filter(fn($c) => $c->status && $c->status->id == 4);
             $activeContracts = $allContracts->filter(fn($c) => $c->status && $c->status->code === 'ACTIVE');
-
-            // Merged: Cancelled + Returned
-            $cancelledReturnedCount = $cancelledContracts->count() + $returnedContracts->count();
-            $cancelledReturnedAmount = $cancelledContracts->sum('total_amount') + $returnedContracts->sum('total_amount');
 
             // Overdue contracts (active but past completion date)
             $overdueContracts = $activeContracts->filter(function ($c) {
@@ -580,37 +574,7 @@ class DashboardController extends Controller
             $totalAmount = $allContracts->whereNotIn('status.name_uz', ['Бекор қилинган'])->sum('total_amount');
             $totalPaid = ActualPayment::whereIn('contract_id', $contractIds)->sum('amount');
 
-            // Active contracts - Plan (from PaymentSchedule)
-            $activePlanAmount = PaymentSchedule::whereIn('contract_id', $activeContracts->pluck('id'))
-                ->where('is_active', true)
-                ->sum('quarter_amount');
-
-            $activePlanCount = PaymentSchedule::whereIn('contract_id', $activeContracts->pluck('id'))
-                ->where('is_active', true)
-                ->distinct('contract_id')
-                ->count('contract_id');
-
-            // Active contracts - Fact (from ActualPayment)
-            $activeFactAmount = ActualPayment::whereIn('contract_id', $activeContracts->pluck('id'))
-                ->sum('amount');
-
-            $activeFactCount = ActualPayment::whereIn('contract_id', $activeContracts->pluck('id'))
-                ->distinct('contract_id')
-                ->count('contract_id');
-
-            // Active contracts by permit type
-            $activeApzCount = Contract::whereIn('id', $activeContracts->pluck('id'))
-                ->whereHas('object', fn($q) => $q->where('permit_type_id', 1))->count();
-            $activeGasnCount = Contract::whereIn('id', $activeContracts->pluck('id'))
-                ->whereHas('object', fn($q) => $q->where('permit_type_id', 2))->count();
-            $activeKengashCount = Contract::whereIn('id', $activeContracts->pluck('id'))
-                ->whereHas('object', fn($q) => $q->where('permit_type_id', 3))->count();
-            $activePermitCount = Contract::whereIn('id', $activeContracts->pluck('id'))
-                ->whereHas('object', fn($q) => $q->where('permit_type_id', 4))->count();
-            $activeExpertiseCount = Contract::whereIn('id', $activeContracts->pluck('id'))
-                ->whereHas('object', fn($q) => $q->where('permit_type_id', 5))->count();
-
-            // Q3 2025 payments (July-September 2025)
+            // Q3 2025 payments (July-September 2025) - Quarter 3
             $q3_2025_plan_amount = PaymentSchedule::whereIn('contract_id', $contractIds)
                 ->where('year', 2025)
                 ->where('quarter', 3)
@@ -635,7 +599,7 @@ class DashboardController extends Controller
                 ->distinct('contract_id')
                 ->count('contract_id');
 
-            // Q4 2025 payments (October-December 2025)
+            // Q4 2025 payments (October-December 2025) - Quarter 4
             $q4_2025_plan_amount = PaymentSchedule::whereIn('contract_id', $contractIds)
                 ->where('year', 2025)
                 ->where('quarter', 4)
@@ -660,7 +624,7 @@ class DashboardController extends Controller
                 ->distinct('contract_id')
                 ->count('contract_id');
 
-            // 2026 payments
+            // 2026 payments (all quarters)
             $y2026_plan_amount = PaymentSchedule::whereIn('contract_id', $contractIds)
                 ->where('year', 2026)
                 ->where('is_active', true)
@@ -681,7 +645,7 @@ class DashboardController extends Controller
                 ->distinct('contract_id')
                 ->count('contract_id');
 
-            // 2027 payments
+            // 2027 payments (all quarters)
             $y2027_plan_amount = PaymentSchedule::whereIn('contract_id', $contractIds)
                 ->where('year', 2027)
                 ->where('is_active', true)
@@ -702,27 +666,37 @@ class DashboardController extends Controller
                 ->distinct('contract_id')
                 ->count('contract_id');
 
+            // Permit type counts
+            $apzCount = Contract::whereIn('id', $contractIds)
+                ->whereHas('object', fn($q) => $q->where('permit_type_id', 1))->count();
+            $gasnCount = Contract::whereIn('id', $contractIds)
+                ->whereHas('object', fn($q) => $q->where('permit_type_id', 2))->count();
+            $kengashCount = Contract::whereIn('id', $contractIds)
+                ->whereHas('object', fn($q) => $q->where('permit_type_id', 3))->count();
+            $permitCount = Contract::whereIn('id', $contractIds)
+                ->whereHas('object', fn($q) => $q->where('permit_type_id', 4))->count();
+            $expertiseCount = Contract::whereIn('id', $contractIds)
+                ->whereHas('object', fn($q) => $q->where('permit_type_id', 5))->count();
+
             $districtData = [
                 'district' => $district,
                 'total_contracts' => $allContracts->count(),
                 'total_amount' => $totalAmount,
-                'cancelled_returned_count' => $cancelledReturnedCount,
-                'cancelled_returned_amount' => $cancelledReturnedAmount,
+                'cancelled_count' => $cancelledContracts->count(),
+                'cancelled_amount' => $cancelledContracts->sum('total_amount'),
                 'completed_count' => $completedContracts->count(),
                 'completed_amount' => $completedContracts->sum('total_amount'),
+                'returned_count' => $returnedContracts->count(),
+                'returned_amount' => $returnedContracts->sum('total_amount'),
                 'active_count' => $activeContracts->count(),
                 'active_amount' => $activeContracts->sum('total_amount'),
-                'active_plan_count' => $activePlanCount,
-                'active_plan_amount' => $activePlanAmount,
-                'active_fact_count' => $activeFactCount,
-                'active_fact_amount' => $activeFactAmount,
-                'active_apz_count' => $activeApzCount,
-                'active_gasn_count' => $activeGasnCount,
-                'active_kengash_count' => $activeKengashCount,
-                'active_permit_count' => $activePermitCount,
-                'active_expertise_count' => $activeExpertiseCount,
                 'overdue_count' => $overdueContracts->count(),
                 'overdue_amount' => $overdueContracts->sum('total_amount'),
+                'apz_count' => $apzCount,
+                'gasn_count' => $gasnCount,
+                'kengash_count' => $kengashCount,
+                'permit_count' => $permitCount,
+                'expertise_count' => $expertiseCount,
                 'total_paid' => $totalPaid,
                 'q3_2025_plan_count' => $q3_2025_contracts,
                 'q3_2025_plan_amount' => $q3_2025_plan_amount,
@@ -756,101 +730,159 @@ class DashboardController extends Controller
     }
 
 
-    public function monitoringDistrict(District $district)
-    {
-        $contracts = Contract::whereHas('object', function ($q) use ($district) {
-            $q->where('district_id', $district->id);
-        })
-            ->with(['subject', 'status', 'object.permitType', 'actualPayments', 'paymentSchedules'])
-            ->where('is_active', true)
-            ->paginate(50);
+public function monitoringDistrict(District $district)
+{
+    $contracts = Contract::whereHas('object', function ($q) use ($district) {
+        $q->where('district_id', $district->id);
+    })
+        ->with(['subject', 'status', 'object.permitType', 'actualPayments', 'paymentSchedules'])
+        ->where('is_active', true)
+        ->paginate(50);
 
-        // Calculate totals
-        $totals = [
-            'total_contracts' => $contracts->total(),
-            'total_amount' => 0,
-            'total_paid' => 0,
-            'total_debt' => 0,
-            'total_plan' => 0,
-            'total_fact' => 0,
-        ];
+    // Calculate totals
+    $totals = [
+        'total_contracts' => $contracts->total(),
+        'total_amount' => 0,
+        'total_paid' => 0,
+        'total_debt' => 0,
+        'total_plan' => 0,
+        'total_fact' => 0,
+    ];
 
-        foreach ($contracts as $contract) {
-            $totals['total_amount'] += $contract->total_amount;
-            $paid = $contract->actualPayments->sum('amount');
-            $totals['total_paid'] += $paid;
-            $totals['total_debt'] += ($contract->total_amount - $paid);
+    foreach ($contracts as $contract) {
+        $totals['total_amount'] += $contract->total_amount;
+        $paid = $contract->actualPayments->sum('amount');
+        $totals['total_paid'] += $paid;
+        $totals['total_debt'] += ($contract->total_amount - $paid);
 
-            // Calculate planned vs actual
-            $plan = $contract->paymentSchedules->where('is_active', true)->sum('quarter_amount');
-            $totals['total_plan'] += $plan;
-            $totals['total_fact'] += $paid;
-        }
-
-        return view('monitoring.district', compact('district', 'contracts', 'totals'));
+        // Calculate planned vs actual
+        $plan = $contract->paymentSchedules->where('is_active', true)->sum('quarter_amount');
+        $totals['total_plan'] += $plan;
+        $totals['total_fact'] += $paid;
     }
 
-    public function quarterPayments(Request $request, $year, $quarter, $type)
+    return view('monitoring.district', compact('district', 'contracts', 'totals'));
+}
+
+public function quarterPayments(Request $request, $year, $quarter, $type)
 {
     $districtId = $request->query('district');
 
-    if ($type === 'plan') {
-        $contractIds = \App\Models\PaymentSchedule::where('year', $year)
-            ->where('quarter', $quarter)
-            ->where('is_active', true)
-            ->pluck('contract_id')
-            ->unique();
-    } else {
-        $contractIds = \App\Models\ActualPayment::where('year', $year)
-            ->where('quarter', $quarter)
-            ->pluck('contract_id')
-            ->unique();
-    }
-
-    $query = Contract::whereIn('id', $contractIds)
-        ->with(['subject', 'object.district', 'status', 'actualPayments', 'paymentSchedules']);
+    // Build base query for contracts
+    $contractQuery = Contract::with(['subject', 'object.district', 'status', 'actualPayments']);
 
     if ($districtId) {
-        $query->whereHas('object', function ($q) use ($districtId) {
+        $contractQuery->whereHas('object', function($q) use ($districtId) {
             $q->where('district_id', $districtId);
         });
     }
 
-    $contracts = $query->paginate(50);
-    $district = $districtId ? \App\Models\District::find($districtId) : null;
+    $contractQuery->where('is_active', true);
 
-    return view('monitoring.quarter', compact('contracts', 'year', 'quarter', 'type', 'district'));
+    // Filter based on type (plan or fact)
+    if ($type === 'plan') {
+        // Contracts with payment schedules for this quarter
+        $contractQuery->whereHas('paymentSchedules', function($q) use ($year, $quarter) {
+            $q->where('year', $year)
+              ->where('quarter', $quarter)
+              ->where('is_active', true);
+        });
+        $title = "Режа бўйича {$quarter}-чорак {$year} йил";
+    } else {
+        // Contracts with actual payments for this quarter
+        $contractQuery->whereHas('actualPayments', function($q) use ($year, $quarter) {
+            $q->where('year', $year)
+              ->where('quarter', $quarter);
+        });
+        $title = "Факт бўйича {$quarter}-чорак {$year} йил";
+    }
+
+    $contracts = $contractQuery->paginate(50);
+
+    // Get district name if filtering
+    $district = $districtId ? District::find($districtId) : null;
+
+    // Calculate statistics
+    if ($type === 'plan') {
+        $totalAmount = PaymentSchedule::whereIn('contract_id', $contracts->pluck('id'))
+            ->where('year', $year)
+            ->where('quarter', $quarter)
+            ->where('is_active', true)
+            ->sum('quarter_amount');
+    } else {
+        $totalAmount = ActualPayment::whereIn('contract_id', $contracts->pluck('id'))
+            ->where('year', $year)
+            ->where('quarter', $quarter)
+            ->sum('amount');
+    }
+
+    return view('monitoring.quarter', compact(
+        'contracts',
+        'year',
+        'quarter',
+        'type',
+        'title',
+        'district',
+        'totalAmount'
+    ));
 }
-
 
 public function yearPayments(Request $request, $year, $type)
 {
     $districtId = $request->query('district');
 
-    if ($type === 'plan') {
-        $contractIds = \App\Models\PaymentSchedule::where('year', $year)
-            ->where('is_active', true)
-            ->pluck('contract_id')
-            ->unique();
-    } else {
-        $contractIds = \App\Models\ActualPayment::where('year', $year)
-            ->pluck('contract_id')
-            ->unique();
-    }
-
-    $query = Contract::whereIn('id', $contractIds)
-        ->with(['subject', 'object.district', 'status', 'actualPayments', 'paymentSchedules']);
+    // Build base query for contracts
+    $contractQuery = Contract::with(['subject', 'object.district', 'status', 'actualPayments']);
 
     if ($districtId) {
-        $query->whereHas('object', function ($q) use ($districtId) {
+        $contractQuery->whereHas('object', function($q) use ($districtId) {
             $q->where('district_id', $districtId);
         });
     }
 
-    $contracts = $query->paginate(50);
-    $district = $districtId ? \App\Models\District::find($districtId) : null;
+    $contractQuery->where('is_active', true);
 
-    return view('monitoring.year', compact('contracts', 'year', 'type', 'district'));
+    // Filter based on type (plan or fact)
+    if ($type === 'plan') {
+        // Contracts with payment schedules for this year
+        $contractQuery->whereHas('paymentSchedules', function($q) use ($year) {
+            $q->where('year', $year)
+              ->where('is_active', true);
+        });
+        $title = "Режа бўйича {$year} йил";
+    } else {
+        // Contracts with actual payments for this year
+        $contractQuery->whereHas('actualPayments', function($q) use ($year) {
+            $q->where('year', $year);
+        });
+        $title = "Факт бўйича {$year} йил";
+    }
+
+    $contracts = $contractQuery->paginate(50);
+
+    // Get district name if filtering
+    $district = $districtId ? District::find($districtId) : null;
+
+    // Calculate statistics
+    if ($type === 'plan') {
+        $totalAmount = PaymentSchedule::whereIn('contract_id', $contracts->pluck('id'))
+            ->where('year', $year)
+            ->where('is_active', true)
+            ->sum('quarter_amount');
+    } else {
+        $totalAmount = ActualPayment::whereIn('contract_id', $contracts->pluck('id'))
+            ->where('year', $year)
+            ->sum('amount');
+    }
+
+    return view('monitoring.year', compact(
+        'contracts',
+        'year',
+        'type',
+        'title',
+        'district',
+        'totalAmount'
+    ));
 }
     public function allDistricts(Request $request)
     {
@@ -966,115 +998,108 @@ public function yearPayments(Request $request, $year, $type)
         return view('monitoring.districts', compact('monitoringData', 'cityTotals'));
     }
 
- public function contractsByPermitType(Request $request, $permitTypeId)
-{
-    $permitType = \App\Models\PermitType::findOrFail($permitTypeId);
-    $districtId = $request->query('district');
-    $onlyActive = $request->query('active', false); // New parameter
-
-    $query = Contract::whereHas('object', function ($q) use ($permitTypeId, $districtId) {
-        $q->where('permit_type_id', $permitTypeId);
-
-        if ($districtId) {
-            $q->where('district_id', $districtId);
-        }
-    });
-
-    // Filter only active contracts if requested
-    if ($onlyActive) {
-        $query->whereHas('status', function($q) {
-            $q->where('code', 'ACTIVE');
-        });
-    }
-
-    $query->with(['subject', 'object.district', 'status', 'actualPayments']);
-    $contracts = $query->paginate(50);
-
-    $district = $districtId ? \App\Models\District::find($districtId) : null;
-
-    $totalAmount = $contracts->sum('total_amount');
-    $totalPaid = $contracts->sum(function ($contract) {
-        return $contract->actualPayments->sum('amount');
-    });
-    $totalDebt = $totalAmount - $totalPaid;
-
-    return view('monitoring.permit-type', compact('contracts', 'permitType', 'district', 'totalAmount', 'totalPaid', 'totalDebt', 'onlyActive'));
-}
-
-
-
-    public function contractsByStatus(Request $request, $statusType)
+    public function contractsByPermitType(Request $request, $permitTypeId)
     {
+        $permitType = \App\Models\PermitType::findOrFail($permitTypeId);
         $districtId = $request->query('district');
 
-        $query = Contract::with([
-            'subject',
-            'object.district',
-            'object.permitType',
-            'status',
-            'actualPayments',
-            'paymentSchedules' => function ($q) {
-                $q->where('is_active', true);
-            }
-        ]);
+        $query = Contract::whereHas('object', function ($q) use ($permitTypeId, $districtId) {
+            $q->where('permit_type_id', $permitTypeId);
 
-        // Add district filter if provided
-        if ($districtId) {
-            $query->whereHas('object', function ($q) use ($districtId) {
+            // Add district filter if provided
+            if ($districtId) {
                 $q->where('district_id', $districtId);
-            });
-        }
-
-        // Determine status based on type
-        $statusName = '';
-        switch ($statusType) {
-            case 'active':
-                $query->whereHas('status', function ($q) {
-                    $q->where('code', 'ACTIVE');
-                });
-                $statusName = 'Амалда';
-                break;
-            case 'cancelled':
-                $query->whereHas('status', function ($q) {
-                    $q->where('name_uz', 'Бекор қилинган');
-                });
-                $statusName = 'Бекор қилинган';
-                break;
-            case 'completed':
-                $query->whereHas('status', function ($q) {
-                    $q->where('code', 'COMPLETED');
-                });
-                $statusName = 'Якунланган';
-                break;
-        }
+            }
+        })->with(['subject', 'object.district', 'status', 'actualPayments']);
 
         $contracts = $query->paginate(50);
 
         // Get district name if filtering by district
         $district = $districtId ? \App\Models\District::find($districtId) : null;
 
-        // Calculate totals
-        $totals = [
-            'total_contracts' => $contracts->total(),
-            'total_amount' => 0,
-            'total_paid' => 0,
-            'total_debt' => 0,
-            'total_plan' => 0,
-            'total_fact' => 0,
-        ];
+        // Calculate statistics
+        $totalAmount = $contracts->sum('total_amount');
+        $totalPaid = $contracts->sum(function ($contract) {
+            return $contract->actualPayments->sum('amount');
+        });
+        $totalDebt = $totalAmount - $totalPaid;
 
-        foreach ($contracts as $contract) {
-            $totals['total_amount'] += $contract->total_amount;
-            $paid = $contract->actualPayments->sum('amount');
-            $totals['total_paid'] += $paid;
-            $totals['total_debt'] += ($contract->total_amount - $paid);
-
-            // Calculate planned vs actual
-            $plan = $contract->paymentSchedules->sum('quarter_amount');
-            $totals['total_plan'] += $plan;
-            $totals['total_fact'] += $paid;
-        }
-
-        return view('monitoring.status', compact('contracts', 'statusName', 'statusType', 'district', 'totals'));
+        return view('monitoring.permit-type', compact('contracts', 'permitType', 'district', 'totalAmount', 'totalPaid', 'totalDebt'));
     }
+
+
+public function contractsByStatus(Request $request, $statusType)
+{
+    $districtId = $request->query('district');
+
+    $query = Contract::with([
+        'subject',
+        'object.district',
+        'object.permitType',
+        'status',
+        'actualPayments',
+        'paymentSchedules' => function($q) {
+            $q->where('is_active', true);
+        }
+    ]);
+
+    // Add district filter if provided
+    if ($districtId) {
+        $query->whereHas('object', function ($q) use ($districtId) {
+            $q->where('district_id', $districtId);
+        });
+    }
+
+    // Determine status based on type
+    $statusName = '';
+    switch ($statusType) {
+        case 'active':
+            $query->whereHas('status', function ($q) {
+                $q->where('code', 'ACTIVE');
+            });
+            $statusName = 'Амалда';
+            break;
+        case 'cancelled':
+            $query->whereHas('status', function ($q) {
+                $q->where('name_uz', 'Бекор қилинган');
+            });
+            $statusName = 'Бекор қилинган';
+            break;
+        case 'completed':
+            $query->whereHas('status', function ($q) {
+                $q->where('code', 'COMPLETED');
+            });
+            $statusName = 'Якунланган';
+            break;
+    }
+
+    $contracts = $query->paginate(50);
+
+    // Get district name if filtering by district
+    $district = $districtId ? \App\Models\District::find($districtId) : null;
+
+    // Calculate totals
+    $totals = [
+        'total_contracts' => $contracts->total(),
+        'total_amount' => 0,
+        'total_paid' => 0,
+        'total_debt' => 0,
+        'total_plan' => 0,
+        'total_fact' => 0,
+    ];
+
+    foreach ($contracts as $contract) {
+        $totals['total_amount'] += $contract->total_amount;
+        $paid = $contract->actualPayments->sum('amount');
+        $totals['total_paid'] += $paid;
+        $totals['total_debt'] += ($contract->total_amount - $paid);
+
+        // Calculate planned vs actual
+        $plan = $contract->paymentSchedules->sum('quarter_amount');
+        $totals['total_plan'] += $plan;
+        $totals['total_fact'] += $paid;
+    }
+
+    return view('monitoring.status', compact('contracts', 'statusName', 'statusType', 'district', 'totals'));
+}
 }
