@@ -36,7 +36,7 @@ class ContractController extends Controller
      */
 public function index(Request $request): View
 {
-    $query = Contract::with(['subject', 'object.district', 'status', 'updatedBy'])
+    $query = Contract::OrderByDesc('contract_date')->with(['subject', 'object.district', 'status', 'updatedBy'])
         ->where('is_active', true)
         ->whereHas('status', function ($q) {
             $q->where('code', '!=', 'pending');
