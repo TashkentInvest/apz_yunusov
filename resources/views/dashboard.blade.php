@@ -15,17 +15,20 @@
 
 
                         <p class="text-sm font-medium text-gray-600">Жами шартномалар</p>
-                        <p class="text-3xl font-bold text-red-900 mt-2">{{ number_format($stats['total_contracts']) }} <span class=" text-blue-900 mt-2">та</span></p>
+                        <p class="text-3xl font-bold text-red-900 mt-2">{{ number_format($stats['total_contracts']) }} <span
+                                class=" text-blue-900 mt-2">та</span></p>
 
-       <div class="flex-1">
-                        <p class="text-2xl font-bold text-red-900 mt-2">
-                            {{ number_format($stats['total_amount'] / 1000000000, 1 ) }} <span class=" text-blue-900 mt-2">млрд сўм</span></p>
-                        {{-- <p class="text-xm text-gray-500 mt-2 italic leading-relaxed">
+                        <div class="flex-1">
+                            <p class="text-2xl font-bold text-red-900 mt-2">
+                                {{ number_format($stats['total_amount'] / 1000000000, 1) }} <span
+                                    class=" text-blue-900 mt-2">млрд сўм</span></p>
+                            {{-- <p class="text-xm text-gray-500 mt-2 italic leading-relaxed">
                             {{ ucfirst(app(\App\Services\NumberToTextService::class)->convert($stats['total_amount'])) }}
                             сўм
                         </p> --}}
-                    </div>
-                    <p class="text-xs text-gray-500 mt-1">Юридик: {{ $stats['legal_entities'] }} | Жисмоний: {{ $stats['individuals'] }}</p>
+                        </div>
+                        <p class="text-xs text-gray-500 mt-1">Юридик: {{ $stats['legal_entities'] }} | Жисмоний:
+                            {{ $stats['individuals'] }}</p>
 
                         {{-- <p class="text-sm text-green-600 mt-1">
                             <i data-feather="trending-up" class="w-4 h-4 inline mr-1"></i>
@@ -37,6 +40,7 @@
                     </div>
                 </div>
             </a>
+
 
             <!-- Debtors -->
 
