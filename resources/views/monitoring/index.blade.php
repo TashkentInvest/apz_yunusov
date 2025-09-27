@@ -29,14 +29,14 @@
                             <th rowspan="3"
                                 class="border border-gray-400 px-3 py-3 text-xs font-bold text-gray-800 min-w-[140px] sticky left-0 bg-gray-100 z-10">
                                 Ҳудуд</th>
-                            <th colspan="2" class="border border-gray-400 px-3 py-3 text-xs font-bold text-gray-800">Жами АРТ(АПЗ) бўйича тузилган шартномалар</th>
+                            <th colspan="2" class="border border-gray-400 px-3 py-3 text-xs font-bold text-gray-800">Жами
+                                АРТ(АПЗ) бўйича тузилган шартномалар</th>
                             <th colspan="6" class="border border-gray-400 px-3 py-3 text-xs font-bold text-gray-800">
-шундан
+                                шундан
                             </th>
                             <th colspan="9" class="border border-gray-400 px-3 py-3 text-xs font-bold text-gray-800">
                                 Амалдаги шартномалар</th>
-                            <th colspan="2" class="border border-gray-400 px-3 py-3 text-xs font-bold text-gray-800">
-                                шундан</th>
+
                             <th colspan="6" class="border border-gray-400 px-3 py-3 text-xs font-bold text-gray-800">2025
                                 III чоракда тўланиши лозим бўлган сумма</th>
                             <th colspan="6" class="border border-gray-400 px-3 py-3 text-xs font-bold text-gray-800">2025
@@ -56,15 +56,15 @@
                             <th colspan="2" class="border border-gray-400 px-2 py-2 text-xs font-semibold text-gray-700">
                                 Бекор қилинган</th>
                             <th colspan="2" class="border border-gray-400 px-2 py-2 text-xs font-semibold text-gray-700">
-                               Тўлиқ тўланган</th>
+                                Тўлиқ тўланган</th>
                             <th colspan="2" class="border border-gray-400 px-2 py-2 text-xs font-semibold text-gray-700">
                                 Амалдаги шартномалар</th>
                             <th colspan="2" class="border border-gray-400 px-2 py-2 text-xs font-semibold text-gray-700">
                                 Жами</th>
-                            <th colspan="5" class="border border-gray-400 px-2 py-2 text-xs font-semibold text-gray-700">
-                                Ҳолати</th>
                             <th colspan="2" class="border border-gray-400 px-2 py-2 text-xs font-semibold text-gray-700">
                                 Муддати ўтганлар</th>
+                            <th colspan="5" class="border border-gray-400 px-2 py-2 text-xs font-semibold text-gray-700">
+                                Ҳолати</th>
                             <th colspan="2" class="border border-gray-400 px-2 py-2 text-xs font-semibold text-gray-700">
                                 Режа</th>
                             <th colspan="2" class="border border-gray-400 px-2 py-2 text-xs font-semibold text-gray-700">
@@ -101,14 +101,16 @@
                             <th class="border border-gray-400 px-2 py-2 text-xs font-semibold text-gray-700">сони</th>
                             <th class="border border-gray-400 px-2 py-2 text-xs font-semibold text-gray-700">млрд сўм</th>
                             <th class="border border-gray-400 px-2 py-2 text-xs font-semibold text-gray-700">сони</th>
-                            <th class="border border-gray-400 px-2 py-2 text-xs font-semibold text-gray-700">Тўланган сумма (млрд)</th>
+                            <th class="border border-gray-400 px-2 py-2 text-xs font-semibold text-gray-700">Тўланган сумма
+                                (млрд)</th>
+                            <th class="border border-gray-400 px-2 py-2 text-xs font-semibold text-gray-700">сони
+                            </th>
+                            <th class="border border-gray-400 px-2 py-2 text-xs font-semibold text-gray-700">млрд сўм </th>
                             <th class="border border-gray-400 px-2 py-2 text-xs font-semibold text-gray-700">Кенгаш</th>
                             <th class="border border-gray-400 px-2 py-2 text-xs font-semibold text-gray-700">ГАСН</th>
                             <th class="border border-gray-400 px-2 py-2 text-xs font-semibold text-gray-700">АПЗ</th>
                             <th class="border border-gray-400 px-2 py-2 text-xs font-semibold text-gray-700">Рухсатнома</th>
                             <th class="border border-gray-400 px-2 py-2 text-xs font-semibold text-gray-700">Экспертиза</th>
-                            <th class="border border-gray-400 px-2 py-2 text-xs font-semibold text-gray-700">млрд сўм </th>
-                            <th class="border border-gray-400 px-2 py-2 text-xs font-semibold text-gray-700">сони</th>
                             <th class="border border-gray-400 px-2 py-2 text-xs font-semibold text-gray-700">сони</th>
                             <th class="border border-gray-400 px-2 py-2 text-xs font-semibold text-gray-700">млрд сўм</th>
                             <th class="border border-gray-400 px-2 py-2 text-xs font-semibold text-gray-700">сони</th>
@@ -147,11 +149,11 @@
                             <td class="border border-gray-400 px-3 py-3 text-right">
                                 {{ number_format($cityTotals['total_amount'] / 1000000000, 1) }}</td>
                             <!-- Бекор бўлганлар -->
-    <td class="border border-gray-400 px-3 py-3 text-center"><a
+                            <td class="border border-gray-400 px-3 py-3 text-center"><a
                                     href="{{ route('monitoring.status', 'cancelled') }}"
                                     class="text-blue-700 hover:underline">{{ $cityTotals['cancelled_count'] }}</a></td>
 
- <td class="border border-gray-400 px-3 py-3 text-right">
+                            <td class="border border-gray-400 px-3 py-3 text-right">
                                 {{ number_format($cityTotals['cancelled_amount'] / 1000000000, 1) }}</td>
                             <!-- Тўланган -->
                             <td class="border border-gray-400 px-3 py-3 text-center"><a
@@ -169,6 +171,11 @@
                             </td>
                             <td class="border border-gray-400 px-3 py-3 text-right">
                                 {{ number_format($cityTotals['total_paid'] / 1000000000, 1) }}</td>
+                            <!-- Муддати ўтганлар -->
+                            <td class="border border-gray-400 px-3 py-3 text-center">{{ $cityTotals['overdue_count'] }}
+                            </td>
+                            <td class="border border-gray-400 px-3 py-3 text-right">
+                                {{ number_format($cityTotals['overdue_amount'] / 1000000000, 1) }}</td>
                             <!-- Ҳолати: Кенг./Экс./ГАСН/etc -->
                             <td class="border border-gray-400 px-3 py-3 text-center"><a
                                     href="{{ route('monitoring.permit-type', 3) }}"
@@ -185,11 +192,7 @@
                             <td class="border border-gray-400 px-3 py-3 text-center"><a
                                     href="{{ route('monitoring.permit-type', 4) }}"
                                     class="text-blue-700 hover:underline">{{ $cityTotals['permit_count'] }}</a></td>
-                            <!-- Муддати ўтганлар -->
-                            <td class="border border-gray-400 px-3 py-3 text-right">
-                                {{ number_format($cityTotals['overdue_amount'] / 1000000000, 1) }}</td>
-                            <td class="border border-gray-400 px-3 py-3 text-center">{{ $cityTotals['overdue_count'] }}
-                            </td>
+
                             <!-- Q3 2025 -->
                             <td class="border border-gray-400 px-3 py-3 text-center"><a
                                     href="{{ route('monitoring.quarter', ['year' => 2025, 'quarter' => 3, 'type' => 'plan']) }}"
@@ -275,7 +278,7 @@
                                         href="{{ route('monitoring.status', 'cancelled') }}?district={{ $data['district']->id }}"
                                         class="text-blue-700 hover:underline">{{ $data['cancelled_count'] }}</a></td>
 
-   <td class="border border-gray-300 px-3 py-2 text-right text-gray-700">
+                                <td class="border border-gray-300 px-3 py-2 text-right text-gray-700">
                                     {{ number_format($data['cancelled_amount'] / 1000000000, 1) }}</td>
                                 <!-- Тўланган -->
                                 <td class="border border-gray-300 px-3 py-2 text-center"><a
@@ -292,6 +295,11 @@
                                 <td class="border border-gray-300 px-3 py-2 text-center">{{ $data['active_count'] }}</td>
                                 <td class="border border-gray-300 px-3 py-2 text-right text-gray-700">
                                     {{ number_format($data['total_paid'] / 1000000000, 1) }}</td>
+                                <!-- Муддати ўтганлар -->
+                                <td class="border border-gray-300 px-3 py-2 text-center text-gray-700">
+                                    {{ $data['overdue_count'] }}</td>
+                                <td class="border border-gray-300 px-3 py-2 text-right text-gray-700">
+                                    {{ number_format($data['overdue_amount'] / 1000000000, 1) }}</td>
                                 <!-- Ҳолати: Кенг./Экс./ГАСН/APZ/Permit -->
                                 <td class="border border-gray-300 px-3 py-2 text-center"><a
                                         href="{{ route('monitoring.permit-type', 3) }}?district={{ $data['district']->id }}"
@@ -308,11 +316,7 @@
                                 <td class="border border-gray-300 px-3 py-2 text-center"><a
                                         href="{{ route('monitoring.permit-type', 4) }}?district={{ $data['district']->id }}"
                                         class="text-blue-700 hover:underline">{{ $data['permit_count'] }}</a></td>
-                                <!-- Муддати ўтганлар -->
-                                <td class="border border-gray-300 px-3 py-2 text-right text-gray-700">
-                                    {{ number_format($data['overdue_amount'] / 1000000000, 1) }}</td>
-                                <td class="border border-gray-300 px-3 py-2 text-center text-gray-700">
-                                    {{ $data['overdue_count'] }}</td>
+
                                 <!-- Q3 2025 -->
                                 <td class="border border-gray-300 px-3 py-2 text-center"><a
                                         href="{{ route('monitoring.quarter', ['year' => 2025, 'quarter' => 3, 'type' => 'plan']) }}?district={{ $data['district']->id }}"
